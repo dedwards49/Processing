@@ -271,8 +271,8 @@ function WLC_Arb(Parms)
 	
 	wavestats/q WLC_Force
 	for(i=0;i<(v_npnts+V_numNans);i+=1)
-		if(i<=2000)
-			if(abs(WLC_Force[i])>.1e-9)//Discoards forces above 500pN
+		if(i<=1000)
+			if(abs(WLC_Force[i])>.15e-9)//Discoards forces above 500pN
 				WLC_FOrce[i]=NaN
 			endif
 		elseif(i<=3000)
@@ -280,11 +280,11 @@ function WLC_Arb(Parms)
 				WLC_FOrce[i]=NaN
 			endif
 					elseif(i<=5000)
-			if(abs(WLC_Force[i])>.3e-9)//Discoards forces above 500pN
+			if(abs(WLC_Force[i])>.4e-9)//Discoards forces above 500pN
 				WLC_FOrce[i]=NaN
 			endif
 		else
-			if(abs(WLC_Force[i])>.5e-9)//Discoards forces above 500pN
+			if(abs(WLC_Force[i])>.8e-9)//Discoards forces above 500pN
 				WLC_FOrce[i]=NaN
 			endif
 		endif
@@ -358,15 +358,16 @@ function TestMakeParms()
 
 end
 
-function TestMakeParmsNuG2(last)
-variable last
-	make/o/n=(3,3) WLCParms
+function TestMakeParmsNuG2(last,NUg2)
+variable last,NUg2
+	make/o/n=(5,3) WLCParms
 	WLCParms[][0]=.4e-9
 	WLCParms[][1]=298
-		WLCParms[2][2]=last
-		WLCParms[1][2]=WLCParms[2][2]-17e-9
-		WLCParms[0][2]=WLCParms[1][2]-17e-9
-	//	WLCParms[0][2]=WLCParms[1][2]-23e-9
+		WLCParms[4][2]=last
+		WLCParms[3][2]=last-NUg2
+		WLCParms[2][2]=last-2*NUg2
+		WLCParms[1][2]=last-3*NUg2
+		WLCParms[0][2]=last-4*NUg2
 
 
 	
@@ -401,17 +402,17 @@ variable alpha,marker,last
 
 end
 
-function TestMakeParmsELC(last,Nug2Step,ELCstep)
-variable last,Nug2Step,ELCstep
-	make/o/n=(6,3) WLCParms
+function TestMakeParmsELC(last,ddFLN41,ddFLN42,ELCstep)
+variable last,ddFLN41,ddFLN42,ELCstep
+	make/o/n=(4,3) WLCParms
 	WLCParms[][0]=.4e-9
 	WLCParms[][1]=298
-	WLCParms[5][2]=last
-	WLCParms[4][2]=last-Nug2Step
-	WLCParms[3][2]=last-2*Nug2Step
-	WLCParms[2][2]=last-3*Nug2Step
-	WLCParms[1][2]=last-4*Nug2Step
-	WLCParms[0][2]=last-4*Nug2Step-ELCStep
+	WLCParms[3][2]=last
+
+	WLCParms[2][2]=last-ddFLN42
+	WLCParms[1][2]=last-ddFLN42-ddFLN41
+	WLCParms[0][2]=last-ddFLN42-ddFLN41-ELCstep
+
 
 	WLC_Arb(WLCParms)
 	wave WLC_Force,WLC_Ext
@@ -456,6 +457,33 @@ variable lastMCD,Nug2Step
 
 
 end
+
+function TestMakeParmsNickExample(lastMCD)
+	variable lastMCD
+	make/o/n=(4,3) WLCParms
+
+	variable step1=14.12e-9
+	variable step2=61e-9
+	variable step3=74e-9
+	WLCParms[][0]=.4e-9
+	WLCParms[][1]=298
+
+	WLCParms[3][2]=lastMCD
+	WLCParms[2][2]=lastMCD-step3
+	WLCParms[1][2]=lastMCD-step3-step2
+	WLCParms[0][2]=lastMCD-step3-step2-step1
+
+
+	WLC_Arb(WLCParms)
+	wave WLC_Force,WLC_Ext
+	duplicate/o WLC_Force Test_WLC_Force
+	duplicate/o WLC_Ext Test_WLC_Ext
+
+
+
+end
+
+
 
 function TestMakeParmsMCD(last,Nug2Step,ELCstep)
 variable last,Nug2Step,ELCstep
@@ -537,26 +565,22 @@ variable last,ddFLN4Step1,ddFLN4Step2,RLCstep1,RLCStep2
 
 
 end
-function TestMakeParms_alpha()
-
-	make/o/n=(4,3) WLCParms
+function TestMakeParms_alpha(Final,NuG2,Alpha)
+	variable Final,NuG2,Alpha
+	make/o/n=(6,3) WLCParms
 	WLCParms[][0]=.4e-9
 	WLCParms[][1]=298
-	variable Split1=16.8e-9
-	variable Split2=25e-9
-	variable FirstNUg2=167e-9
-//	WLCParms[5][2]=FirstNUg2+Split1*4
-//	WLCParms[4][2]=FirstNUg2+Split1*3
-	WLCParms[3][2]=FirstNUg2+Split1*2
-	WLCParms[2][2]=FirstNUg2+Split1*1
-	WLCParms[1][2]=FirstNUg2
-	WLCParms[0][2]=FirstNUg2-Split2
-//	WLCParms[5][2]=133.28e-9
-//	WLCParms[4][2]=117.55e-9
-//	WLCParms[3][2]=100.18e-9
-//	WLCParms[2][2]=83.7e-9
-//	WLCParms[1][2]=66.05e-9
-//	WLCParms[0][2]=41.2e-9
+	
+
+	WLCParms[5][2]=Final
+	WLCParms[4][2]=Final-NuG2
+	WLCParms[3][2]=Final-2*NuG2
+	WLCParms[2][2]=Final-3*NuG2
+		WLCParms[1][2]=Final-4*NuG2
+
+	WLCParms[0][2]=Final-4*NuG2-Alpha
+
+
 
 	
 
@@ -571,33 +595,21 @@ function TestMakeParms_alpha()
 
 end
 
-function TestMakeParms_Titin(Final,Nug2,Titin)
-	variable Final,Nug2,Titin
+function TestMakeParms_Titin(Final,Titin)
+	variable Final,Titin
 	make/o/n=(4,3) WLCParms
+	variable ddfln41=14.5e-9
+	variable ddfln42=16e-9
 	WLCParms[][0]=.4e-9
 	WLCParms[][1]=298
 
 	WLCParms[3][2]=Final
 	WLCParms[2][2]=Final-Titin
-	WLCParms[1][2]=Final-Nug2-Titin
-	WLCParms[0][2]=Final-Nug2*2-Titin
+	WLCParms[1][2]=Final-Titin-ddfln41
+	WLCParms[0][2]=Final-ddfln41-ddfln42-Titin
 
 	WLC_Arb(WLCParms)
-	wave WLC_Force,WLC_Ext
-	duplicate/o WLC_Force Titin_WLC_Force
-	duplicate/o WLC_Ext Titin_WLC_Ext
-	
-	make/o/n=(3,3) WLCParms
-	WLCParms[][0]=.4e-9
-	WLCParms[][1]=298
 
-	WLCParms[2][2]=Final
-	WLCParms[1][2]=Final-Nug2
-	WLCParms[0][2]=Final-Nug2*2
-
-	WLC_Arb(WLCParms)
-	duplicate/o WLC_Force MT_WLC_Force
-	duplicate/o WLC_Ext MT_WLC_Ext
 	
 	
 end
@@ -621,6 +633,57 @@ function TestMakeParms_Titin2(Final,Nug2,Titin)
 	
 	
 end
+
+function TestMakeParms_Luciferasev0(Final,Titin,NuG2,Luc1,Luc2,Luc3)
+	variable Final,Titin,NuG2,Luc1,Luc2,Luc3
+	make/o/n=(8,3) WLCParms
+	WLCParms[][0]=.4e-9
+	WLCParms[][1]=298
+
+	WLCParms[7][2]=Final
+	WLCParms[6][2]=Final-Titin
+	WLCParms[5][2]=Final-Titin*2
+	WLCParms[4][2]=Final-Titin*2-NuG2
+	WLCParms[3][2]=Final-Titin*2-2*NuG2
+	WLCParms[2][2]=Final-Titin*2-2*NuG2-Luc3
+
+	WLCParms[1][2]=Final-Titin*2-2*NuG2-Luc2-Luc3
+	WLCParms[0][2]=Final-Titin*2-2*NuG2-Luc1-Luc2-Luc3
+
+	WLC_Arb(WLCParms)
+	wave WLC_Force,WLC_Ext
+	duplicate/o WLC_Force Titin2_WLC_Force
+	duplicate/o WLC_Ext Titin2_WLC_Ext
+
+	
+	
+end
+
+
+function TestMakeParms_Luciferasev1(Final,Titin,Luc1,Luc2,Luc3)
+	variable Final,Titin,Luc1,Luc2,Luc3
+	make/o/n=(6,3) WLCParms
+	WLCParms[][0]=.4e-9
+	WLCParms[][1]=298
+
+	WLCParms[5][2]=Final
+	WLCParms[4][2]=Final-Titin
+	WLCParms[3][2]=Final-Titin*2
+	WLCParms[2][2]=Final-Titin*2-Luc3
+
+	WLCParms[1][2]=Final-Titin*2-Luc2-Luc3
+	WLCParms[0][2]=Final-Titin*2-Luc1-Luc2-Luc3
+
+	WLC_Arb(WLCParms)
+	wave WLC_Force,WLC_Ext
+	duplicate/o WLC_Force Titin2_WLC_Force
+	duplicate/o WLC_Ext Titin2_WLC_Ext
+
+	
+	
+end
+
+
 
 function WLCSeries_Cal(Ext,n1,n2,L0Init,DeltaL0_n1,DeltaL0_n2,Lp,T)
 	wave Ext

@@ -1,6 +1,7 @@
 ﻿#pragma TextEncoding = "UTF-8"
 #pragma rtGlobals=3		// Use modern global access method and strict wave access.
-Function PareandAverage(Rup,Slope,mAXfORCE)
+#pragma ModuleName=DE_BellEvans
+Static Function PareandAverage(Rup,Slope,mAXfORCE)
 	wave Rup,Slope
 	VARIABLE mAXfORCE	
 	
@@ -15,7 +16,7 @@ Function PareandAverage(Rup,Slope,mAXfORCE)
 		endif
 		
 	endfor
-		for(n=0;n<numpnts(FreeSlope);n+=1)
+	for(n=0;n<numpnts(FreeSlope);n+=1)
 		if(FreerUP[n]<0||FreerUP[n]>mAXfORCE)
 		
 			deletepoints n,1, FreeSlope,FreeRup
@@ -24,20 +25,20 @@ Function PareandAverage(Rup,Slope,mAXfORCE)
 		
 	endfor
 	variable AvgSlope,AvgRup,StdSlope,StdRup,SEMSlope,SEMRup
-		wavestats/Q FreeRup
-AvgRup=v_avg
-StdRup=V_sdev
-SEMRup=V_Sem
+	wavestats/Q FreeRup
+	AvgRup=v_avg
+	StdRup=V_sdev
+	SEMRup=V_Sem
 	wavestats/Q FreeSlope
 	AvgSlope=v_avg
-StdSlope=V_sdev
-SEMSlope=v_sem
-print AvgSlope
-print StdSlope
-print SEMSlope
-print AvgRup
-print StdRup
-print SEMRup
+	StdSlope=V_sdev
+	SEMSlope=v_sem
+	print AvgSlope
+	print StdSlope
+	print SEMSlope
+	print AvgRup
+	print StdRup
+	print SEMRup
 
 end
 

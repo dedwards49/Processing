@@ -135,13 +135,29 @@ Static Function FilterFECs(DeflWave,ZSnsrWave,FilterType,FilterPoints)
 	elseif(cmpstr(FilterType,"TVD")==0)
 		TVD1D_denoise(DeflWave,FilterPoints,Defl_Smth)
 	//	TVD1D_denoise(ZSnsrWave,FilterPoints,ZSnsrWave)
-
+	elseif(cmpstr(FilterType,"BW")==0)
+		BWFilter(DeflWave,FilterPoints,Defl_Smth)
+		BWFilter(ZSnsrWave,FilterPoints,ZSnsrWave)
 	endif	
 	duplicate/o DeflWave Sep_Smth, Force_Smth
 	
 	
 	Sep_Smth=-ZSnsrWave+Defl_Smth
 	Force_Smth=Defl_Smth*spring
+end
+
+Static Function BWFilter(InWave,Frequency,OutPoints)
+	wave InWave,OutPoints
+	variable Frequency
+	Duplicate/free InWave, filtered; DelayUpdate
+	Make/O/D/N=0 coefs; DelayUpdate
+	variable samplerate=1/dimdelta(InWave,0)
+	variable Cutoff=Frequency/SampleRate
+	variable HighEnd=1.5*Cutoff
+	FilterFIR/DIM=0/LO={Cutoff,HighEnd,101} filtered
+	duplicate/o filtered OutPoints
+
+
 end
 
 Static Function FilterForceSep(ForceIn,SepIn,ForceOut,SepOut,FilterType,FilterPoints)

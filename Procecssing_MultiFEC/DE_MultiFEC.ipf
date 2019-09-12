@@ -4,6 +4,8 @@
 #include "SimpleWLCPrograms"
 #include "DE_Filtering"
 #include "DE_NewFeather"
+
+
 Function FindAllForces(filtering,[bottom,top])
 	variable filtering,bottom,top
 	string AllForceRet= wavelist("*Force_Ret",";","")
@@ -50,7 +52,7 @@ Function FindAllForces(filtering,[bottom,top])
 		duplicate/o SSm $(Replacestring("force_Ret",nameofwave(ForceRetWave),"Sep"))
 		wave SepWave=$(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Sep"))
 		make/free/n=5 OptionsWave
-		OptionsWave={4e-7,2e-3,str2num(StringbyKey("TriggerTime",note(ForceWave),":","\r")),0.0,str2num(StringbyKey("SpringConstant",note(ForceWave),":","\r"))}
+		OptionsWave={1e-5,1e-3,str2num(StringbyKey("TriggerTime",note(ForceWave),":","\r")),0.0,str2num(StringbyKey("SpringConstant",note(ForceWave),":","\r"))}
 		DE_NewFeather#OutportForce(ForceWave,SepWave)
 		DE_NewFeather#RunFeatheronOutput(OptionsWave)
 		wave event_starts
@@ -63,26 +65,7 @@ Function FindAllForces(filtering,[bottom,top])
 	endfor
 	print 	top
 
-//	
-//	for(n=bottom;n<top;n+=1)
-//		wave ForceRetWave=$stringfromlist(n,AllForceRet)
-//		wave ForceExtWave=$replacestring("Ret",nameofwave(ForceRetWave),"Ext")
-//		wave SepRetWave=$replacestring("Force",nameofwave(ForceRetWave),"Sep")
-//		wave SepExtWave=$replacestring("Force",nameofwave(ForceExtWave),"Sep")
-//		wave FRetSm=$replacestring("Force_ext",nameofwave(ForceExtWave),"FSm")
-//		wave SRetSm=$replacestring("Force_ext",nameofwave(ForceExtWave),"SSm")
-//		wave ThisEvent=$replacestring("Force_ext",nameofwave(ForceExtWave),"Starts")
-//		duplicate/o ThisEvent FreeRupPnts
-//		FreeRupPnts-=NUMPNTS(SepExtWave)
-//		MakeNicePlot(ForceRetWave,sEPRetWave,FRetSm,SRetSm,FreeRupPnts)
-//		FreeRupPnts+=NUMPNTS(SepExtWave)
-//		duplicate/o FreeRupPnts ThisEvent
-//		killwaves FreeRupPnts
-//		//killwaves FRetSm,SRetSm
-//
-//	endfor
-//	
-	//ExportWaveLists(ForceWaveList,SepWaveList)
+
 end
 
 Static Function TestZero(ForceRetWave,[distance])
@@ -120,7 +103,7 @@ Function TestCondition(Number,filtering,tol,temporal)
 	variable Number,filtering,tol,temporal
 	string AllForceRet= wavelist("*Force_Ret",";","")
 	String ForceWaveList="",SepWaveList=""
-	variable n
+	variable n,approachvelocity,retractvelocity,ratio
 	variable bottom=Number
 	variable top=Number+1//itemsinlist(AllFOrceRet)
 	for(n=bottom;n<top;n+=1)
@@ -129,10 +112,18 @@ Function TestCondition(Number,filtering,tol,temporal)
 		wave ForceExtWave=$replacestring("Ret",nameofwave(ForceRetWave),"Ext")
 		wave SepRetWave=$replacestring("Force",nameofwave(ForceRetWave),"Sep")
 		wave SepExtWave=$replacestring("Force",nameofwave(ForceExtWave),"Sep")
+		approachvelocity=str2num(stringbykey("ApproachVelocity",note(ForceRetWave),":","\r"))
+		retractvelocity=str2num(stringbykey("RetractVelocity",note(ForceRetWave),":","\r"))
+		ratio=approachvelocity/retractvelocity
+		print ratio
+		make/o/n=0  OutputForceWave,OutputSepWave
+		FakeApproach(ForceExtWave,SepExtWave,Ratio,OutputForceWave,OutputSepWave)
+		SetScale/P x 0,(dimdelta(ForceRetWave,0)),"s", OutputForceWave,OutputSepWave
 		make/free/n=0 ForceAll,SepAll
-		Concatenate/o {ForceExtWave,ForceRetWave},ForceAll
-		Concatenate/o {SepExtWave,SepRetWave},SepAll
-
+	//	Concatenate/o {ForceExtWave,ForceRetWave},ForceAll
+	//	Concatenate/o {SepExtWave,SepRetWave},SepAll
+		Concatenate/o {OutputForceWave,ForceRetWave},ForceAll
+		Concatenate/o {OutputSepWave,SepRetWave},SepAll
 		make/free/n=0 FSm,SSm
 		make/o/n=0 FRetSm,SRetSm
 		if(filtering==1)
@@ -160,8 +151,9 @@ Function TestCondition(Number,filtering,tol,temporal)
 		DE_NewFeather#OutportForce(ForceWave,SepWave)
 		DE_NewFeather#RunFeatheronOutput(OptionsWave)
 		wave event_starts
-
+	event_starts-=numpnts(OutputSepWave)-numpnts(SepExtWave)
 		duplicate/o event_starts $replacestring("Force_ext",nameofwave(ForceExtWave),"Starts")
+		
 		duplicate/o FRetSm $replacestring("Force_ext",nameofwave(ForceExtWave),"FSm")
 		duplicate/o SRetSm $replacestring("Force_ext",nameofwave(ForceExtWave),"SSm")
 		killwaves event_starts,ForceAll,SepAll,FretSm,SRetSm
@@ -190,6 +182,104 @@ Function TestCondition(Number,filtering,tol,temporal)
 //	
 	//ExportWaveLists(ForceWaveList,SepWaveList)
 end
+
+
+Function UnitTest(Number,filtering,tol,temporal,compensate)
+	variable Number,filtering,tol,temporal,compensate
+	string AllForceRet= wavelist("*Force_Ret",";","")
+	String ForceWaveList="",SepWaveList=""
+	variable n,approachvelocity,retractvelocity,ratio
+	variable bottom=Number
+	variable top=Number+1//itemsinlist(AllFOrceRet)
+	for(n=bottom;n<top;n+=1)
+		//for(n=0;n<itemsinlist(AllFOrceRet);n+=1)
+		wave ForceRetWave=$stringfromlist(n,AllForceRet)
+		wave ForceExtWave=$replacestring("Ret",nameofwave(ForceRetWave),"Ext")
+		wave SepRetWave=$replacestring("Force",nameofwave(ForceRetWave),"Sep")
+		wave SepExtWave=$replacestring("Force",nameofwave(ForceExtWave),"Sep")
+		approachvelocity=str2num(stringbykey("ApproachVelocity",note(ForceRetWave),":","\r"))
+		retractvelocity=str2num(stringbykey("RetractVelocity",note(ForceRetWave),":","\r"))
+		ratio=approachvelocity/retractvelocity
+		if(compensate==1)
+		
+		print ratio
+		make/o/n=0  OutputForceWave,OutputSepWave
+		FakeApproach(ForceExtWave,SepExtWave,Ratio,OutputForceWave,OutputSepWave)
+		SetScale/P x 0,(dimdelta(ForceRetWave,0)),"s", OutputForceWave,OutputSepWave
+		make/free/n=0 ForceAll,SepAll
+		Concatenate/o {OutputForceWave,ForceRetWave},ForceAll
+		Concatenate/o {OutputSepWave,SepRetWave},SepAll
+	else
+			Concatenate/o {ForceExtWave,ForceRetWave},ForceAll
+		Concatenate/o {SepExtWave,SepRetWave},SepAll
+	endif
+	
+		make/free/n=0 FSm,SSm
+		make/o/n=0 FRetSm,SRetSm
+		if(filtering==1)
+			duplicate/free ForceAll FSM
+			duplicate/free SepAll SSM
+			duplicate/o ForceRetWave FRetSm
+			duplicate/o SepRetWave SRetSm
+		elseif(filtering>5)
+			DE_Filtering#FilterForceSep(ForceAll,SepAll,FSm,SSm,"SVG",filtering)
+			DE_Filtering#FilterForceSep(ForceRetWave,SepRetWave,FRetSm,SRetSm,"SVG",filtering)
+
+		elseif(filtering<1)
+			DE_Filtering#FilterForceSep(ForceAll,SepAll,FSm,SSm,"TVD",filtering)
+			DE_Filtering#FilterForceSep(ForceRetWave,SepRetWave,FRetSm,SRetSm,"TVD",filtering)
+
+		
+		endif
+
+		duplicate/o FSm $(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Force"))
+		wave ForceWave=$(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Force"))
+		duplicate/o SSm $(Replacestring("force_Ret",nameofwave(ForceRetWave),"Sep"))
+		wave SepWave=$(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Sep"))
+		make/free/n=5 OptionsWave
+		OptionsWave={tol,temporal,str2num(StringbyKey("TriggerTime",note(ForceWave),":","\r")),0.0,str2num(StringbyKey("SpringConstant",note(ForceWave),":","\r"))}
+		DE_NewFeather#OutportForce(ForceWave,SepWave)
+		DE_NewFeather#RunFeatheronOutput(OptionsWave)
+		wave event_starts
+		variable result=numpnts(event_starts)
+	if(compensate==1)
+event_starts-=numpnts(OutputSepWave)-numpnts(SepExtWave)
+endif
+
+	
+		killwaves event_starts,ForceAll,SepAll,FretSm,SRetSm
+		
+	endfor
+return result
+
+//	
+	
+	//ExportWaveLists(ForceWaveList,SepWaveList)
+end
+
+Function iterateUnit(Number)
+variable Number
+	string AllForceRet= wavelist("*Force_Ret",";","")
+	String ForceWaveList="",SepWaveList=""
+	variable n,i,j
+	variable tolnum=20
+variable Timenum=20
+	variable bottom=Number
+	variable top=Number+1//itemsinlist(AllFOrceRet)
+	make/o/n=(tolnum) TolValues
+	make/o/n=(Timenum) TimeValues
+	make/o/n=(tolnum,Timenum) Grid
+	TolValues=1e-7*(3^p)
+	TimeValues=1e-6*(3^p)
+	for(n=bottom;n<top;n+=1)
+		
+		Grid[][]=UnitTest(Number,1,TolValues[p],TimeValues[q],0)
+	endfor
+
+
+
+end
+
 Function PlotaBlock(Start,EndNum)
 	variable start,endnum
 	variable n
@@ -200,6 +290,7 @@ Function PlotaBlock(Start,EndNum)
 	endfor
 
 end
+
 Function TweakRupturesandAssignValue(Number)
 	variable Number
 	string AllForceRet= wavelist("*Force_Ret",";","")
@@ -218,9 +309,12 @@ Function TweakRupturesandAssignValue(Number)
 		wave ForceExtWave=$replacestring("Ret",nameofwave(ForceRetWave),"Ext")
 		wave SepRetWave=$replacestring("Force",nameofwave(ForceRetWave),"Sep")
 		wave SepExtWave=$replacestring("Force",nameofwave(ForceExtWave),"Sep")
+
+		wave ThisEvent=$replacestring("Force_Ret",nameofwave(ForceRetWave),"Starts")
+		make/o/n=0 $replacestring("Force_Ret",nameofwave(ForceRetWave),"FSm"),$replacestring("Force_Ret",nameofwave(ForceRetWave),"SSm")
 		wave FRetSm=$replacestring("Force_Ret",nameofwave(ForceRetWave),"FSm")
 		wave SRetSm=$replacestring("Force_Ret",nameofwave(ForceRetWave),"SSm")
-		wave ThisEvent=$replacestring("Force_Ret",nameofwave(ForceRetWave),"Starts")
+		DE_Filtering#FilterForceSep(ForceRetWave,SepRetWave,FRetSm,SRetSm,"SVG",51)
 		duplicate/o ThisEvent FreeRupPnts
 		FreeRupPnts-=NUMPNTS(SepExtWave)
 		MakeNicePlot(ForceRetWave,sEPRetWave,FRetSm,SRetSm,FreeRupPnts)
@@ -230,7 +324,7 @@ Function TweakRupturesandAssignValue(Number)
 		//ForcesBack=FRetSm[FreeRupPnts[p]]
 
 	FreeRupPnts+=numpnts(ForceExtWave)
-				CalculateForcesFromPoints(ForceRetWave,SepRetWave,FreeRupPnts,ForcesBack,500)
+				CalculateForcesFromPoints(ForceRetWave,SepRetWave,FreeRupPnts,ForcesBack)
 
 		FreeRupPnts-=numpnts(ForceExtWave)
 		
@@ -281,7 +375,7 @@ Function ReassignValue(Number)
 		make/free/n=0 LCSBack,SLopesBack
 		duplicate/free FreeRupPnts ForcesBack
 		//ForcesBack=FRetSm[FreeRupPnts[p]]
-		CalculateForcesFromPoints(ForceRetWave,SepRetWave,FreeRupPnts,ForcesBack,500)
+		CalculateForcesFromPoints(ForceRetWave,SepRetWave,FreeRupPnts,ForcesBack)
 		FreeRupPnts-=NUMPNTS(SepExtWave)
 
 		variable offset=-1*str2num(stringbykey("DE_SChollOffset",note(ForceRetWave),":","\r"))-5e-9
@@ -311,14 +405,14 @@ Function RunAll()
 end
 
 Static Function/D DE_Median(w) // Returns median value of wave w
-Wave w
-Variable result
-Duplicate/o w, tempMedianWave // Make a clone of wave
-Sort tempMedianWave, tempMedianWave // Sort clone
-SetScale/P x 0,1,tempMedianWave
-result = tempMedianWave((numpnts(tempMedianWave)-1)/2)
-KillWaves tempMedianWave
-return Result
+	Wave w
+	Variable result
+	Duplicate/o w, tempMedianWave // Make a clone of wave
+	Sort tempMedianWave, tempMedianWave // Sort clone
+	SetScale/P x 0,1,tempMedianWave
+	result = tempMedianWave((numpnts(tempMedianWave)-1)/2)
+	KillWaves tempMedianWave
+	return Result
 end
 
 Static Function MakeSingleContoursAndDisplay(ForceRetwave,SepRetWave,PointWave,index)
@@ -354,45 +448,6 @@ Static Function MakeSingleContoursAndDisplay(ForceRetwave,SepRetWave,PointWave,i
 end
 
 
-Static Function MakeSlopesAndAddtoPlot(ForceRetwave,SepRetWave,ForceRetSm,SepRetWaveSm,FreeRupPnts,offset,backcalc,SlopesBack)
-	wave ForceRetwave,SepRetWave,ForceRetSm,SepRetWaveSm,FreeRupPnts,SlopesBack
-	variable offset,backcalc
-		FindLevels/P/Q SepRetWave, -1*offset
-	wave w_FindLevels
-	variable SurfacePnt=DE_MultiFEC#DE_Median(W_FindLevels)
-	make/free/n=0 TempSLopesBack
-	variable tot=numpnts(FreeRupPnts)
-	variable n=0
-	variable prevpnt
-	duplicate/free FreeRupPnts TempSlopes
-	for(n=0;n<tot;n+=1)
-		if(n==0)
-				prevpnt=Max(FreeRupPnts[n]-backcalc,SurfacePnt+10)
-
-		else
-				prevpnt=Max(FreeRupPnts[n]-backcalc,FreeRupPnts[n-1]+10)
-
-		endif
-		
-		duplicate/free/R=[prevpnt,FreeRupPnts[n]] ForceRetwave, FFit 
-		duplicate/o FFit $("FSlopefit_"+num2str(n))
-		CurveFit/Q/W=2 line FFit/D=$("FSlopefit_"+num2str(n))
-		wave w_coef,w_sigma
-		TempSlopes[n]= w_coef[1]
-		duplicate/free/R=[prevpnt,FreeRupPnts[n]] SepRetWave, SFit
-	//	duplicate/o FFit $("FSlopefit_"+num2str(n))
-	//	duplicate/o SFit $("SSlopefit_"+num2str(n))
-//
-	//	CurveFit/Q/W=2 line FFit /X=SFit /D=$("FSlopefit_"+num2str(n))
-//
-//		
-//	
-	endfor
-	duplicate/o TempSlopes SlopesBack
-	killwaves w_coef,w_sigma,w_FindLevels
-		
-
-end
 
 
 Static Function CalcAllLCs(ForceWave,SepWave,PointWave,SepOff,LCsBack)
@@ -428,8 +483,10 @@ Static Function CalculateSlopes(ForceWave,SepWave,PointWave,SepOff,SlopesBack)
 	variable tot=numpnts(PointWave)
 	variable n=0
 	variable prevpnt
-	variable backdist=5e-9
+	variable backdist=4e-9
 	variable backcalc=backdist/str2num(stringbykey("retractvelocity",note(ForceWave),":","\r"))/dimdelta(ForceWave,0)
+		//backcalc=.05/dimdelta(ForceWave,0)
+
 	FindLevels/P/Q SepWave, -1*Sepoff
 	wave w_FindLevels
 	variable SurfacePnt=DE_MultiFEC#DE_Median(W_FindLevels)
@@ -440,14 +497,14 @@ Static Function CalculateSlopes(ForceWave,SepWave,PointWave,SepOff,SlopesBack)
 				prevpnt=max(PointWave[n]-backcalc,SurfacePnt)
 
 		else
-			prevpnt=max(PointWave[n]-backcalc,PointWave[n-1]+10)
+			prevpnt=max(PointWave[n]-backcalc,PointWave[n-1]+25)
 		endif
 		make/o/n=0 HistOUt
+
 		duplicate/free/R=[prevpnt,PointWave[n]] ForceWave, FFit
 		CurveFit/Q/W=2 line FFit
 		wave w_coef,w_sigma
 		TempSlopes[n]= w_coef[1]
-		
 	
 	endfor
 	TempSlopes*=-1
@@ -504,7 +561,7 @@ Static Function MakeNicePlot(ForceWave,SepWave,ForceRetSm,SepRetSm,FreeRupPnts)
 	print "Beware of the 0"
 	print	zeroforce
 	endif
-	display/N=Test ForceWave vs SepWave
+	display/W=(50,50,1000,600 )/N=Test ForceWave vs SepWave
 	Appendtograph/W=Test RupTimes[][1] vs RupTimes[][0]
 	Appendtograph/W=Test ForceRetSm vs SepRetSm
 	ModifyGraph/W=Test rgb($nameofwave(ForceWave))=(65535,49151,49151)
@@ -522,7 +579,7 @@ Static Function MakeNicePlot(ForceWave,SepWave,ForceRetSm,SepRetSm,FreeRupPnts)
 	duplicate/free FreeRupPnts ForcesBack
 
 	FreeRupPnts+=numpnts(ForceExtWave)
-	CalculateForcesFromPoints(ForceWave,SepWave,FreeRupPnts,ForcesBack,500)
+	CalculateForcesFromPoints(ForceWave,SepWave,FreeRupPnts,ForcesBack)
 		FreeRupPnts-=numpnts(ForceExtWave)
 
 	//ForcesBack=ForceRetSm[FreeRupPnts[p]]
@@ -532,11 +589,10 @@ Static Function MakeNicePlot(ForceWave,SepWave,ForceRetSm,SepRetSm,FreeRupPnts)
 	killwaves RupTimes
 end
 
-Static function CalculateForcesFromPoints(ForceWave,SepWave,PointWave,ForcesBack,backcalc)
+Static function CalculateForcesFromPoints(ForceWave,SepWave,PointWave,ForcesBack)
 
 
 	wave ForceWave,SepWave,PointWave,ForcesBack
-	variable backcalc
 	wave ExtForce=$ReplaceString("Ret",nameofwave(ForceWave),"Ext")
 	variable correctPoints=numpnts(ExtForce)
 	variable offset=str2num(stringbykey("DE_SchollOffset",note(ForceWave),":","\r"))
@@ -544,6 +600,9 @@ Static function CalculateForcesFromPoints(ForceWave,SepWave,PointWave,ForcesBack
 	wave w_FindLevels
 	variable SurfacePnt=DE_MultiFEC#DE_Median(W_FindLevels)
 	variable n,prevpnt,CriticalTime
+	
+	variable backdist=4e-9
+	variable backcalc=backdist/str2num(stringbykey("retractvelocity",note(ForceWave),":","\r"))/dimdelta(ForceWave,0)
 	duplicate/free PointWave TempForces
 	variable tot=dimsize(PointWave,0)
 	for(n=0;n<tot;n+=1)
@@ -558,7 +617,7 @@ Static function CalculateForcesFromPoints(ForceWave,SepWave,PointWave,ForcesBack
 		duplicate/free/R=[prevpnt,PointWave[n]-correctPoints] ForceWave, FFit
 		if(numpnts(FFit)>50)
 		
-		CurveFit/Q/W=2 line FFit
+		CurveFit/Q/W=2 line FFit /D
 		CriticalTime=pnt2x(ForceWave,PointWave[n]-correctPoints)
 		wave w_coef,w_sigma
 		TempForces[n]= w_coef[1]*CriticalTime+w_coef[0]
@@ -675,12 +734,12 @@ Static Function ReFilterandCalculateAll()
 	for(n=bottom;n<top;n+=1)
 		wave ForceRetWave=$stringfromlist(n,AllForceRet)
 		
-		UpdatedRawWaves(ForceRetWave,filtering=filtering)
+		RefilterRawWaves(ForceRetWave,filtering=filtering)
 	endfor
 
 end
 
-Static Function UpdatedRawWaves(ForceRetWave,[filtering])
+Static Function RefilterRawWaves(ForceRetWave,[filtering])
 	wave ForceRetWave
 	variable filtering
 
@@ -720,7 +779,7 @@ Static Function UpdatedRawWaves(ForceRetWave,[filtering])
 	make/free/n=0 LCSBack,SLopesBack
 	duplicate/free FreeRupPnts ForcesBack
 //	ForcesBack=FRetSm[FreeRupPnts[p]]
-		CalculateForcesFromPoints(ForceRetWave,SepRetWave,FreeRupPnts,ForcesBack,500)
+		CalculateForcesFromPoints(ForceRetWave,SepRetWave,FreeRupPnts,ForcesBack)
 
 	variable offset=-1*str2num(stringbykey("DE_SChollOffset",note(ForceRetWave),":","\r"))-5e-9
 	CalcAllLCs(ForceRetWave,SepRetWave,FreeRupPnts,offset,LCsBack)
@@ -917,28 +976,6 @@ Static Function ReCalcDependWaves()
 	RupTimes[][1]=FRet[FreeRupPnts[p]]
 end
 
-Static Function CorrectAllWavesForOffsetError()
-string AllForceRet= wavelist("*Force_Ret",";","")
-	String ForceWaveList="",SepWaveList=""
-	variable n
-	variable top=itemsinlist(AllFOrceRet)
-	variable Entries
-	String RupForces,Contours,Slopes
-	variable ZeroForce
-	make/o/n=(0,5) First,Second,Third,Fourth,Fifth
-	for(n=1;n<top;n+=1)
-		Wave ForceRetWave=$StringFromList(n,wavelist("*Force_Ret",";",""))
-		wave ForceExtWave=$replacestring("Ret",nameofwave(ForceRetWave),"Ext")
-		wave ThisEvent=$replacestring("Force_ext",nameofwave(ForceExtWave),"Starts")
-	//	if(cmpstr(nameofwave(ForceRetWave),"Best500021Force_Ret")==0)
-	//	return 0
-	//	endif
-		print nameofwave(ForceRetWave)
-		ThisEvent+=numpnts(ForceExtWave)
-		//wave SepExtWave
-	endfor
-
-end
 
 Static Function ProcessForceCurves()
 	string AllForceRet= wavelist("*Force_Ret",";","")
@@ -962,7 +999,7 @@ Static Function ProcessForceCurves()
 
 			First[0][0]=n
 			First[0][1]=str2num(Stringfromlist(0,RupForces))
-			First[0][2]=First[0][1]-ZeroForce
+			First[0][2]=First[0][1]+ZeroForce
 			First[0][3]=str2num(Stringfromlist(0,Contours))
 			First[0][4]=str2num(Stringfromlist(0,Slopes))
 			
@@ -970,19 +1007,19 @@ Static Function ProcessForceCurves()
 			
 			Third[0][0]=n
 			Third[0][1]=str2num(Stringfromlist(1,RupForces))
-			Third[0][2]=Third[0][1]-ZeroForce
+			Third[0][2]=Third[0][1]+ZeroForce
 			Third[0][3]=str2num(Stringfromlist(1,Contours))
 			Third[0][4]=str2num(Stringfromlist(1,Slopes))
 			
 			Fourth[0][0]=n
 			Fourth[0][1]=str2num(Stringfromlist(2,RupForces))
-			Fourth[0][2]=Fourth[0][1]-ZeroForce
+			Fourth[0][2]=Fourth[0][1]+ZeroForce
 			Fourth[0][3]=str2num(Stringfromlist(2,Contours))
 			Fourth[0][4]=str2num(Stringfromlist(2,Slopes))
 			
 			Fifth[0][0]=n
 			Fifth[0][1]=str2num(Stringfromlist(3,RupForces))
-			Fifth[0][2]=Fifth[0][1]-ZeroForce
+			Fifth[0][2]=Fifth[0][1]+ZeroForce
 			Fifth[0][3]=str2num(Stringfromlist(3,Contours))
 			Fifth[0][4]=str2num(Stringfromlist(3,Slopes))
 		
@@ -990,31 +1027,31 @@ Static Function ProcessForceCurves()
 		InsertPoints/M=0 0,1, First,Second,Third,Fourth,Fifth
 			First[0][0]=n
 			First[0][1]=str2num(Stringfromlist(0,RupForces))
-			First[0][2]=First[0][1]-ZeroForce
+			First[0][2]=First[0][1]+ZeroForce
 			First[0][3]=str2num(Stringfromlist(0,Contours))
 			First[0][4]=str2num(Stringfromlist(0,Slopes))
 			
 			Second[0][0]=n
 			Second[0][1]=str2num(Stringfromlist(1,RupForces))
-			Second[0][2]=Second[0][1]-ZeroForce
+			Second[0][2]=Second[0][1]+ZeroForce
 			Second[0][3]=str2num(Stringfromlist(1,Contours))
 			Second[0][4]=str2num(Stringfromlist(1,Slopes))
 			
 			Third[0][0]=n
 			Third[0][1]=str2num(Stringfromlist(2,RupForces))
-			Third[0][2]=Third[0][1]-ZeroForce
+			Third[0][2]=Third[0][1]+ZeroForce
 			Third[0][3]=str2num(Stringfromlist(2,Contours))
 			Third[0][4]=str2num(Stringfromlist(2,Slopes))
 			
 			Fourth[0][0]=n
 			Fourth[0][1]=str2num(Stringfromlist(3,RupForces))
-			Fourth[0][2]=Fourth[0][1]-ZeroForce
+			Fourth[0][2]=Fourth[0][1]+ZeroForce
 			Fourth[0][3]=str2num(Stringfromlist(3,Contours))
 			Fourth[0][4]=str2num(Stringfromlist(3,Slopes))
 		
 			Fifth[0][0]=n
 			Fifth[0][1]=str2num(Stringfromlist(4,RupForces))
-			Fifth[0][2]=Fifth[0][1]-ZeroForce
+			Fifth[0][2]=Fifth[0][1]+ZeroForce
 			Fifth[0][3]=str2num(Stringfromlist(4,Contours))
 			Fifth[0][4]=str2num(Stringfromlist(4,Slopes))
 
@@ -1118,9 +1155,10 @@ Static Function ReturnSlopes()
 
 end
 
-Static Function PlotOne(ForceWaveNumber)
-	variable ForceWaveNumber
-		string AllForceRet= wavelist("*Force_Ret",";","")
+Static Function PlotOne(ForceWaveNumber,[Trans])
+	variable ForceWaveNumber,Trans
+	string AllForceRet= wavelist("*Force_Ret",";","")
+	variable n,prevpnt
 	Wave ForceRetWave=$stringfromlist(ForceWaveNumber,AllForceRet)
 	wave ForceExtWave=$replacestring("Ret",nameofwave(ForceRetWave),"Ext")
 	wave SepRetWave=$replacestring("Force",nameofwave(ForceRetWave),"Sep")
@@ -1130,58 +1168,151 @@ Static Function PlotOne(ForceWaveNumber)
 	wave ThisEvent=$replacestring("Force_ext",nameofwave(ForceExtWave),"Starts")
 	duplicate/free ThisEvent AdjPoints
 	AdjPoints-=numpnts(SepExtWave)
-	
-	DoWindow PlotOne
-	if(V_Flag==1)
-	KillWindow PlotOne
+	String WindowName
+	if(ParamisDefault(Trans))
+	WindowName="PlotWide"
+	else
+	WindowName="PlotOne"
 	endif
-	display/N=PlotOne ForceRetWave //vs SepRetWave
-	Appendtograph/W=PlotOne FRetSm// vs SRetSm
-	ModifyGraph/W=PlotOne rgb($Nameofwave(ForceRetWave))=(65535,49151,49151)
 	
+	DoWindow $WindowName
+	if(V_Flag==1)
+	KillWindow $WindowName
+	endif
 	
-//	wave ForceWave,SepWave,PointWave,SlopesBack
-//	variable Sepoff
-//	variable tot=numpnts(PointWave)
-//	variable n=0
-//	variable prevpnt
+	if(numpnts(ThisEvent)<3||Trans>=numpnts(ThisEvent))
+
+	return 0
+	endif
+	
+	Variable ZeroForce=str2num(Stringbykey("DE_FOff",note(ForceRetWave),":","\r"))
+	Duplicate/o ForceRetWave ForceRetZero
+	ForceRetZero=ZeroForce
+	
+	display/N=$WindowName ForceRetWave
+	Appendtograph/W=$WindowName FRetSm
+	Appendtograph/W=$WindowName ForceRetZero
+	ModifyGraph/W=$WindowName rgb($Nameofwave(ForceRetWave))=(65535,49151,49151)
+	ModifyGraph/W=$WindowName rgb(ForceRetZero)=(0,0,0)
 	variable offset=-1*str2num(stringbykey("DE_SChollOffset",note(ForceRetWave),":","\r"))-5e-9
 
-	variable backdist=3e-9
+	variable backdist=4e-9
 	variable backcalc=backdist/str2num(stringbykey("retractvelocity",note(ForceRetWave),":","\r"))/dimdelta(ForceRetWave,0)
+	variable backtime=backdist/str2num(stringbykey("retractvelocity",note(ForceRetWave),":","\r"))
+	
 	FindLevels/P/Q SepRetWave, -1*offset
 	wave w_FindLevels
 	variable SurfacePnt=DE_MultiFEC#DE_Median(W_FindLevels)
-	variable n,prevpnt
-//	duplicate/free PointWave TempSlopes
+
 	for(n=0;n<numpnts(AdjPoints);n+=1)
 		if(n==0)
-				prevpnt=max(AdjPoints[n]-backcalc,SurfacePnt)
+			prevpnt=max(AdjPoints[n]-backcalc,SurfacePnt)
 
 		else
-			prevpnt=max(AdjPoints[n]-backcalc,AdjPoints[n-1]+10)
+			prevpnt=max(AdjPoints[n]-backcalc,AdjPoints[n-1]+25)
 		endif
 		make/o/n=0 HistOUt
 		duplicate/free/R=[prevpnt,AdjPoints[n]] ForceRetWave, FFit
 		duplicate/o FFit $("Fit"+num2str(n))
 		CurveFit/Q/W=2 line FFit /D=$("Fit"+num2str(n))
+		wave W_coef
 		wave FitWave=$("Fit"+num2str(n))
-		appendtograph/W=PlotOne FitWave
-		ModifyGraph/W=PlotOne rgb($nameofwave(FitWave) )=(0,0,0)
+		appendtograph/W=$WindowName FitWave
+		ModifyGraph/W=$WindowName rgb($nameofwave(FitWave) )=(0,0,0)
+		Execute "LinLinPlot_1()"
+		ModifyGraph/W=$WindowName fSize=9
 		endfor
-//		wave w_coef,w_sigma
-//		TempSlopes[n]= w_coef[1]
-//		
-//	
-//	endfor
-//	TempSlopes*=-1
-//	duplicate/o TempSlopes SlopesBack
-//	killwaves w_coef,w_sigma,W_FindLevels
-//	Killwaves HistOUt
-	
+
+	if(ParamisDefault(Trans))
+			ModifyGraph/W=$WindowName width=300,height=200
+		MoveWindow/W=$WindowName 700,50,800,300
+	else
+	for(n=0;n<numpnts(AdjPoints);n+=1)
+		if(n==Trans)
+
+		else
+		ModifyGraph hideTrace($("Fit"+num2str(n)))=1
+		
+		endif
+		
+		endfor
+		wave ThisFit=$("Fit"+num2str(Trans))
+		print (ThisFit[numpnts(Thisfit)-1]-ThisFit[0])/(pnt2x(Thisfit,numpnts(Thisfit)-1)-pnt2x(Thisfit,0))
+		SetAxis/W=$WindowName bottom pnt2x(ForceRetWave,AdjPoints[trans])-3*backtime,pnt2x(ForceRetWave,AdjPoints[trans])+backtime
+		SetAxis/W=$WindowName/A=2 left
+		print str2num(stringfromlist(Trans,Stringbykey("RupForce",note(ForceRetWave),":","\r")))+str2num(Stringbykey("DE_FOff",note(ForceRetWave),":","\r"))
+		make/o/n=1 RupPnt
+		RupPnt=-str2num(stringfromlist(Trans,Stringbykey("RupForce",note(ForceRetWave),":","\r")))//-str2num(Stringbykey("DE_FOff",note(ForceRetWave),":","\r"))
+		SetScale/P x pnt2x(ForceRetWave,str2num(stringfromlist(Trans,Stringbykey("RupPnts",note(ForceRetWave),":","\r")))),0.0001,"s", RupPnt
+
+		Appendtograph/W=$WindowName RupPnt
+		ModifyGraph/W=$WindowName mode(RupPnt)=3,marker(RupPnt)=16,rgb(RupPnt)=(29524,1,58982),useMrkStrokeRGB(RupPnt)=1
+		ModifyGraph/W=$WindowName width=300,height=200
+		MoveWindow/W=$WindowName 350,50,800,300
+
+	endif
 	
 end
+Window ViewFECs() : Panel
+	PauseUpdate; Silent 1		// building window...
+	NewPanel/N=ViewFECs /W=(150,77,450,277)
+	SetVariable DE_ViewFECs0,pos={30.00,40.00},size={189.00,18.00},title="TraceNumber"
+	SetVariable DE_ViewFECs0,proc=DE_MultiFEC#TraceSVA,value=_NUM:0
 
+	SetVariable DE_ViewFECs1,pos={33.00,66.00},size={183.00,18.00},title="RupNumber"
+	SetVariable DE_ViewFECs1,proc=DE_MultiFEC#TraceSVA,value=_NUM:0
+
+EndMacro
+
+Static Function TraceSVA(sva) : SetVariableControl
+	STRUCT WMSetVariableAction &sva
+	
+	switch( sva.eventCode )
+		case 1: // mouse up
+		case 2: // Enter key
+//AutoPositionWindow/E/M=1/R=$graphName
+		case 3: // Live update
+			Variable dval = sva.dval
+			String sval = sva.sval
+				StrSwitch(sva.ctrlName)
+				case "DE_ViewFECs0":
+					Controlinfo/W=ViewFEcs DE_ViewFECs1
+					•DE_MultiFEC#PlotOne(dval)
+					•DE_MultiFEC#PlotOne(dval,Trans=V_Value)
+				break
+				
+				case "DE_ViewFECs1":
+				
+					Controlinfo/W=ViewFEcs DE_ViewFECs0
+					print v_value
+					PlotOne(V_Value,Trans=dval)
+				break
+				default:
+				break
+				endswitch
+				
+			break
+		case -1: // control being killed
+			break
+	endswitch
+
+	return 0
+End
+
+Static Function FakeApproach(InputForceWave,InputSepWave,Ratio,OutputForceWave,OutputSepWave)
+
+	wave InputForceWave,InputSepWave,OutputForceWave,OutputSepWave
+	variable Ratio
+	variable Total=Ratio*numpnts(InputForceWave)
+	make/free/n=(Total) FreeForce,FreeSep
+	Interpolate2/T=1/N=(Total)/Y=FreeForce InputForceWave
+	Interpolate2/T=1/N=(Total)/Y=FreeSep InputSepWave
+	duplicate/o FreeForce OutputForceWave
+	duplicate/o FreeSep OutputSepWave
+	note/K OutputForceWave,note (InputForceWave)
+		note/K OutputSepWave,note (InputSepWave)
+
+end
 //Static Function 	ExportWaveLists(ForceWaveList,SepWaveList)
 //
 //	string ForceWaveList,SepWaveList
@@ -1202,5 +1333,69 @@ end
 //	SaveGraphCopy/o as Path
 //	KillWindow TMP_D
 //
+//
+//end
+
+
+//Static Function MakeSlopesAndAddtoPlot(ForceRetwave,SepRetWave,ForceRetSm,SepRetWaveSm,FreeRupPnts,offset,backcalc,SlopesBack)
+//	wave ForceRetwave,SepRetWave,ForceRetSm,SepRetWaveSm,FreeRupPnts,SlopesBack
+//	variable offset,backcalc
+//		FindLevels/P/Q SepRetWave, -1*offset
+//	wave w_FindLevels
+//	variable SurfacePnt=DE_MultiFEC#DE_Median(W_FindLevels)
+//	make/free/n=0 TempSLopesBack
+//	variable tot=numpnts(FreeRupPnts)
+//	variable n=0
+//	variable prevpnt
+//	duplicate/free FreeRupPnts TempSlopes
+//	for(n=0;n<tot;n+=1)
+//		if(n==0)
+//				prevpnt=Max(FreeRupPnts[n]-backcalc,SurfacePnt+10)
+//
+//		else
+//				prevpnt=Max(FreeRupPnts[n]-backcalc,FreeRupPnts[n-1]+10)
+//
+//		endif
+//		
+//		duplicate/free/R=[prevpnt,FreeRupPnts[n]] ForceRetwave, FFit 
+//		duplicate/o FFit $("FSlopefit_"+num2str(n))
+//		CurveFit/Q/W=2 line FFit/D=$("FSlopefit_"+num2str(n))
+//		wave w_coef,w_sigma
+//		TempSlopes[n]= w_coef[1]
+//		duplicate/free/R=[prevpnt,FreeRupPnts[n]] SepRetWave, SFit
+//	//	duplicate/o FFit $("FSlopefit_"+num2str(n))
+//	//	duplicate/o SFit $("SSlopefit_"+num2str(n))
+////
+//	//	CurveFit/Q/W=2 line FFit /X=SFit /D=$("FSlopefit_"+num2str(n))
+////
+////		
+////	
+//	endfor
+//	duplicate/o TempSlopes SlopesBack
+//	killwaves w_coef,w_sigma,w_FindLevels
+//		
+//
+//end
+
+//Static Function CorrectAllWavesForOffsetError()
+//string AllForceRet= wavelist("*Force_Ret",";","")
+//	String ForceWaveList="",SepWaveList=""
+//	variable n
+//	variable top=itemsinlist(AllFOrceRet)
+//	variable Entries
+//	String RupForces,Contours,Slopes
+//	variable ZeroForce
+//	make/o/n=(0,5) First,Second,Third,Fourth,Fifth
+//	for(n=1;n<top;n+=1)
+//		Wave ForceRetWave=$StringFromList(n,wavelist("*Force_Ret",";",""))
+//		wave ForceExtWave=$replacestring("Ret",nameofwave(ForceRetWave),"Ext")
+//		wave ThisEvent=$replacestring("Force_ext",nameofwave(ForceExtWave),"Starts")
+//	//	if(cmpstr(nameofwave(ForceRetWave),"Best500021Force_Ret")==0)
+//	//	return 0
+//	//	endif
+//		print nameofwave(ForceRetWave)
+//		ThisEvent+=numpnts(ForceExtWave)
+//		//wave SepExtWave
+//	endfor
 //
 //end
