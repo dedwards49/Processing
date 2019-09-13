@@ -5,7 +5,117 @@
 #include "DE_Filtering"
 #include "DE_NewFeather"
 
+Function BatchProcess([bottom,top])
 
+	variable bottom,top
+	string AllForceRet= wavelist("*Force_Ret",";","")
+	String ForceWaveList="",SepWaveList=""
+	if(ParamisDefault(Bottom))
+	Bottom=0
+	endif
+	if(ParamisDefault(top))
+	top=itemsinlist(AllFOrceRet)
+	endif
+	variable n
+	print bottom
+	print top
+//
+	for(n=bottom;n<top;n+=1)
+	print "N:"+num2str(n)
+//		//for(n=0;n<itemsinlist(AllFOrceRet);n+=1)
+		wave ForceRetWave=$stringfromlist(n,AllForceRet)
+		wave ForceExtWave=$replacestring("Ret",nameofwave(ForceRetWave),"Ext")
+		wave SepRetWave=$replacestring("Force",nameofwave(ForceRetWave),"Sep")
+		wave SepExtWave=$replacestring("Force",nameofwave(ForceExtWave),"Sep")
+		make/free/n=0 ForceAll,SepAll
+		Concatenate/o {ForceExtWave,ForceRetWave},ForceAll
+		Concatenate/o {SepExtWave,SepRetWave},SepAll
+//
+		duplicate/o ForceAll $(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Force"))
+		wave ForceWave=$(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Force"))
+		duplicate/o SepAll $(Replacestring("force_Ret",nameofwave(ForceRetWave),"Sep"))
+		wave SepWave=$(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Sep"))
+		endfor
+		DE_NEwFeather#SaveOutAllWaves("*Force")
+		make/free/n=2 OptionsWave
+		OptionsWave={15e-2,1e-3}
+		DE_NewFeather#RunFeatheronOutputFolder(OptionsWave)
+		DE_NewFeather#LoadTheWaves("*Force")
+		//		wave event_starts
+		killwaves ForceaLl,SepAll
+		
+		for(n=bottom;n<top;n+=1)
+	print "N:"+num2str(n)
+//		//for(n=0;n<itemsinlist(AllFOrceRet);n+=1)
+		wave ForceRetWave=$stringfromlist(n,AllForceRet)
+		wave ForceExtWave=$replacestring("Ret",nameofwave(ForceRetWave),"Ext")
+		wave SepRetWave=$replacestring("Force",nameofwave(ForceRetWave),"Sep")
+		wave SepExtWave=$replacestring("Force",nameofwave(ForceExtWave),"Sep")
+		wave ForceWave=$(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Force"))
+		wave SepWave=$(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Sep"))
+		killwaves ForceWave,SepWave
+		endfor
+		
+		
+//
+//		duplicate/o event_starts $replacestring("Force_ext",nameofwave(ForceExtWave),"Starts")
+//		duplicate/o FRetSm $replacestring("Force_ext",nameofwave(ForceExtWave),"FSm")122
+//		duplicate/o SRetSm $replacestring("Force_ext",nameofwave(ForceExtWave),"SSm")
+//		killwaves event_starts,ForceAll,SepAll,FretSm,SRetSm
+//		
+	
+//	print 	top
+
+
+end
+
+
+Static Function CleartheAllWave()
+
+	string AllForceRet= wavelist("*Force_Ret",";","")
+	
+	
+	variable n
+	variable	top=itemsinlist(AllFOrceRet)
+
+//
+	for(n=0;n<top;n+=1)
+	print "N:"+num2str(n)
+//		
+		wave ForceRetWave=$stringfromlist(n,AllForceRet)
+		wave ForceExtWave=$replacestring("Ret",nameofwave(ForceRetWave),"Ext")
+		wave SepRetWave=$replacestring("Force",nameofwave(ForceRetWave),"Sep")
+		wave SepExtWave=$replacestring("Force",nameofwave(ForceExtWave),"Sep")
+		wave ForceWave=$(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Force"))
+		wave SepWave=$(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Sep"))
+		killwaves ForceWave,SepWave
+	endfor
+
+
+end
+
+Static Function CleartheStarts()
+
+	string AlLStarts= wavelist("*STarts",";","")
+	
+	
+	variable n
+	variable	top=itemsinlist(AlLStarts)
+
+//
+	for(n=0;n<top;n+=1)
+	print "N:"+num2str(n)
+//		
+		wave StartWave=$stringfromlist(n,AlLStarts)
+		
+		killwaves StartWave
+	endfor
+
+
+end
+
+
+end
 Function FindAllForces(filtering,[bottom,top])
 	variable filtering,bottom,top
 	string AllForceRet= wavelist("*Force_Ret",";","")

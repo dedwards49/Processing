@@ -419,7 +419,7 @@ Static Function SequenceManyFromOne([starttrace,endtrace,FitType])
 	FitType="LinSin"
 	else 
 	endif
-	
+
 	String ForceWaveList="",SepWaveList=""
 	variable n,firstdimdelta,currentdimdelta
 	wave DeflExtWave=$stringfromlist(starttrace,AllDeflEXtList)
@@ -442,7 +442,6 @@ Static Function SequenceManyFromOne([starttrace,endtrace,FitType])
 			killwindow SchollPlot
 			//variable 	timerRefNum = StartMSTimer
 
-
 	
 	for(n=starttrace;n<endtrace;n+=1)
 		wave DeflExtWave=$stringfromlist(n,AllDeflEXtList)
@@ -455,10 +454,14 @@ Static Function SequenceManyFromOne([starttrace,endtrace,FitType])
 		string SepName=ReplaceString("Defl",nameofwave(DeflExtWave),"Sep")
 		
 		if(abs(dimdelta(DeflRetWave,0)-firstdimdelta)>1e-5)
+		print "------"
+		print "BAD Points at "+num2str(n)
 		print/D firstdimdelta
 		print/D dimdelta(DeflRetWave,0)
 		print/D dimdelta(DeflRetWave,0)-firstdimdelta
 		print nameofwave(DeflRetWave)
+				print "------"
+
 		return 0
 		endif
 
