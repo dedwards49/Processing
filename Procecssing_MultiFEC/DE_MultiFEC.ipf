@@ -5,24 +5,22 @@
 #include "DE_Filtering"
 #include "DE_NewFeather"
 
-Function BatchProcess([bottom,top])
+Function BatchProcess(Threshold,tau,[bottom,top])
 
-	variable bottom,top
+	variable bottom,top,Threshold,tau
 	string AllForceRet= wavelist("*Force_Ret",";","")
 	String ForceWaveList="",SepWaveList=""
 	if(ParamisDefault(Bottom))
-	Bottom=0
+		Bottom=0
 	endif
 	if(ParamisDefault(top))
-	top=itemsinlist(AllFOrceRet)
+		top=itemsinlist(AllFOrceRet)
 	endif
 	variable n
-	print bottom
-	print top
-//
+	string WaveNote
+	//
 	for(n=bottom;n<top;n+=1)
-	print "N:"+num2str(n)
-//		//for(n=0;n<itemsinlist(AllFOrceRet);n+=1)
+		print "N:"+num2str(n)
 		wave ForceRetWave=$stringfromlist(n,AllForceRet)
 		wave ForceExtWave=$replacestring("Ret",nameofwave(ForceRetWave),"Ext")
 		wave SepRetWave=$replacestring("Force",nameofwave(ForceRetWave),"Sep")
@@ -30,23 +28,24 @@ Function BatchProcess([bottom,top])
 		make/free/n=0 ForceAll,SepAll
 		Concatenate/o {ForceExtWave,ForceRetWave},ForceAll
 		Concatenate/o {SepExtWave,SepRetWave},SepAll
-//
+
+		WaveNote=ReplaceStringbyKey("DwellTime",note(ForceAll),"0",":","\r")
+		note/K ForceAll, WaveNote
+		note/K SepAll, WaveNote
+		//
 		duplicate/o ForceAll $(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Force"))
 		wave ForceWave=$(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Force"))
 		duplicate/o SepAll $(Replacestring("force_Ret",nameofwave(ForceRetWave),"Sep"))
 		wave SepWave=$(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Sep"))
-		endfor
-		DE_NEwFeather#SaveOutAllWaves("*Force")
-		make/free/n=2 OptionsWave
-		OptionsWave={15e-2,1e-3}
-		DE_NewFeather#RunFeatheronOutputFolder(OptionsWave)
-		DE_NewFeather#LoadTheWaves("*Force")
-		//		wave event_starts
-		killwaves ForceaLl,SepAll
+	endfor
+	DE_NEwFeather#SaveOutAllWaves("*Force")
+	make/free/n=2 OptionsWave
+	OptionsWave={Threshold,tau}
+	DE_NewFeather#RunFeatheronOutputFolder(OptionsWave)
+	DE_NewFeather#LoadTheWaves("*Force")
+	killwaves ForceaLl,SepAll
 		
-		for(n=bottom;n<top;n+=1)
-	print "N:"+num2str(n)
-//		//for(n=0;n<itemsinlist(AllFOrceRet);n+=1)
+	for(n=bottom;n<top;n+=1)
 		wave ForceRetWave=$stringfromlist(n,AllForceRet)
 		wave ForceExtWave=$replacestring("Ret",nameofwave(ForceRetWave),"Ext")
 		wave SepRetWave=$replacestring("Force",nameofwave(ForceRetWave),"Sep")
@@ -54,19 +53,8 @@ Function BatchProcess([bottom,top])
 		wave ForceWave=$(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Force"))
 		wave SepWave=$(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Sep"))
 		killwaves ForceWave,SepWave
-		endfor
+	endfor
 		
-		
-//
-//		duplicate/o event_starts $replacestring("Force_ext",nameofwave(ForceExtWave),"Starts")
-//		duplicate/o FRetSm $replacestring("Force_ext",nameofwave(ForceExtWave),"FSm")122
-//		duplicate/o SRetSm $replacestring("Force_ext",nameofwave(ForceExtWave),"SSm")
-//		killwaves event_starts,ForceAll,SepAll,FretSm,SRetSm
-//		
-	
-//	print 	top
-
-
 end
 
 
@@ -80,7 +68,6 @@ Static Function CleartheAllWave()
 
 //
 	for(n=0;n<top;n+=1)
-	print "N:"+num2str(n)
 //		
 		wave ForceRetWave=$stringfromlist(n,AllForceRet)
 		wave ForceExtWave=$replacestring("Ret",nameofwave(ForceRetWave),"Ext")
@@ -173,7 +160,6 @@ Function FindAllForces(filtering,[bottom,top])
 		killwaves event_starts,ForceAll,SepAll,FretSm,SRetSm
 		
 	endfor
-	print 	top
 
 
 end

@@ -43,7 +43,6 @@ Static Function MakeSingleWaves(SearchString)
 	variable n
 	string ForceWave, SepWave
 	for(n=0;n<itemsinlist(AllForceRet);n+=1)
-	print "N:"+num2str(n)
 		//for(n=0;n<itemsinlist(AllFOrceRet);n+=1)
 		wave ForceRetWave=$stringfromlist(n,AllForceRet)
 		wave ForceExtWave=$replacestring("Ret",nameofwave(ForceRetWave),"Ext")
@@ -110,7 +109,13 @@ Static Function LoadTheWaves(SearchString)
 		if(FindListItem(Currentname,AllForce)!=-1)
 			CurrentName=replaceString("Force",CurrentName,"Starts")
 			LoadWave/Q/G/P=DataPath/N=GARBAGE/L={0, 1, 0, 0, 0 } CurrentFile
+			
 			wave garbage0
+			if(Garbage0[0]==0)
+				deletepoints 0,1, Garbage0
+			
+			endif
+			
 			duplicate/o GARBAGE0 $CurrentName
 		else
 		endif
@@ -171,7 +176,18 @@ Static Function /S full_path_to_feather_Devin(options)
 	// Returns:
 	//		string, full path to feather python main
 	Struct FeatherOptions & options
-	return ModFeather#full_path_to_feather_folder(options) + "main_devin.py"
+	return Full_path_to_PythonIgor_Feather(options) + "main_devin.py"
+End Function
+
+Static Function /S Full_path_to_PythonIgor_Feather(options)
+	// Function that gives the full path to the inverse weierstrass python folder
+	//
+	// Args:
+	//		options: the InverseWeierstrassOptions structure, initialized (see inverse_weierstrass_options function)
+	// Returns:
+	//		string, full path to feather python main
+	Struct FeatherOptions & options
+	return  "D:/Devin/Documents/Software/Library/Python/Feather/"
 End Function
 
 
