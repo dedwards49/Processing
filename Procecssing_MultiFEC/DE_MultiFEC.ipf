@@ -492,12 +492,13 @@ end
 Function RunAll()
 	ReassignValue(-1)
 	AddZeroOffsetsToNotes()
-	ProcessForceCurves()
-	ReturnRupForces()
-	ReturnRupForcesZero()
+	ProcessFCs_RLCCohDock()
+	//ProcessForceCurves()
+	//ReturnRupForces()
+	//ReturnRupForcesZero()
 
-	ReturnSlopes()
-	ReturnRelevantLCs()
+	//ReturnSlopes()
+	//ReturnRelevantLCs()
 end
 
 Static Function/D DE_Median(w) // Returns median value of wave w
@@ -1156,6 +1157,112 @@ Static Function ProcessForceCurves()
 		
 
 		endif
+	endfor
+	
+	
+	//ExportWaveLists(ForceWaveList,SepWaveList)
+end
+
+
+Static Function ProcessFCs_RLCCohDock()
+	string AllForceRet= wavelist("*Force_Ret",";","")
+	String ForceWaveList="",SepWaveList=""
+	variable n
+	variable top=itemsinlist(AllFOrceRet)
+	variable Entries
+	String RupForces,Contours,Slopes
+	variable ZeroForce
+	make/o/n=(0,5) FirstRLC,SecondRLC,FirstDD,SecondDD,FirstCoh,SecondCoh
+	for(n=0;n<top;n+=1)
+		Wave ForceWave=$StringFromList(n,wavelist("*Force_Ret",";",""))
+		Entries=CountEntries(ForceWave)
+		RupForces=Stringbykey("RupForce",note(ForceWave),":","\r")
+		Contours=Stringbykey("ContourLengths",note(ForceWave),":","\r")
+		ZeroForce=str2num(Stringbykey("DE_FOff",note(ForceWave),":","\r"))
+		Slopes=Stringbykey("Slopes",note(ForceWave),":","\r")
+		Switch(Entries)
+			case 6:
+			//All 6
+			break
+			
+			case 5:
+			break
+			
+			case 4:
+			break
+			
+			default :
+			break
+	
+		endswitch 
+//		
+//	
+//		if(Entries==4)
+//			InsertPoints/M=0 0,1, First,Third,Fourth,Fifth
+//
+//			First[0][0]=n
+//			First[0][1]=str2num(Stringfromlist(0,RupForces))
+//			First[0][2]=First[0][1]+ZeroForce
+//			First[0][3]=str2num(Stringfromlist(0,Contours))
+//			First[0][4]=str2num(Stringfromlist(0,Slopes))
+//			
+//
+//			
+//			Third[0][0]=n
+//			Third[0][1]=str2num(Stringfromlist(1,RupForces))
+//			Third[0][2]=Third[0][1]+ZeroForce
+//			Third[0][3]=str2num(Stringfromlist(1,Contours))
+//			Third[0][4]=str2num(Stringfromlist(1,Slopes))
+//			
+//			Fourth[0][0]=n
+//			Fourth[0][1]=str2num(Stringfromlist(2,RupForces))
+//			Fourth[0][2]=Fourth[0][1]+ZeroForce
+//			Fourth[0][3]=str2num(Stringfromlist(2,Contours))
+//			Fourth[0][4]=str2num(Stringfromlist(2,Slopes))
+//			
+//			Fifth[0][0]=n
+//			Fifth[0][1]=str2num(Stringfromlist(3,RupForces))
+//			Fifth[0][2]=Fifth[0][1]+ZeroForce
+//			Fifth[0][3]=str2num(Stringfromlist(3,Contours))
+//			Fifth[0][4]=str2num(Stringfromlist(3,Slopes))
+//		
+//		elseif(Entries==5)
+//		InsertPoints/M=0 0,1, First,Second,Third,Fourth,Fifth
+//			First[0][0]=n
+//			First[0][1]=str2num(Stringfromlist(0,RupForces))
+//			First[0][2]=First[0][1]+ZeroForce
+//			First[0][3]=str2num(Stringfromlist(0,Contours))
+//			First[0][4]=str2num(Stringfromlist(0,Slopes))
+//			
+//			Second[0][0]=n
+//			Second[0][1]=str2num(Stringfromlist(1,RupForces))
+//			Second[0][2]=Second[0][1]+ZeroForce
+//			Second[0][3]=str2num(Stringfromlist(1,Contours))
+//			Second[0][4]=str2num(Stringfromlist(1,Slopes))
+//			
+//			Third[0][0]=n
+//			Third[0][1]=str2num(Stringfromlist(2,RupForces))
+//			Third[0][2]=Third[0][1]+ZeroForce
+//			Third[0][3]=str2num(Stringfromlist(2,Contours))
+//			Third[0][4]=str2num(Stringfromlist(2,Slopes))
+//			
+//			Fourth[0][0]=n
+//			Fourth[0][1]=str2num(Stringfromlist(3,RupForces))
+//			Fourth[0][2]=Fourth[0][1]+ZeroForce
+//			Fourth[0][3]=str2num(Stringfromlist(3,Contours))
+//			Fourth[0][4]=str2num(Stringfromlist(3,Slopes))
+//		
+//			Fifth[0][0]=n
+//			Fifth[0][1]=str2num(Stringfromlist(4,RupForces))
+//			Fifth[0][2]=Fifth[0][1]+ZeroForce
+//			Fifth[0][3]=str2num(Stringfromlist(4,Contours))
+//			Fifth[0][4]=str2num(Stringfromlist(4,Slopes))
+//
+//		
+//		else
+//		
+//
+//		endif
 	endfor
 	
 	
