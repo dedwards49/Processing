@@ -103,66 +103,7 @@ end
 
 
 end
-Function FindAllForces(filtering,[bottom,top])
-	variable filtering,bottom,top
-	string AllForceRet= wavelist("*Force_Ret",";","")
-	String ForceWaveList="",SepWaveList=""
-	if(ParamisDefault(Bottom))
-	Bottom=0
-	endif
-	if(ParamisDefault(top))
-	top=itemsinlist(AllFOrceRet)
-	endif
-	variable n
 
-	for(n=bottom;n<top;n+=1)
-	print "N:"+num2str(n)
-		//for(n=0;n<itemsinlist(AllFOrceRet);n+=1)
-		wave ForceRetWave=$stringfromlist(n,AllForceRet)
-		wave ForceExtWave=$replacestring("Ret",nameofwave(ForceRetWave),"Ext")
-		wave SepRetWave=$replacestring("Force",nameofwave(ForceRetWave),"Sep")
-		wave SepExtWave=$replacestring("Force",nameofwave(ForceExtWave),"Sep")
-		make/free/n=0 ForceAll,SepAll
-		Concatenate/o {ForceExtWave,ForceRetWave},ForceAll
-		Concatenate/o {SepExtWave,SepRetWave},SepAll
-
-		make/free/n=0 FSm,SSm
-		make/o/n=0 FRetSm,SRetSm
-		if(filtering==1)
-			duplicate/free ForceAll FSM
-			duplicate/free SepAll SSM
-			duplicate/o ForceRetWave FRetSm
-			duplicate/o SepRetWave SRetSm
-		elseif(filtering>5)
-			DE_Filtering#FilterForceSep(ForceAll,SepAll,FSm,SSm,"SVG",filtering)
-			DE_Filtering#FilterForceSep(ForceRetWave,SepRetWave,FRetSm,SRetSm,"SVG",filtering)
-
-		elseif(filtering<1)
-			DE_Filtering#FilterForceSep(ForceAll,SepAll,FSm,SSm,"TVD",filtering)
-			DE_Filtering#FilterForceSep(ForceRetWave,SepRetWave,FRetSm,SRetSm,"TVD",filtering)
-
-		
-		endif
-
-		duplicate/o FSm $(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Force"))
-		wave ForceWave=$(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Force"))
-		duplicate/o SSm $(Replacestring("force_Ret",nameofwave(ForceRetWave),"Sep"))
-		wave SepWave=$(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Sep"))
-		make/free/n=5 OptionsWave
-		OptionsWave={1e-5,1e-3,str2num(StringbyKey("TriggerTime",note(ForceWave),":","\r")),0.0,str2num(StringbyKey("SpringConstant",note(ForceWave),":","\r"))}
-		DE_NewFeather#OutportForce(ForceWave,SepWave)
-		DE_NewFeather#RunFeatheronOutput(OptionsWave)
-		wave event_starts
-
-		duplicate/o event_starts $replacestring("Force_ext",nameofwave(ForceExtWave),"Starts")
-		duplicate/o FRetSm $replacestring("Force_ext",nameofwave(ForceExtWave),"FSm")
-		duplicate/o SRetSm $replacestring("Force_ext",nameofwave(ForceExtWave),"SSm")
-		killwaves event_starts,ForceAll,SepAll,FretSm,SRetSm
-		
-	endfor
-
-
-end
 
 Static Function TestZero(ForceRetWave,[distance])
 	wave ForceRetWave
@@ -195,186 +136,10 @@ Static Function TestZero(ForceRetWave,[distance])
 end
 
 
-Function TestCondition(Number,filtering,tol,temporal)
-	variable Number,filtering,tol,temporal
-	string AllForceRet= wavelist("*Force_Ret",";","")
-	String ForceWaveList="",SepWaveList=""
-	variable n,approachvelocity,retractvelocity,ratio
-	variable bottom=Number
-	variable top=Number+1//itemsinlist(AllFOrceRet)
-	for(n=bottom;n<top;n+=1)
-		//for(n=0;n<itemsinlist(AllFOrceRet);n+=1)
-		wave ForceRetWave=$stringfromlist(n,AllForceRet)
-		wave ForceExtWave=$replacestring("Ret",nameofwave(ForceRetWave),"Ext")
-		wave SepRetWave=$replacestring("Force",nameofwave(ForceRetWave),"Sep")
-		wave SepExtWave=$replacestring("Force",nameofwave(ForceExtWave),"Sep")
-		approachvelocity=str2num(stringbykey("ApproachVelocity",note(ForceRetWave),":","\r"))
-		retractvelocity=str2num(stringbykey("RetractVelocity",note(ForceRetWave),":","\r"))
-		ratio=approachvelocity/retractvelocity
-		print ratio
-		make/o/n=0  OutputForceWave,OutputSepWave
-		FakeApproach(ForceExtWave,SepExtWave,Ratio,OutputForceWave,OutputSepWave)
-		SetScale/P x 0,(dimdelta(ForceRetWave,0)),"s", OutputForceWave,OutputSepWave
-		make/free/n=0 ForceAll,SepAll
-	//	Concatenate/o {ForceExtWave,ForceRetWave},ForceAll
-	//	Concatenate/o {SepExtWave,SepRetWave},SepAll
-		Concatenate/o {OutputForceWave,ForceRetWave},ForceAll
-		Concatenate/o {OutputSepWave,SepRetWave},SepAll
-		make/free/n=0 FSm,SSm
-		make/o/n=0 FRetSm,SRetSm
-		if(filtering==1)
-			duplicate/free ForceAll FSM
-			duplicate/free SepAll SSM
-			duplicate/o ForceRetWave FRetSm
-			duplicate/o SepRetWave SRetSm
-		elseif(filtering>5)
-			DE_Filtering#FilterForceSep(ForceAll,SepAll,FSm,SSm,"SVG",filtering)
-			DE_Filtering#FilterForceSep(ForceRetWave,SepRetWave,FRetSm,SRetSm,"SVG",filtering)
-
-		elseif(filtering<1)
-			DE_Filtering#FilterForceSep(ForceAll,SepAll,FSm,SSm,"TVD",filtering)
-			DE_Filtering#FilterForceSep(ForceRetWave,SepRetWave,FRetSm,SRetSm,"TVD",filtering)
-
-		
-		endif
-
-		duplicate/o FSm $(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Force"))
-		wave ForceWave=$(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Force"))
-		duplicate/o SSm $(Replacestring("force_Ret",nameofwave(ForceRetWave),"Sep"))
-		wave SepWave=$(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Sep"))
-		make/free/n=5 OptionsWave
-		OptionsWave={tol,temporal,str2num(StringbyKey("TriggerTime",note(ForceWave),":","\r")),0.0,str2num(StringbyKey("SpringConstant",note(ForceWave),":","\r"))}
-		DE_NewFeather#OutportForce(ForceWave,SepWave)
-		DE_NewFeather#RunFeatheronOutput(OptionsWave)
-		wave event_starts
-	event_starts-=numpnts(OutputSepWave)-numpnts(SepExtWave)
-		duplicate/o event_starts $replacestring("Force_ext",nameofwave(ForceExtWave),"Starts")
-		
-		duplicate/o FRetSm $replacestring("Force_ext",nameofwave(ForceExtWave),"FSm")
-		duplicate/o SRetSm $replacestring("Force_ext",nameofwave(ForceExtWave),"SSm")
-		killwaves event_starts,ForceAll,SepAll,FretSm,SRetSm
-		
-	endfor
-	print 	top
-
-//	
-	for(n=bottom;n<top;n+=1)
-		wave ForceRetWave=$stringfromlist(n,AllForceRet)
-		wave ForceExtWave=$replacestring("Ret",nameofwave(ForceRetWave),"Ext")
-		wave SepRetWave=$replacestring("Force",nameofwave(ForceRetWave),"Sep")
-		wave SepExtWave=$replacestring("Force",nameofwave(ForceExtWave),"Sep")
-		wave FRetSm=$replacestring("Force_ext",nameofwave(ForceExtWave),"FSm")
-		wave SRetSm=$replacestring("Force_ext",nameofwave(ForceExtWave),"SSm")
-		wave ThisEvent=$replacestring("Force_ext",nameofwave(ForceExtWave),"Starts")
-		duplicate/o ThisEvent FreeRupPnts
-		FreeRupPnts-=NUMPNTS(SepExtWave)
-		MakeNicePlot(ForceRetWave,sEPRetWave,FRetSm,SRetSm,FreeRupPnts)
-		FreeRupPnts+=NUMPNTS(SepExtWave)
-		duplicate/o FreeRupPnts ThisEvent
-		killwaves FreeRupPnts
-		//killwaves FRetSm,SRetSm
-
-	endfor
-//	
-	//ExportWaveLists(ForceWaveList,SepWaveList)
-end
-
-
-Function UnitTest(Number,filtering,tol,temporal,compensate)
-	variable Number,filtering,tol,temporal,compensate
-	string AllForceRet= wavelist("*Force_Ret",";","")
-	String ForceWaveList="",SepWaveList=""
-	variable n,approachvelocity,retractvelocity,ratio
-	variable bottom=Number
-	variable top=Number+1//itemsinlist(AllFOrceRet)
-	for(n=bottom;n<top;n+=1)
-		//for(n=0;n<itemsinlist(AllFOrceRet);n+=1)
-		wave ForceRetWave=$stringfromlist(n,AllForceRet)
-		wave ForceExtWave=$replacestring("Ret",nameofwave(ForceRetWave),"Ext")
-		wave SepRetWave=$replacestring("Force",nameofwave(ForceRetWave),"Sep")
-		wave SepExtWave=$replacestring("Force",nameofwave(ForceExtWave),"Sep")
-		approachvelocity=str2num(stringbykey("ApproachVelocity",note(ForceRetWave),":","\r"))
-		retractvelocity=str2num(stringbykey("RetractVelocity",note(ForceRetWave),":","\r"))
-		ratio=approachvelocity/retractvelocity
-		if(compensate==1)
-		
-		print ratio
-		make/o/n=0  OutputForceWave,OutputSepWave
-		FakeApproach(ForceExtWave,SepExtWave,Ratio,OutputForceWave,OutputSepWave)
-		SetScale/P x 0,(dimdelta(ForceRetWave,0)),"s", OutputForceWave,OutputSepWave
-		make/free/n=0 ForceAll,SepAll
-		Concatenate/o {OutputForceWave,ForceRetWave},ForceAll
-		Concatenate/o {OutputSepWave,SepRetWave},SepAll
-	else
-			Concatenate/o {ForceExtWave,ForceRetWave},ForceAll
-		Concatenate/o {SepExtWave,SepRetWave},SepAll
-	endif
-	
-		make/free/n=0 FSm,SSm
-		make/o/n=0 FRetSm,SRetSm
-		if(filtering==1)
-			duplicate/free ForceAll FSM
-			duplicate/free SepAll SSM
-			duplicate/o ForceRetWave FRetSm
-			duplicate/o SepRetWave SRetSm
-		elseif(filtering>5)
-			DE_Filtering#FilterForceSep(ForceAll,SepAll,FSm,SSm,"SVG",filtering)
-			DE_Filtering#FilterForceSep(ForceRetWave,SepRetWave,FRetSm,SRetSm,"SVG",filtering)
-
-		elseif(filtering<1)
-			DE_Filtering#FilterForceSep(ForceAll,SepAll,FSm,SSm,"TVD",filtering)
-			DE_Filtering#FilterForceSep(ForceRetWave,SepRetWave,FRetSm,SRetSm,"TVD",filtering)
-
-		
-		endif
-
-		duplicate/o FSm $(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Force"))
-		wave ForceWave=$(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Force"))
-		duplicate/o SSm $(Replacestring("force_Ret",nameofwave(ForceRetWave),"Sep"))
-		wave SepWave=$(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Sep"))
-		make/free/n=5 OptionsWave
-		OptionsWave={tol,temporal,str2num(StringbyKey("TriggerTime",note(ForceWave),":","\r")),0.0,str2num(StringbyKey("SpringConstant",note(ForceWave),":","\r"))}
-		DE_NewFeather#OutportForce(ForceWave,SepWave)
-		DE_NewFeather#RunFeatheronOutput(OptionsWave)
-		wave event_starts
-		variable result=numpnts(event_starts)
-	if(compensate==1)
-event_starts-=numpnts(OutputSepWave)-numpnts(SepExtWave)
-endif
-
-	
-		killwaves event_starts,ForceAll,SepAll,FretSm,SRetSm
-		
-	endfor
-return result
-
-//	
-	
-	//ExportWaveLists(ForceWaveList,SepWaveList)
-end
-
-Function iterateUnit(Number)
-variable Number
-	string AllForceRet= wavelist("*Force_Ret",";","")
-	String ForceWaveList="",SepWaveList=""
-	variable n,i,j
-	variable tolnum=20
-variable Timenum=20
-	variable bottom=Number
-	variable top=Number+1//itemsinlist(AllFOrceRet)
-	make/o/n=(tolnum) TolValues
-	make/o/n=(Timenum) TimeValues
-	make/o/n=(tolnum,Timenum) Grid
-	TolValues=1e-7*(3^p)
-	TimeValues=1e-6*(3^p)
-	for(n=bottom;n<top;n+=1)
-		
-		Grid[][]=UnitTest(Number,1,TolValues[p],TimeValues[q],0)
-	endfor
 
 
 
-end
+
 
 Function PlotaBlock(Start,EndNum)
 	variable start,endnum
@@ -515,10 +280,14 @@ Static Function/D DE_Median(w) // Returns median value of wave w
 	return Result
 end
 
-Static Function MakeSingleContoursAndDisplay(ForceRetwave,SepRetWave,PointWave,index)
+Static Function MakeSingleContoursAndDisplay(ForceRetwave,SepRetWave,PointWave,index,[Plot])
 	
 	wave ForceRetwave,SepRetWave,PointWave
-	variable index
+	variable index,Plot
+	if(ParamisDefault(Plot))
+	
+	Plot=0
+	endif
 	variable tot=numpnts(PointWave)
 	variable prevpnt
 	variable result
@@ -540,14 +309,14 @@ Static Function MakeSingleContoursAndDisplay(ForceRetwave,SepRetWave,PointWave,i
 		killwindow TempHistPlot
 	else
 	endif
-	//Display/W=(500,500,700,700)/N=TempHistPlot LCHistOut
+	if(Plot==1)
+	Display/W=(500,500,700,700)/N=TempHistPlot LCHistOut
 	//AutoPositionWindow/E/M=0/R=Test TempHistPlot // Put panel near the graph
-	//TextBox/W=TempHistPlot/C/N=text0/F=0/A=RT "LC = "+num2str(result)
+	TextBox/W=TempHistPlot/C/N=text0/F=0/A=RT "LC = "+num2str(result)
+	endif
 	return result
 
 end
-
-
 
 
 Static Function CalcAllLCs(ForceWave,SepWave,PointWave,SepOff,LCsBack)
@@ -823,84 +592,7 @@ Static Function CheckAllZeros()
 
 end
 
-Static Function ReFilterandCalculateAll()
-	string AllForceRet= wavelist("*Force_Ret",";","")
-	String ForceWaveList="",SepWaveList=""
-	variable n
-	variable bottom=0
-	variable top=itemsinlist(AllFOrceRet)
-	variable filtering
-	wave FRetSm=$replacestring("Force_Ret", stringfromlist(0,wavelist("*Force_Ret",";","")),"FSm")
 
-	
-		if(cmpstr(stringbykey("DE_Filtering",note(FRetSm),":","\r"),"")==0)
-			Prompt filtering, "Enter Filtering"
-			DoPrompt "Enter Filtering" filtering
-		else
-			filtering=str2num(stringbykey("DE_Filtering",note(FRetSm),":","\r"))
-		endif
-	
-	
-	for(n=bottom;n<top;n+=1)
-		wave ForceRetWave=$stringfromlist(n,AllForceRet)
-		
-		RefilterRawWaves(ForceRetWave,filtering=filtering)
-	endfor
-
-end
-
-Static Function RefilterRawWaves(ForceRetWave,[filtering])
-	wave ForceRetWave
-	variable filtering
-
-
-	wave ForceExtWave=$replacestring("Ret",nameofwave(ForceRetWave),"Ext")
-	wave SepRetWave=$replacestring("Force",nameofwave(ForceRetWave),"Sep")
-	wave SepExtWave=$replacestring("Force",nameofwave(ForceExtWave),"Sep")
-	wave FRetSm=$replacestring("Force_ext",nameofwave(ForceExtWave),"FSm")
-	wave SRetSm=$replacestring("Force_ext",nameofwave(ForceExtWave),"SSm")
-	wave ThisEvent=$replacestring("Force_ext",nameofwave(ForceExtWave),"Starts")
-	
-	if(ParamisDefault(filtering))
-	
-		if(cmpstr(stringbykey("DE_Filtering",note(FRetSm),":","\r"),"")==0)
-			Prompt filtering, "Enter Filtering"
-			DoPrompt "Enter Filtering" filtering
-		else
-			filtering=str2num(stringbykey("DE_Filtering",note(FRetSm),":","\r"))
-		endif
-	endif
-	
-	if(filtering==1)
-
-		duplicate/o ForceRetWave FRetSm
-		duplicate/o SepRetWave SRetSm
-	elseif(filtering>5)
-		DE_Filtering#FilterForceSep(ForceRetWave,SepRetWave,FRetSm,SRetSm,"SVG",filtering)
-
-	elseif(filtering<1)
-		DE_Filtering#FilterForceSep(ForceRetWave,SepRetWave,FRetSm,SRetSm,"TVD",filtering)
-
-	endif
-	
-	duplicate/o ThisEvent FreeRupPnts
-	FreeRupPnts-=NUMPNTS(SepExtWave)
-	string Yuck=nameofwave(ThisEvent)
-	make/free/n=0 LCSBack,SLopesBack
-	duplicate/free FreeRupPnts ForcesBack
-//	ForcesBack=FRetSm[FreeRupPnts[p]]
-		CalculateForcesFromPoints(ForceRetWave,SepRetWave,FreeRupPnts,ForcesBack)
-
-	variable offset=-1*str2num(stringbykey("DE_SChollOffset",note(ForceRetWave),":","\r"))-5e-9
-	CalcAllLCs(ForceRetWave,SepRetWave,FreeRupPnts,offset,LCsBack)
-	CalculateSlopes(ForceRetWave,SepRetWave,FreeRupPnts,offset,SlopesBack)
-	AddNotes(ForceRetWave,SepRetWave,FreeRupPnts,ForcesBack,LCSBack,SLopesBack)
-	FreeRupPnts+=NUMPNTS(SepExtWave)
-	//duplicate/o FreeRupPnts ThisEvent
-	killwaves FreeRupPnts
-		
-		
-end
 
 Static Function UserCursorAdjust(graphName,autoAbortSecs)
 	String graphName
@@ -1087,94 +779,6 @@ Static Function ReCalcDependWaves()
 end
 
 
-Static Function ProcessForceCurves()
-	string AllForceRet= wavelist("*Force_Ret",";","")
-	String ForceWaveList="",SepWaveList=""
-	variable n
-	variable top=itemsinlist(AllFOrceRet)
-	variable Entries
-	String RupForces,Contours,Slopes
-	variable ZeroForce
-	make/o/n=(0,5) First,Second,Third,Fourth,Fifth
-	for(n=0;n<top;n+=1)
-		Wave ForceWave=$StringFromList(n,wavelist("*Force_Ret",";",""))
-		Entries=CountEntries(ForceWave)
-		RupForces=Stringbykey("RupForce",note(ForceWave),":","\r")
-		Contours=Stringbykey("ContourLengths",note(ForceWave),":","\r")
-		ZeroForce=str2num(Stringbykey("DE_FOff",note(ForceWave),":","\r"))
-
-		Slopes=Stringbykey("Slopes",note(ForceWave),":","\r")
-		if(Entries==4)
-			InsertPoints/M=0 0,1, First,Third,Fourth,Fifth
-
-			First[0][0]=n
-			First[0][1]=str2num(Stringfromlist(0,RupForces))
-			First[0][2]=First[0][1]+ZeroForce
-			First[0][3]=str2num(Stringfromlist(0,Contours))
-			First[0][4]=str2num(Stringfromlist(0,Slopes))
-			
-
-			
-			Third[0][0]=n
-			Third[0][1]=str2num(Stringfromlist(1,RupForces))
-			Third[0][2]=Third[0][1]+ZeroForce
-			Third[0][3]=str2num(Stringfromlist(1,Contours))
-			Third[0][4]=str2num(Stringfromlist(1,Slopes))
-			
-			Fourth[0][0]=n
-			Fourth[0][1]=str2num(Stringfromlist(2,RupForces))
-			Fourth[0][2]=Fourth[0][1]+ZeroForce
-			Fourth[0][3]=str2num(Stringfromlist(2,Contours))
-			Fourth[0][4]=str2num(Stringfromlist(2,Slopes))
-			
-			Fifth[0][0]=n
-			Fifth[0][1]=str2num(Stringfromlist(3,RupForces))
-			Fifth[0][2]=Fifth[0][1]+ZeroForce
-			Fifth[0][3]=str2num(Stringfromlist(3,Contours))
-			Fifth[0][4]=str2num(Stringfromlist(3,Slopes))
-		
-		elseif(Entries==5)
-		InsertPoints/M=0 0,1, First,Second,Third,Fourth,Fifth
-			First[0][0]=n
-			First[0][1]=str2num(Stringfromlist(0,RupForces))
-			First[0][2]=First[0][1]+ZeroForce
-			First[0][3]=str2num(Stringfromlist(0,Contours))
-			First[0][4]=str2num(Stringfromlist(0,Slopes))
-			
-			Second[0][0]=n
-			Second[0][1]=str2num(Stringfromlist(1,RupForces))
-			Second[0][2]=Second[0][1]+ZeroForce
-			Second[0][3]=str2num(Stringfromlist(1,Contours))
-			Second[0][4]=str2num(Stringfromlist(1,Slopes))
-			
-			Third[0][0]=n
-			Third[0][1]=str2num(Stringfromlist(2,RupForces))
-			Third[0][2]=Third[0][1]+ZeroForce
-			Third[0][3]=str2num(Stringfromlist(2,Contours))
-			Third[0][4]=str2num(Stringfromlist(2,Slopes))
-			
-			Fourth[0][0]=n
-			Fourth[0][1]=str2num(Stringfromlist(3,RupForces))
-			Fourth[0][2]=Fourth[0][1]+ZeroForce
-			Fourth[0][3]=str2num(Stringfromlist(3,Contours))
-			Fourth[0][4]=str2num(Stringfromlist(3,Slopes))
-		
-			Fifth[0][0]=n
-			Fifth[0][1]=str2num(Stringfromlist(4,RupForces))
-			Fifth[0][2]=Fifth[0][1]+ZeroForce
-			Fifth[0][3]=str2num(Stringfromlist(4,Contours))
-			Fifth[0][4]=str2num(Stringfromlist(4,Slopes))
-
-		
-		else
-		
-
-		endif
-	endfor
-	
-	
-	//ExportWaveLists(ForceWaveList,SepWaveList)
-end
 
 
 Static Function ProcessFCs_RLCCohDock()
@@ -1270,49 +874,53 @@ end
 Static Function ReturnRelevantLCs()
 	
 	
+	variable n,CurrentNum
+	wave FirstRLC,SecondRLC,FirstDD,SecondDD,SoloCoh,FirstCoh,SecondCoh
+	make/o/n=(dimsize(FirstRLC,0)) LC_RLCTotal,LC_DDOne,LC_DDTwo
+	make/o/n=(dimsize(FirstCoh,0)) LC_CoH
+	make/o/n=(dimsize(SecondRLC,0)) LC_RLC1,LC_RLC2
+
+
+	LC_RLCTotal=FirstDD[p][3]-FirstRLC[p][3]
+	LC_DDOne=SecondDD[p][3]-FirstDD[p][3]
+	LC_CoH=SecondCoh[p][3]-SoloCoh[p][3]
+	make/free/n=(dimsize(SoloCoh,0)) SoloCohNums
+	make/free/n=(dimsize(FirstCoh,0)) FirstCohNums
+
+	FirstCohNums=FirstCoh[p][0]
+	SoloCohNums=SoloCoh[p][0]
+
+	for(n=0;n<dimsize(SecondDD,0);n+=1)
+		CurrentNum=SecondDD[n][0]
+		FindValue/V=(CurrentNum) SoloCohNums
+		if(v_value!=-1)
+			LC_DDTwo[n]=SoloCoh[v_value][3]-SecondDD[n][3]
+		
+		else
+			FindValue/V=(CurrentNum) FirstCohNums
+			LC_DDTwo[n]=FirstCoh[v_value][3]-SecondDD[n][3]
+
+		
+		endif
+
+	endfor
 	
-//	wave FirstRLC,SecondRLC,FirstDD,SecondDD,SoloCoh,FirstCoh,SecondCoh
-//
-//	make/o/n=(dimsize(FirstRLC,0)) LC_RLCFull
-//	Rup_FirstRLC=FirstRLC[p][1]
-//	make/o/n=(dimsize(SecondRLC,0)) LC_RLCInt1
-//	Rup_SecondRLC=SecondRLC[p][1]
-//	make/o/n=(dimsize(FirstDD,0)) LC_FirstDD
-//	Rup_FirstDD=FirstDD[p][1]
-//	make/o/n=(dimsize(SecondDD,0)) LC_SecondDD
-//	Rup_SecondDD=SecondDD[p][1]
-//	make/o/n=(dimsize(FirstCoh,0)) LC_LCDock
-//	Rup_SoloCoh=SoloCoh[p][1]
+	make/free/n=(dimsize(FirstRLC,0)) FirstRLCNums
+	make/free/n=(dimsize(FirstDD,0)) FirstDDNums
 
+	FirstRLCNums=FirstRLC[p][0]
+	FirstDDNums=FirstDD[p][0]
 
-//	wave First,Second,Third,Fourth,Fifth
-//
-//	make/free/n=(dimsize(First,0)) Firstn,Thirdn
-//	FirstN=First[p][0]
-//	thirdN=Third[p][0]
-//
-//	variable IntRupNum=dimsize(Second,0)
-//	variable TotalTraces=dimsize(First,0)
-//
-//	make/o/n=(TotalTraces) LC1,LC3,LC4
-//	make/o/n=(IntRupNum) LC2first,Lc2Second
-//
-//	variable n,m
-//	for(n=0;n<IntRupNum;n+=1)
-//		m=Second[n][0]
-//		FindValue/V=(m) FirstN
-//		LC2First[n]=Second[n][3]-First[v_value][3]
-//		FindValue/V=(m) ThirdN
-//		LC2Second[n]=Third[v_value][3]-Second[n][3]
-//	endfor
-//
-//	for(n=0;n<TotalTraces;n+=1)
-//		LC1[n]=Third[n][2]-First[n][3]
-//		LC3[n]=Fourth[n][2]-Third[n][3]
-//		LC4[n]=Fifth[n][2]-Fourth[n][3]
-//
-//
-//	endfor
+	for(n=0;n<dimsize(SecondRLC,0);n+=1)
+		CurrentNum=SecondRLC[n][0]
+	
+		FindValue/V=(CurrentNum) FirstRLCNums
+		LC_RLC1[n]=SecondRLC[n][3]-FirstRLC[v_value][3]
+		FindValue/V=(CurrentNum) FirstDDNums
+		LC_RLC2[n]=FirstDD[n][3]-SecondRLC[n][3]
+		
+		
+	endfor
 
 end
 
@@ -1511,7 +1119,7 @@ Static Function PlotOne(ForceWaveNumber,[Trans])
 		endfor
 
 	if(ParamisDefault(Trans))
-			ModifyGraph/W=$WindowName width=300,height=200
+		ModifyGraph/W=$WindowName width=300,height=200
 		MoveWindow/W=$WindowName 700,50,800,300
 	else
 	for(n=0;n<numpnts(AdjPoints);n+=1)
@@ -1523,6 +1131,10 @@ Static Function PlotOne(ForceWaveNumber,[Trans])
 		endif
 		
 		endfor
+		ThisEvent-=numpnts(ForceExtWave)
+		MakeSingleContoursAndDisplay(ForceRetWave,SepRetWave,ThisEvent,Trans,Plot=1)
+				ThisEvent+=numpnts(ForceExtWave)
+
 		wave ThisFit=$("Fit"+num2str(Trans))
 		print (ThisFit[numpnts(Thisfit)-1]-ThisFit[0])/(pnt2x(Thisfit,numpnts(Thisfit)-1)-pnt2x(Thisfit,0))
 		SetAxis/W=$WindowName bottom pnt2x(ForceRetWave,AdjPoints[trans])-3*backtime,pnt2x(ForceRetWave,AdjPoints[trans])+backtime
@@ -1600,6 +1212,30 @@ Static Function FakeApproach(InputForceWave,InputSepWave,Ratio,OutputForceWave,O
 		note/K OutputSepWave,note (InputSepWave)
 
 end
+//
+//
+//Function iterateUnit(Number)
+//variable Number
+//	string AllForceRet= wavelist("*Force_Ret",";","")
+//	String ForceWaveList="",SepWaveList=""
+//	variable n,i,j
+//	variable tolnum=20
+//variable Timenum=20
+//	variable bottom=Number
+//	variable top=Number+1//itemsinlist(AllFOrceRet)
+//	make/o/n=(tolnum) TolValues
+//	make/o/n=(Timenum) TimeValues
+//	make/o/n=(tolnum,Timenum) Grid
+//	TolValues=1e-7*(3^p)
+//	TimeValues=1e-6*(3^p)
+//	for(n=bottom;n<top;n+=1)
+//		
+//		Grid[][]=UnitTest(Number,1,TolValues[p],TimeValues[q],0)
+//	endfor
+//
+//
+//
+//end
 //Static Function 	ExportWaveLists(ForceWaveList,SepWaveList)
 //
 //	string ForceWaveList,SepWaveList
@@ -1685,4 +1321,392 @@ end
 //		//wave SepExtWave
 //	endfor
 //
+//end
+
+//Function FindAllForces(filtering,[bottom,top])
+//	variable filtering,bottom,top
+//	string AllForceRet= wavelist("*Force_Ret",";","")
+//	String ForceWaveList="",SepWaveList=""
+//	if(ParamisDefault(Bottom))
+//	Bottom=0
+//	endif
+//	if(ParamisDefault(top))
+//	top=itemsinlist(AllFOrceRet)
+//	endif
+//	variable n
+//
+//	for(n=bottom;n<top;n+=1)
+//	print "N:"+num2str(n)
+//		//for(n=0;n<itemsinlist(AllFOrceRet);n+=1)
+//		wave ForceRetWave=$stringfromlist(n,AllForceRet)
+//		wave ForceExtWave=$replacestring("Ret",nameofwave(ForceRetWave),"Ext")
+//		wave SepRetWave=$replacestring("Force",nameofwave(ForceRetWave),"Sep")
+//		wave SepExtWave=$replacestring("Force",nameofwave(ForceExtWave),"Sep")
+//		make/free/n=0 ForceAll,SepAll
+//		Concatenate/o {ForceExtWave,ForceRetWave},ForceAll
+//		Concatenate/o {SepExtWave,SepRetWave},SepAll
+//
+//		make/free/n=0 FSm,SSm
+//		make/o/n=0 FRetSm,SRetSm
+//		if(filtering==1)
+//			duplicate/free ForceAll FSM
+//			duplicate/free SepAll SSM
+//			duplicate/o ForceRetWave FRetSm
+//			duplicate/o SepRetWave SRetSm
+//		elseif(filtering>5)
+//			DE_Filtering#FilterForceSep(ForceAll,SepAll,FSm,SSm,"SVG",filtering)
+//			DE_Filtering#FilterForceSep(ForceRetWave,SepRetWave,FRetSm,SRetSm,"SVG",filtering)
+//
+//		elseif(filtering<1)
+//			DE_Filtering#FilterForceSep(ForceAll,SepAll,FSm,SSm,"TVD",filtering)
+//			DE_Filtering#FilterForceSep(ForceRetWave,SepRetWave,FRetSm,SRetSm,"TVD",filtering)
+//
+//		
+//		endif
+//
+//		duplicate/o FSm $(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Force"))
+//		wave ForceWave=$(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Force"))
+//		duplicate/o SSm $(Replacestring("force_Ret",nameofwave(ForceRetWave),"Sep"))
+//		wave SepWave=$(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Sep"))
+//		make/free/n=5 OptionsWave
+//		OptionsWave={1e-5,1e-3,str2num(StringbyKey("TriggerTime",note(ForceWave),":","\r")),0.0,str2num(StringbyKey("SpringConstant",note(ForceWave),":","\r"))}
+//		DE_NewFeather#OutportForce(ForceWave,SepWave)
+//		DE_NewFeather#RunFeatheronOutput(OptionsWave)
+//		wave event_starts
+//
+//		duplicate/o event_starts $replacestring("Force_ext",nameofwave(ForceExtWave),"Starts")
+//		duplicate/o FRetSm $replacestring("Force_ext",nameofwave(ForceExtWave),"FSm")
+//		duplicate/o SRetSm $replacestring("Force_ext",nameofwave(ForceExtWave),"SSm")
+//		killwaves event_starts,ForceAll,SepAll,FretSm,SRetSm
+//		
+//	endfor
+//
+//
+//end
+//
+//Function UnitTest(Number,filtering,tol,temporal,compensate)
+//	variable Number,filtering,tol,temporal,compensate
+//	string AllForceRet= wavelist("*Force_Ret",";","")
+//	String ForceWaveList="",SepWaveList=""
+//	variable n,approachvelocity,retractvelocity,ratio
+//	variable bottom=Number
+//	variable top=Number+1//itemsinlist(AllFOrceRet)
+//	for(n=bottom;n<top;n+=1)
+//		//for(n=0;n<itemsinlist(AllFOrceRet);n+=1)
+//		wave ForceRetWave=$stringfromlist(n,AllForceRet)
+//		wave ForceExtWave=$replacestring("Ret",nameofwave(ForceRetWave),"Ext")
+//		wave SepRetWave=$replacestring("Force",nameofwave(ForceRetWave),"Sep")
+//		wave SepExtWave=$replacestring("Force",nameofwave(ForceExtWave),"Sep")
+//		approachvelocity=str2num(stringbykey("ApproachVelocity",note(ForceRetWave),":","\r"))
+//		retractvelocity=str2num(stringbykey("RetractVelocity",note(ForceRetWave),":","\r"))
+//		ratio=approachvelocity/retractvelocity
+//		if(compensate==1)
+//		
+//			print ratio
+//			make/o/n=0  OutputForceWave,OutputSepWave
+//			FakeApproach(ForceExtWave,SepExtWave,Ratio,OutputForceWave,OutputSepWave)
+//			SetScale/P x 0,(dimdelta(ForceRetWave,0)),"s", OutputForceWave,OutputSepWave
+//			make/free/n=0 ForceAll,SepAll
+//			Concatenate/o {OutputForceWave,ForceRetWave},ForceAll
+//			Concatenate/o {OutputSepWave,SepRetWave},SepAll
+//		else
+//			Concatenate/o {ForceExtWave,ForceRetWave},ForceAll
+//			Concatenate/o {SepExtWave,SepRetWave},SepAll
+//		endif
+//	
+//		make/free/n=0 FSm,SSm
+//		make/o/n=0 FRetSm,SRetSm
+//		if(filtering==1)
+//			duplicate/free ForceAll FSM
+//			duplicate/free SepAll SSM
+//			duplicate/o ForceRetWave FRetSm
+//			duplicate/o SepRetWave SRetSm
+//		elseif(filtering>5)
+//			DE_Filtering#FilterForceSep(ForceAll,SepAll,FSm,SSm,"SVG",filtering)
+//			DE_Filtering#FilterForceSep(ForceRetWave,SepRetWave,FRetSm,SRetSm,"SVG",filtering)
+//
+//		elseif(filtering<1)
+//			DE_Filtering#FilterForceSep(ForceAll,SepAll,FSm,SSm,"TVD",filtering)
+//			DE_Filtering#FilterForceSep(ForceRetWave,SepRetWave,FRetSm,SRetSm,"TVD",filtering)
+//
+//		
+//		endif
+//
+//		duplicate/o FSm $(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Force"))
+//		wave ForceWave=$(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Force"))
+//		duplicate/o SSm $(Replacestring("force_Ret",nameofwave(ForceRetWave),"Sep"))
+//		wave SepWave=$(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Sep"))
+//		make/free/n=5 OptionsWave
+//		OptionsWave={tol,temporal,str2num(StringbyKey("TriggerTime",note(ForceWave),":","\r")),0.0,str2num(StringbyKey("SpringConstant",note(ForceWave),":","\r"))}
+//		DE_NewFeather#OutportForce(ForceWave,SepWave)
+//		DE_NewFeather#RunFeatheronOutput(OptionsWave)
+//		wave event_starts
+//		variable result=numpnts(event_starts)
+//		if(compensate==1)
+//			event_starts-=numpnts(OutputSepWave)-numpnts(SepExtWave)
+//		endif
+//
+//	
+//		killwaves event_starts,ForceAll,SepAll,FretSm,SRetSm
+//		
+//	endfor
+//	return result
+//
+//	//	
+//	
+//	//ExportWaveLists(ForceWaveList,SepWaveList)
+//end
+
+//
+//Function TestCondition(Number,filtering,tol,temporal)
+//	variable Number,filtering,tol,temporal
+//	string AllForceRet= wavelist("*Force_Ret",";","")
+//	String ForceWaveList="",SepWaveList=""
+//	variable n,approachvelocity,retractvelocity,ratio
+//	variable bottom=Number
+//	variable top=Number+1//itemsinlist(AllFOrceRet)
+//	for(n=bottom;n<top;n+=1)
+//		//for(n=0;n<itemsinlist(AllFOrceRet);n+=1)
+//		wave ForceRetWave=$stringfromlist(n,AllForceRet)
+//		wave ForceExtWave=$replacestring("Ret",nameofwave(ForceRetWave),"Ext")
+//		wave SepRetWave=$replacestring("Force",nameofwave(ForceRetWave),"Sep")
+//		wave SepExtWave=$replacestring("Force",nameofwave(ForceExtWave),"Sep")
+//		approachvelocity=str2num(stringbykey("ApproachVelocity",note(ForceRetWave),":","\r"))
+//		retractvelocity=str2num(stringbykey("RetractVelocity",note(ForceRetWave),":","\r"))
+//		ratio=approachvelocity/retractvelocity
+//		print ratio
+//		make/o/n=0  OutputForceWave,OutputSepWave
+//		FakeApproach(ForceExtWave,SepExtWave,Ratio,OutputForceWave,OutputSepWave)
+//		SetScale/P x 0,(dimdelta(ForceRetWave,0)),"s", OutputForceWave,OutputSepWave
+//		make/free/n=0 ForceAll,SepAll
+//	//	Concatenate/o {ForceExtWave,ForceRetWave},ForceAll
+//	//	Concatenate/o {SepExtWave,SepRetWave},SepAll
+//		Concatenate/o {OutputForceWave,ForceRetWave},ForceAll
+//		Concatenate/o {OutputSepWave,SepRetWave},SepAll
+//		make/free/n=0 FSm,SSm
+//		make/o/n=0 FRetSm,SRetSm
+//		if(filtering==1)
+//			duplicate/free ForceAll FSM
+//			duplicate/free SepAll SSM
+//			duplicate/o ForceRetWave FRetSm
+//			duplicate/o SepRetWave SRetSm
+//		elseif(filtering>5)
+//			DE_Filtering#FilterForceSep(ForceAll,SepAll,FSm,SSm,"SVG",filtering)
+//			DE_Filtering#FilterForceSep(ForceRetWave,SepRetWave,FRetSm,SRetSm,"SVG",filtering)
+//
+//		elseif(filtering<1)
+//			DE_Filtering#FilterForceSep(ForceAll,SepAll,FSm,SSm,"TVD",filtering)
+//			DE_Filtering#FilterForceSep(ForceRetWave,SepRetWave,FRetSm,SRetSm,"TVD",filtering)
+//
+//		
+//		endif
+//
+//		duplicate/o FSm $(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Force"))
+//		wave ForceWave=$(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Force"))
+//		duplicate/o SSm $(Replacestring("force_Ret",nameofwave(ForceRetWave),"Sep"))
+//		wave SepWave=$(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Sep"))
+//		make/free/n=5 OptionsWave
+//		OptionsWave={tol,temporal,str2num(StringbyKey("TriggerTime",note(ForceWave),":","\r")),0.0,str2num(StringbyKey("SpringConstant",note(ForceWave),":","\r"))}
+//		DE_NewFeather#OutportForce(ForceWave,SepWave)
+//		DE_NewFeather#RunFeatheronOutput(OptionsWave)
+//		wave event_starts
+//	event_starts-=numpnts(OutputSepWave)-numpnts(SepExtWave)
+//		duplicate/o event_starts $replacestring("Force_ext",nameofwave(ForceExtWave),"Starts")
+//		
+//		duplicate/o FRetSm $replacestring("Force_ext",nameofwave(ForceExtWave),"FSm")
+//		duplicate/o SRetSm $replacestring("Force_ext",nameofwave(ForceExtWave),"SSm")
+//		killwaves event_starts,ForceAll,SepAll,FretSm,SRetSm
+//		
+//	endfor
+//	print 	top
+//
+////	
+//	for(n=bottom;n<top;n+=1)
+//		wave ForceRetWave=$stringfromlist(n,AllForceRet)
+//		wave ForceExtWave=$replacestring("Ret",nameofwave(ForceRetWave),"Ext")
+//		wave SepRetWave=$replacestring("Force",nameofwave(ForceRetWave),"Sep")
+//		wave SepExtWave=$replacestring("Force",nameofwave(ForceExtWave),"Sep")
+//		wave FRetSm=$replacestring("Force_ext",nameofwave(ForceExtWave),"FSm")
+//		wave SRetSm=$replacestring("Force_ext",nameofwave(ForceExtWave),"SSm")
+//		wave ThisEvent=$replacestring("Force_ext",nameofwave(ForceExtWave),"Starts")
+//		duplicate/o ThisEvent FreeRupPnts
+//		FreeRupPnts-=NUMPNTS(SepExtWave)
+//		MakeNicePlot(ForceRetWave,sEPRetWave,FRetSm,SRetSm,FreeRupPnts)
+//		FreeRupPnts+=NUMPNTS(SepExtWave)
+//		duplicate/o FreeRupPnts ThisEvent
+//		killwaves FreeRupPnts
+//		//killwaves FRetSm,SRetSm
+//
+//	endfor
+////	
+//	//ExportWaveLists(ForceWaveList,SepWaveList)
+//end
+
+//Static Function ReFilterandCalculateAll()
+//	string AllForceRet= wavelist("*Force_Ret",";","")
+//	String ForceWaveList="",SepWaveList=""
+//	variable n
+//	variable bottom=0
+//	variable top=itemsinlist(AllFOrceRet)
+//	variable filtering
+//	wave FRetSm=$replacestring("Force_Ret", stringfromlist(0,wavelist("*Force_Ret",";","")),"FSm")
+//
+//	
+//		if(cmpstr(stringbykey("DE_Filtering",note(FRetSm),":","\r"),"")==0)
+//			Prompt filtering, "Enter Filtering"
+//			DoPrompt "Enter Filtering" filtering
+//		else
+//			filtering=str2num(stringbykey("DE_Filtering",note(FRetSm),":","\r"))
+//		endif
+//	
+//	
+//	for(n=bottom;n<top;n+=1)
+//		wave ForceRetWave=$stringfromlist(n,AllForceRet)
+//		
+//		RefilterRawWaves(ForceRetWave,filtering=filtering)
+//	endfor
+//
+//end
+
+
+//Static Function RefilterRawWaves(ForceRetWave,[filtering])
+//	wave ForceRetWave
+//	variable filtering
+//
+//
+//	wave ForceExtWave=$replacestring("Ret",nameofwave(ForceRetWave),"Ext")
+//	wave SepRetWave=$replacestring("Force",nameofwave(ForceRetWave),"Sep")
+//	wave SepExtWave=$replacestring("Force",nameofwave(ForceExtWave),"Sep")
+//	wave FRetSm=$replacestring("Force_ext",nameofwave(ForceExtWave),"FSm")
+//	wave SRetSm=$replacestring("Force_ext",nameofwave(ForceExtWave),"SSm")
+//	wave ThisEvent=$replacestring("Force_ext",nameofwave(ForceExtWave),"Starts")
+//	
+//	if(ParamisDefault(filtering))
+//	
+//		if(cmpstr(stringbykey("DE_Filtering",note(FRetSm),":","\r"),"")==0)
+//			Prompt filtering, "Enter Filtering"
+//			DoPrompt "Enter Filtering" filtering
+//		else
+//			filtering=str2num(stringbykey("DE_Filtering",note(FRetSm),":","\r"))
+//		endif
+//	endif
+//	
+//	if(filtering==1)
+//
+//		duplicate/o ForceRetWave FRetSm
+//		duplicate/o SepRetWave SRetSm
+//	elseif(filtering>5)
+//		DE_Filtering#FilterForceSep(ForceRetWave,SepRetWave,FRetSm,SRetSm,"SVG",filtering)
+//
+//	elseif(filtering<1)
+//		DE_Filtering#FilterForceSep(ForceRetWave,SepRetWave,FRetSm,SRetSm,"TVD",filtering)
+//
+//	endif
+//	
+//	duplicate/o ThisEvent FreeRupPnts
+//	FreeRupPnts-=NUMPNTS(SepExtWave)
+//	string Yuck=nameofwave(ThisEvent)
+//	make/free/n=0 LCSBack,SLopesBack
+//	duplicate/free FreeRupPnts ForcesBack
+////	ForcesBack=FRetSm[FreeRupPnts[p]]
+//		CalculateForcesFromPoints(ForceRetWave,SepRetWave,FreeRupPnts,ForcesBack)
+//
+//	variable offset=-1*str2num(stringbykey("DE_SChollOffset",note(ForceRetWave),":","\r"))-5e-9
+//	CalcAllLCs(ForceRetWave,SepRetWave,FreeRupPnts,offset,LCsBack)
+//	CalculateSlopes(ForceRetWave,SepRetWave,FreeRupPnts,offset,SlopesBack)
+//	AddNotes(ForceRetWave,SepRetWave,FreeRupPnts,ForcesBack,LCSBack,SLopesBack)
+//	FreeRupPnts+=NUMPNTS(SepExtWave)
+//	//duplicate/o FreeRupPnts ThisEvent
+//	killwaves FreeRupPnts
+//		
+//		
+//end
+
+//Static Function ProcessForceCurves()
+//	string AllForceRet= wavelist("*Force_Ret",";","")
+//	String ForceWaveList="",SepWaveList=""
+//	variable n
+//	variable top=itemsinlist(AllFOrceRet)
+//	variable Entries
+//	String RupForces,Contours,Slopes
+//	variable ZeroForce
+//	make/o/n=(0,5) First,Second,Third,Fourth,Fifth
+//	for(n=0;n<top;n+=1)
+//		Wave ForceWave=$StringFromList(n,wavelist("*Force_Ret",";",""))
+//		Entries=CountEntries(ForceWave)
+//		RupForces=Stringbykey("RupForce",note(ForceWave),":","\r")
+//		Contours=Stringbykey("ContourLengths",note(ForceWave),":","\r")
+//		ZeroForce=str2num(Stringbykey("DE_FOff",note(ForceWave),":","\r"))
+//
+//		Slopes=Stringbykey("Slopes",note(ForceWave),":","\r")
+//		if(Entries==4)
+//			InsertPoints/M=0 0,1, First,Third,Fourth,Fifth
+//
+//			First[0][0]=n
+//			First[0][1]=str2num(Stringfromlist(0,RupForces))
+//			First[0][2]=First[0][1]+ZeroForce
+//			First[0][3]=str2num(Stringfromlist(0,Contours))
+//			First[0][4]=str2num(Stringfromlist(0,Slopes))
+//			
+//
+//			
+//			Third[0][0]=n
+//			Third[0][1]=str2num(Stringfromlist(1,RupForces))
+//			Third[0][2]=Third[0][1]+ZeroForce
+//			Third[0][3]=str2num(Stringfromlist(1,Contours))
+//			Third[0][4]=str2num(Stringfromlist(1,Slopes))
+//			
+//			Fourth[0][0]=n
+//			Fourth[0][1]=str2num(Stringfromlist(2,RupForces))
+//			Fourth[0][2]=Fourth[0][1]+ZeroForce
+//			Fourth[0][3]=str2num(Stringfromlist(2,Contours))
+//			Fourth[0][4]=str2num(Stringfromlist(2,Slopes))
+//			
+//			Fifth[0][0]=n
+//			Fifth[0][1]=str2num(Stringfromlist(3,RupForces))
+//			Fifth[0][2]=Fifth[0][1]+ZeroForce
+//			Fifth[0][3]=str2num(Stringfromlist(3,Contours))
+//			Fifth[0][4]=str2num(Stringfromlist(3,Slopes))
+//		
+//		elseif(Entries==5)
+//		InsertPoints/M=0 0,1, First,Second,Third,Fourth,Fifth
+//			First[0][0]=n
+//			First[0][1]=str2num(Stringfromlist(0,RupForces))
+//			First[0][2]=First[0][1]+ZeroForce
+//			First[0][3]=str2num(Stringfromlist(0,Contours))
+//			First[0][4]=str2num(Stringfromlist(0,Slopes))
+//			
+//			Second[0][0]=n
+//			Second[0][1]=str2num(Stringfromlist(1,RupForces))
+//			Second[0][2]=Second[0][1]+ZeroForce
+//			Second[0][3]=str2num(Stringfromlist(1,Contours))
+//			Second[0][4]=str2num(Stringfromlist(1,Slopes))
+//			
+//			Third[0][0]=n
+//			Third[0][1]=str2num(Stringfromlist(2,RupForces))
+//			Third[0][2]=Third[0][1]+ZeroForce
+//			Third[0][3]=str2num(Stringfromlist(2,Contours))
+//			Third[0][4]=str2num(Stringfromlist(2,Slopes))
+//			
+//			Fourth[0][0]=n
+//			Fourth[0][1]=str2num(Stringfromlist(3,RupForces))
+//			Fourth[0][2]=Fourth[0][1]+ZeroForce
+//			Fourth[0][3]=str2num(Stringfromlist(3,Contours))
+//			Fourth[0][4]=str2num(Stringfromlist(3,Slopes))
+//		
+//			Fifth[0][0]=n
+//			Fifth[0][1]=str2num(Stringfromlist(4,RupForces))
+//			Fifth[0][2]=Fifth[0][1]+ZeroForce
+//			Fifth[0][3]=str2num(Stringfromlist(4,Contours))
+//			Fifth[0][4]=str2num(Stringfromlist(4,Slopes))
+//
+//		
+//		else
+//		
+//
+//		endif
+//	endfor
+//	
+//	
+//	//ExportWaveLists(ForceWaveList,SepWaveList)
 //end
