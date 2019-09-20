@@ -441,6 +441,8 @@ end
 
 
 
+
+
 Function ReassignValue(Number)
 	variable Number
 	string AllForceRet= wavelist("*Force_Ret",";","")
@@ -489,15 +491,16 @@ Function ReassignValue(Number)
 
 end
 
+
+
 Function RunAll()
 	ReassignValue(-1)
 	AddZeroOffsetsToNotes()
 	ProcessFCs_RLCCohDock()
 	//ProcessForceCurves()
-	//ReturnRupForces()
-	//ReturnRupForcesZero()
-
-	//ReturnSlopes()
+	ReturnRupForces()
+	ReturnRupForcesZero()
+	ReturnSlopes()
 	//ReturnRelevantLCs()
 end
 
@@ -581,7 +584,17 @@ Static Function CalculateSlopes(ForceWave,SepWave,PointWave,SepOff,SlopesBack)
 	variable n=0
 	variable prevpnt
 	variable backdist=4e-9
-	variable backcalc=backdist/str2num(stringbykey("retractvelocity",note(ForceWave),":","\r"))/dimdelta(ForceWave,0)
+		variable velocitysynch=str2num(stringbykey("VelocitySynch",note(ForceWave),":","\r"))
+	variable velocity
+	if(velocitysynch==1)
+	
+	 velocity=str2num(stringbykey("velocity",note(ForceWave),":","\r"))
+	else
+		 velocity=str2num(stringbykey("retractvelocity",note(ForceWave),":","\r"))
+
+	
+	endif
+	variable backcalc=backdist/velocity/dimdelta(ForceWave,0)
 		//backcalc=.05/dimdelta(ForceWave,0)
 
 	FindLevels/P/Q SepWave, -1*Sepoff
@@ -1172,7 +1185,7 @@ Static Function ProcessFCs_RLCCohDock()
 	variable Entries
 	String RupForces,Contours,Slopes
 	variable ZeroForce
-	make/o/n=(0,5) FirstRLC,SecondRLC,FirstDD,SecondDD,FirstCoh,SecondCoh
+	make/o/n=(0,5) FirstRLC,SecondRLC,FirstDD,SecondDD,SoloCoh,FirstCoh,SecondCoh
 	for(n=0;n<top;n+=1)
 		Wave ForceWave=$StringFromList(n,wavelist("*Force_Ret",";",""))
 		Entries=CountEntries(ForceWave)
@@ -1182,91 +1195,70 @@ Static Function ProcessFCs_RLCCohDock()
 		Slopes=Stringbykey("Slopes",note(ForceWave),":","\r")
 		Switch(Entries)
 			case 6:
-			//All 6
-			break
+			
+				AddanEntrytoWave(FirstRLC,n,0,ZeroForce,RupForces,Contours,Slopes)
+				AddanEntrytoWave(SecondRLC,n,1,ZeroForce,RupForces,Contours,Slopes)
+				AddanEntrytoWave(FirstDD,n,2,ZeroForce,RupForces,Contours,Slopes)
+				AddanEntrytoWave(SecondDD,n,3,ZeroForce,RupForces,Contours,Slopes)
+				AddanEntrytoWave(FirstCoh,n,4,ZeroForce,RupForces,Contours,Slopes)
+				AddanEntrytoWave(SecondCoh,n,5,ZeroForce,RupForces,Contours,Slopes)
+
+			
+				break
 			
 			case 5:
-			break
+			
+				if(str2num(Stringfromlist(4,RupForces))>str2num(Stringfromlist(3,RupForces)))
+					AddanEntrytoWave(FirstRLC,n,0,ZeroForce,RupForces,Contours,Slopes)
+					AddanEntrytoWave(SecondRLC,n,1,ZeroForce,RupForces,Contours,Slopes)
+					AddanEntrytoWave(FirstDD,n,2,ZeroForce,RupForces,Contours,Slopes)
+					AddanEntrytoWave(SecondDD,n,3,ZeroForce,RupForces,Contours,Slopes)
+					AddanEntrytoWave(SoloCoh,n,4,ZeroForce,RupForces,Contours,Slopes)
+
+				
+				
+				
+				else
+					AddanEntrytoWave(FirstRLC,n,0,ZeroForce,RupForces,Contours,Slopes)
+					AddanEntrytoWave(FirstDD,n,1,ZeroForce,RupForces,Contours,Slopes)
+					AddanEntrytoWave(SecondDD,n,2,ZeroForce,RupForces,Contours,Slopes)
+					AddanEntrytoWave(FirstCoh,n,3,ZeroForce,RupForces,Contours,Slopes)
+					AddanEntrytoWave(SecondCoh,n,4,ZeroForce,RupForces,Contours,Slopes)
+				
+				endif
+				break
 			
 			case 4:
-			break
+				AddanEntrytoWave(FirstRLC,n,0,ZeroForce,RupForces,Contours,Slopes)
+				AddanEntrytoWave(FirstDD,n,1,ZeroForce,RupForces,Contours,Slopes)
+				AddanEntrytoWave(SecondDD,n,2,ZeroForce,RupForces,Contours,Slopes)
+				AddanEntrytoWave(SoloCoh,n,3,ZeroForce,RupForces,Contours,Slopes)
+				
+				break
 			
 			default :
-			break
+				break
 	
 		endswitch 
-//		
-//	
-//		if(Entries==4)
-//			InsertPoints/M=0 0,1, First,Third,Fourth,Fifth
-//
-//			First[0][0]=n
-//			First[0][1]=str2num(Stringfromlist(0,RupForces))
-//			First[0][2]=First[0][1]+ZeroForce
-//			First[0][3]=str2num(Stringfromlist(0,Contours))
-//			First[0][4]=str2num(Stringfromlist(0,Slopes))
-//			
-//
-//			
-//			Third[0][0]=n
-//			Third[0][1]=str2num(Stringfromlist(1,RupForces))
-//			Third[0][2]=Third[0][1]+ZeroForce
-//			Third[0][3]=str2num(Stringfromlist(1,Contours))
-//			Third[0][4]=str2num(Stringfromlist(1,Slopes))
-//			
-//			Fourth[0][0]=n
-//			Fourth[0][1]=str2num(Stringfromlist(2,RupForces))
-//			Fourth[0][2]=Fourth[0][1]+ZeroForce
-//			Fourth[0][3]=str2num(Stringfromlist(2,Contours))
-//			Fourth[0][4]=str2num(Stringfromlist(2,Slopes))
-//			
-//			Fifth[0][0]=n
-//			Fifth[0][1]=str2num(Stringfromlist(3,RupForces))
-//			Fifth[0][2]=Fifth[0][1]+ZeroForce
-//			Fifth[0][3]=str2num(Stringfromlist(3,Contours))
-//			Fifth[0][4]=str2num(Stringfromlist(3,Slopes))
-//		
-//		elseif(Entries==5)
-//		InsertPoints/M=0 0,1, First,Second,Third,Fourth,Fifth
-//			First[0][0]=n
-//			First[0][1]=str2num(Stringfromlist(0,RupForces))
-//			First[0][2]=First[0][1]+ZeroForce
-//			First[0][3]=str2num(Stringfromlist(0,Contours))
-//			First[0][4]=str2num(Stringfromlist(0,Slopes))
-//			
-//			Second[0][0]=n
-//			Second[0][1]=str2num(Stringfromlist(1,RupForces))
-//			Second[0][2]=Second[0][1]+ZeroForce
-//			Second[0][3]=str2num(Stringfromlist(1,Contours))
-//			Second[0][4]=str2num(Stringfromlist(1,Slopes))
-//			
-//			Third[0][0]=n
-//			Third[0][1]=str2num(Stringfromlist(2,RupForces))
-//			Third[0][2]=Third[0][1]+ZeroForce
-//			Third[0][3]=str2num(Stringfromlist(2,Contours))
-//			Third[0][4]=str2num(Stringfromlist(2,Slopes))
-//			
-//			Fourth[0][0]=n
-//			Fourth[0][1]=str2num(Stringfromlist(3,RupForces))
-//			Fourth[0][2]=Fourth[0][1]+ZeroForce
-//			Fourth[0][3]=str2num(Stringfromlist(3,Contours))
-//			Fourth[0][4]=str2num(Stringfromlist(3,Slopes))
-//		
-//			Fifth[0][0]=n
-//			Fifth[0][1]=str2num(Stringfromlist(4,RupForces))
-//			Fifth[0][2]=Fifth[0][1]+ZeroForce
-//			Fifth[0][3]=str2num(Stringfromlist(4,Contours))
-//			Fifth[0][4]=str2num(Stringfromlist(4,Slopes))
-//
-//		
-//		else
-//		
-//
-//		endif
+
 	endfor
 	
 	
-	//ExportWaveLists(ForceWaveList,SepWaveList)
+end
+
+Static Function AddanEntrytoWave(WaveIn,index,location,ZeroForce,RupFStr,ContourStr,SlopesStr)
+
+	wave WaveIn
+	variable index,location,ZeroForce
+	String RupFStr,ContourStr,SlopesStr
+	InsertPoints/M=0 0,1, WaveIn
+	
+	WaveIn[0][0]=index
+	WaveIn[0][1]=str2num(Stringfromlist(location,RupFStr))
+	WaveIn[0][2]=WaveIn[0][1]+ZeroForce
+	WaveIn[0][3]=str2num(Stringfromlist(location,ContourStr))
+	WaveIn[0][4]=str2num(Stringfromlist(location,SlopesStr))
+	
 end
 
 Static Function CountEntries(ForceWave)
@@ -1276,84 +1268,166 @@ Static Function CountEntries(ForceWave)
 end
 
 Static Function ReturnRelevantLCs()
-	wave First,Second,Third,Fourth,Fifth
-
-	make/free/n=(dimsize(First,0)) Firstn,Thirdn
-	FirstN=First[p][0]
-	thirdN=Third[p][0]
-
-	variable IntRupNum=dimsize(Second,0)
-	variable TotalTraces=dimsize(First,0)
-
-	make/o/n=(TotalTraces) LC1,LC3,LC4
-	make/o/n=(IntRupNum) LC2first,Lc2Second
-
-	variable n,m
-	for(n=0;n<IntRupNum;n+=1)
-		m=Second[n][0]
-		FindValue/V=(m) FirstN
-		LC2First[n]=Second[n][3]-First[v_value][3]
-		FindValue/V=(m) ThirdN
-		LC2Second[n]=Third[v_value][3]-Second[n][3]
-	endfor
-
-	for(n=0;n<TotalTraces;n+=1)
-		LC1[n]=Third[n][2]-First[n][3]
-		LC3[n]=Fourth[n][2]-Third[n][3]
-		LC4[n]=Fifth[n][2]-Fourth[n][3]
+	
+	
+	
+//	wave FirstRLC,SecondRLC,FirstDD,SecondDD,SoloCoh,FirstCoh,SecondCoh
+//
+//	make/o/n=(dimsize(FirstRLC,0)) LC_RLCFull
+//	Rup_FirstRLC=FirstRLC[p][1]
+//	make/o/n=(dimsize(SecondRLC,0)) LC_RLCInt1
+//	Rup_SecondRLC=SecondRLC[p][1]
+//	make/o/n=(dimsize(FirstDD,0)) LC_FirstDD
+//	Rup_FirstDD=FirstDD[p][1]
+//	make/o/n=(dimsize(SecondDD,0)) LC_SecondDD
+//	Rup_SecondDD=SecondDD[p][1]
+//	make/o/n=(dimsize(FirstCoh,0)) LC_LCDock
+//	Rup_SoloCoh=SoloCoh[p][1]
 
 
-	endfor
+//	wave First,Second,Third,Fourth,Fifth
+//
+//	make/free/n=(dimsize(First,0)) Firstn,Thirdn
+//	FirstN=First[p][0]
+//	thirdN=Third[p][0]
+//
+//	variable IntRupNum=dimsize(Second,0)
+//	variable TotalTraces=dimsize(First,0)
+//
+//	make/o/n=(TotalTraces) LC1,LC3,LC4
+//	make/o/n=(IntRupNum) LC2first,Lc2Second
+//
+//	variable n,m
+//	for(n=0;n<IntRupNum;n+=1)
+//		m=Second[n][0]
+//		FindValue/V=(m) FirstN
+//		LC2First[n]=Second[n][3]-First[v_value][3]
+//		FindValue/V=(m) ThirdN
+//		LC2Second[n]=Third[v_value][3]-Second[n][3]
+//	endfor
+//
+//	for(n=0;n<TotalTraces;n+=1)
+//		LC1[n]=Third[n][2]-First[n][3]
+//		LC3[n]=Fourth[n][2]-Third[n][3]
+//		LC4[n]=Fifth[n][2]-Fourth[n][3]
+//
+//
+//	endfor
 
 end
 
 Static Function ReturnRupForces()
-	wave First,Second,Third,Fourth,Fifth
+	
+	wave FirstRLC,SecondRLC,FirstDD,SecondDD,SoloCoh,FirstCoh,SecondCoh
 
-	make/o/n=(dimsize(First,0)) Rup1
-	Rup1=First[p][1]
-		make/o/n=(dimsize(Second,0)) Rup2
-	Rup2=Second[p][1]
-		make/o/n=(dimsize(Third,0)) Rup3
-	Rup3=Third[p][1]
-		make/o/n=(dimsize(Fourth,0)) Rup4
-	Rup4=Fourth[p][1]
-		make/o/n=(dimsize(Fifth,0)) Rup5
-	Rup5=Fifth[p][1]
-	Rup5*=-1;Rup4*=-1;Rup3*=-1;Rup2*=-1;Rup1*=-1
+	make/o/n=(dimsize(FirstRLC,0)) Rup_FirstRLC
+	Rup_FirstRLC=FirstRLC[p][1]
+	make/o/n=(dimsize(SecondRLC,0)) Rup_SecondRLC
+	Rup_SecondRLC=SecondRLC[p][1]
+	make/o/n=(dimsize(FirstDD,0)) Rup_FirstDD
+	Rup_FirstDD=FirstDD[p][1]
+	make/o/n=(dimsize(SecondDD,0)) Rup_SecondDD
+	Rup_SecondDD=SecondDD[p][1]
+	make/o/n=(dimsize(SoloCoh,0)) Rup_SoloCoh
+	Rup_SoloCoh=SoloCoh[p][1]
+	make/o/n=(dimsize(FirstCoh,0)) Rup_FirstCoh
+	Rup_FirstCoh=FirstCoh[p][1]	
+	make/o/n=(dimsize(SecondCoh,0)) Rup_SecondCoh
+	Rup_SecondCoh=SecondCoh[p][1]
+	
+	Rup_FirstRLC*=-1;Rup_SecondRLC*=-1;Rup_FirstDD*=-1;
+	Rup_SecondDD*=-1;Rup_SoloCoh*=-1;Rup_FirstCoh*=-1;Rup_SecondCoh*=-1;
+	
+	
+//	wave First,Second,Third,Fourth,Fifth
+//
+//	make/o/n=(dimsize(First,0)) Rup1
+//	Rup1=First[p][1]
+//	make/o/n=(dimsize(Second,0)) Rup2
+//	Rup2=Second[p][1]
+//	make/o/n=(dimsize(Third,0)) Rup3
+//	Rup3=Third[p][1]
+//	make/o/n=(dimsize(Fourth,0)) Rup4
+//	Rup4=Fourth[p][1]
+//	make/o/n=(dimsize(Fifth,0)) Rup5
+//	Rup5=Fifth[p][1]
+//	Rup5*=-1;Rup4*=-1;Rup3*=-1;Rup2*=-1;Rup1*=-1
 
 end
-Static Function ReturnRupForcesZero()
-	wave First,Second,Third,Fourth,Fifth
 
-	make/o/n=(dimsize(First,0)) ZRup1
-	ZRup1=First[p][2]
-		make/o/n=(dimsize(Second,0)) ZRup2
-	ZRup2=Second[p][2]
-		make/o/n=(dimsize(Third,0)) ZRup3
-	ZRup3=Third[p][2]
-		make/o/n=(dimsize(Fourth,0)) ZRup4
-	ZRup4=Fourth[p][2]
-		make/o/n=(dimsize(Fifth,0)) ZRup5
-	ZRup5=Fifth[p][2]
-	ZRup5*=-1;ZRup4*=-1;ZRup3*=-1;ZRup2*=-1;ZRup1*=-1
+Static Function ReturnRupForcesZero()
+
+
+	wave FirstRLC,SecondRLC,FirstDD,SecondDD,SoloCoh,FirstCoh,SecondCoh
+
+	make/o/n=(dimsize(FirstRLC,0)) zRup_FirstRLC
+	zRup_FirstRLC=FirstRLC[p][2]
+	make/o/n=(dimsize(SecondRLC,0)) ZRup_SecondRLC
+	ZRup_SecondRLC=SecondRLC[p][2]
+	make/o/n=(dimsize(FirstDD,0)) ZRup_FirstDD
+	ZRup_FirstDD=FirstDD[p][2]
+	make/o/n=(dimsize(SecondDD,0)) ZRup_SecondDD
+	ZRup_SecondDD=SecondDD[p][2]
+	make/o/n=(dimsize(SoloCoh,0)) ZRup_SoloCoh
+	ZRup_SoloCoh=SoloCoh[p][2]
+	make/o/n=(dimsize(FirstCoh,0)) ZRup_FirstCoh
+	zRup_FirstCoh=FirstCoh[p][2]	
+	make/o/n=(dimsize(SecondCoh,0)) zRup_SecondCoh
+	zRup_SecondCoh=SecondCoh[p][2]
+	
+//	ZRup_FirstRLC*=-1;ZRup_SecondRLC*=-1;ZRup_FirstDD*=-1;
+//	ZRup_SecondDD*=-1;ZRup_SoloCoh*=-1;ZRup_FirstCoh*=-1;ZRup_SecondCoh*=-1;	
+//	
+//	wave First,Second,Third,Fourth,Fifth
+//
+//	make/o/n=(dimsize(First,0)) ZRup1
+//	ZRup1=First[p][2]
+//		make/o/n=(dimsize(Second,0)) ZRup2
+//	ZRup2=Second[p][2]
+//		make/o/n=(dimsize(Third,0)) ZRup3
+//	ZRup3=Third[p][2]
+//		make/o/n=(dimsize(Fourth,0)) ZRup4
+//	ZRup4=Fourth[p][2]
+//		make/o/n=(dimsize(Fifth,0)) ZRup5
+//	ZRup5=Fifth[p][2]
+//	ZRup5*=-1;ZRup4*=-1;ZRup3*=-1;ZRup2*=-1;ZRup1*=-1
 
 end
 
 Static Function ReturnSlopes()
-	wave First,Second,Third,Fourth,Fifth
+	
+	wave FirstRLC,SecondRLC,FirstDD,SecondDD,SoloCoh,FirstCoh,SecondCoh
 
-	make/o/n=(dimsize(First,0)) Slope1
-	Slope1=First[p][4]
-		make/o/n=(dimsize(Second,0)) Slope2
-	Slope2=Second[p][4]
-		make/o/n=(dimsize(Third,0)) Slope3
-	Slope3=Third[p][4]
-		make/o/n=(dimsize(Fourth,0)) Slope4
-	Slope4=Fourth[p][4]
-		make/o/n=(dimsize(Fifth,0)) Slope5
-	Slope5=Fifth[p][4]
-	//Slope5*=-1;Slope4*=-1;Slope3*=-1;Slope2*=-1;Slope1*=-1
+	make/o/n=(dimsize(FirstRLC,0)) Slope_FirstRLC
+	Slope_FirstRLC=FirstRLC[p][4]
+	make/o/n=(dimsize(SecondRLC,0)) Slope_SecondRLC
+	Slope_SecondRLC=SecondRLC[p][4]
+	make/o/n=(dimsize(FirstDD,0)) Slope_FirstDD
+	Slope_FirstDD=FirstDD[p][4]
+	make/o/n=(dimsize(SecondDD,0)) Slope_SecondDD
+	Slope_SecondDD=SecondDD[p][4]
+	make/o/n=(dimsize(SoloCoh,0)) Slope_SoloCoh
+	Slope_SoloCoh=SoloCoh[p][4]
+	make/o/n=(dimsize(FirstCoh,0)) Slope_FirstCoh
+	Slope_FirstCoh=FirstCoh[p][4]	
+	make/o/n=(dimsize(SecondCoh,0)) Slope_SecondCoh
+	Slope_SecondCoh=SecondCoh[p][4]
+
+	
+	
+//	wave First,Second,Third,Fourth,Fifth
+//
+//	make/o/n=(dimsize(First,0)) Slope1
+//	Slope1=First[p][4]
+//		make/o/n=(dimsize(Second,0)) Slope2
+//	Slope2=Second[p][4]
+//		make/o/n=(dimsize(Third,0)) Slope3
+//	Slope3=Third[p][4]
+//		make/o/n=(dimsize(Fourth,0)) Slope4
+//	Slope4=Fourth[p][4]
+//		make/o/n=(dimsize(Fifth,0)) Slope5
+//	Slope5=Fifth[p][4]
+//	//Slope5*=-1;Slope4*=-1;Slope3*=-1;Slope2*=-1;Slope1*=-1
 
 
 end
@@ -1400,13 +1474,23 @@ Static Function PlotOne(ForceWaveNumber,[Trans])
 	variable offset=-1*str2num(stringbykey("DE_SChollOffset",note(ForceRetWave),":","\r"))-5e-9
 
 	variable backdist=4e-9
-	variable backcalc=backdist/str2num(stringbykey("retractvelocity",note(ForceRetWave),":","\r"))/dimdelta(ForceRetWave,0)
-	variable backtime=backdist/str2num(stringbykey("retractvelocity",note(ForceRetWave),":","\r"))
+	variable velocitysynch=str2num(stringbykey("VelocitySynch",note(ForceRetWave),":","\r"))
+	variable velocity
+	if(velocitysynch==1)
+	
+	 velocity=str2num(stringbykey("velocity",note(ForceRetWave),":","\r"))
+	else
+		 velocity=str2num(stringbykey("retractvelocity",note(ForceRetWave),":","\r"))
+
+	
+	endif
+	variable backcalc=backdist/velocity/dimdelta(ForceRetWave,0)
+	variable backtime=backdist/velocity
 	
 	FindLevels/P/Q SepRetWave, -1*offset
 	wave w_FindLevels
 	variable SurfacePnt=DE_MultiFEC#DE_Median(W_FindLevels)
-
+	print backtime
 	for(n=0;n<numpnts(AdjPoints);n+=1)
 		if(n==0)
 			prevpnt=max(AdjPoints[n]-backcalc,SurfacePnt)
