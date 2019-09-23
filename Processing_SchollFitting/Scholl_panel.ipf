@@ -279,8 +279,10 @@ Static Function BP_1(ctrlName) : ButtonControl
 	wave w6=$SepName
 	wave w7=Resids
 	wave NEwDeflWave=$NEwName
-	
-	variable OffSetGuess= -w2[ends]+nEwDeflWave[ends]-5e-9
+
+	//variable OffSetGuess= -w2[ends]+nEwDeflWave[ends]-5e-9
+		variable OffSetGuess= -w2[ends]-5e-9
+
 	string CurrentNote=note(w5)
 	CurrentNote=ReplaceStringbyKey("DE_SchollOffset",CurrentNote,num2str(Offsetguess),":","\r")
 	note/K NEwDeflWave, CurrentNote

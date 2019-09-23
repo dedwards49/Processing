@@ -125,18 +125,21 @@ Static Function ReturnExtentionatForce(F,Lp,L0,T)
 
 end
 
-Static Function ContourTransform(Force,x,Pers,T)
+Static Function ContourTransform_Per(Force,x,Pers,T)
 	variable Force,x,Pers,T
-	if (Force<2e-12)
-	 Force=2e-12
-		endif
+		if (Force<2e-12)
+	  Force=2e-12
+	endif
+	if (Force<0e-12)
+	 return NaN
+	endif
 	
 	variable f=Force*Pers/(1.3806488*1e-23*T)
 	variable b=exp((900/f)^(1/4))
-	variable y1=27.4
-	variable y2=109.8
+	variable y1=27.4e-9
+	variable y2=109.8e-9
 
-	variable res= x/(4/3-4/3*1/sqrt(f+1)-10*b/sqrt(f)/(b-1)^2+f^1.62/(3.55+3.8*f^2.2))
+	variable res= x/(4/3-4/3*1/sqrt(f+1)-10*b/sqrt(f)/((b-1)^2)+f^1.62/(3.55+3.8*f^2.2))
 
 	if(res<1e-9)
 	 f=2e-12*Pers/(1.3806488*1e-23*T)
@@ -146,9 +149,87 @@ Static Function ContourTransform(Force,x,Pers,T)
 
 	 res= x/(4/3-4/3*1/sqrt(f+1)-10*b/sqrt(f)/(b-1)^2+f^1.62/(3.55+3.8*f^2.2))
 	endif
+	variable adj=(1/2*1/y2*(sqrt(y1^2+4*y2*force)+2*y2-y1))
 	return res
 
 end
+
+Static Function ContourTransform_Per_QMC(Force,x,Pers,T)
+	variable Force,x,Pers,T
+		if (Force<2e-12)
+	  Force=2e-12
+	endif
+	if (Force<0e-12)
+	 return NaN
+	endif
+	
+	variable f=Force*Pers/(1.3806488*1e-23*T)
+	variable b=exp((900/f)^(1/4))
+	variable y1=27.4e-9
+	variable y2=109.8e-9
+
+	variable res= x/(4/3-4/3*1/sqrt(f+1)-10*b/sqrt(f)/((b-1)^2)+f^1.62/(3.55+3.8*f^2.2))
+
+	if(res<1e-9)
+	 f=2e-12*Pers/(1.3806488*1e-23*T)
+	 b=exp((900/f)^(1/4))
+	 y1=27.4
+	 y2=109.8
+
+	 res= x/(4/3-4/3*1/sqrt(f+1)-10*b/sqrt(f)/(b-1)^2+f^1.62/(3.55+3.8*f^2.2))
+	endif
+	variable adj=(1/2*1/y2*(sqrt(y1^2+4*y2*force)+2*y2-y1))
+	return res/adj
+
+end
+//
+//Static Function ContourTransform_LIV(Force,x,b,ga,T)
+//	variable Force,x,b,ga,T
+//		if (Force<2e-12)
+//	  Force=2e-12
+//	endif
+//	if (Force<0e-12)
+//	 return NaN
+//	endif
+//	variable kb=(1.3806488*1e-23*T)
+//	variable p=b*(Cos(Ga/2))/abs(ln(Cos(ga)))
+//	variable a=b*(1+Cos(Ga))/((1-cos(ga))*cos(ga/2))
+//
+//	variable f=Force*b/kb
+//	variable result,coef
+//	if(f<=b/p)
+//		coef=Force*a/3/kb
+//	elseif(f<=p/b)
+//	
+//		coef=1-1/sqrt(Force*p/4/kb)
+//	else
+//		coef=1-1/(Force*b/2/kb)
+//
+//	
+//	endif
+//	result=x/coef
+//	return result
+////	
+////	
+////	variable b=exp((900/f)^(1/4))
+////	variable y1=27.4e-9
+////	variable y2=109.8e-9
+////
+////	variable res= x/(4/3-4/3*1/sqrt(f+1)-10*b/sqrt(f)/((b-1)^2)+f^1.62/(3.55+3.8*f^2.2))
+////
+////	if(res<1e-9)
+////	 f=2e-12*Pers/(1.3806488*1e-23*T)
+////	 b=exp((900/f)^(1/4))
+////	 y1=27.4
+////	 y2=109.8
+////
+////	 res= x/(4/3-4/3*1/sqrt(f+1)-10*b/sqrt(f)/(b-1)^2+f^1.62/(3.55+3.8*f^2.2))
+////	endif
+////	variable adj=(1/2*1/y2*(sqrt(y1^2+4*y2*force)+2*y2-y1))
+////	return res/adj
+//
+//end
+
 
 Function ContourTransformqm(Force,x,Pers,T)
 	variable Force,x,Pers,T

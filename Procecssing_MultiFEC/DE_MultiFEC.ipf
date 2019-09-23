@@ -26,8 +26,8 @@ Function BatchProcess(Threshold,tau,[bottom,top])
 		wave SepRetWave=$replacestring("Force",nameofwave(ForceRetWave),"Sep")
 		wave SepExtWave=$replacestring("Force",nameofwave(ForceExtWave),"Sep")
 		make/free/n=0 ForceAll,SepAll
-		Concatenate/o {ForceExtWave,ForceRetWave},ForceAll
-		Concatenate/o {SepExtWave,SepRetWave},SepAll
+		Concatenate/NP/o {ForceExtWave,ForceRetWave},ForceAll
+		Concatenate/NP/o {SepExtWave,SepRetWave},SepAll
 
 		WaveNote=ReplaceStringbyKey("DwellTime",note(ForceAll),"0",":","\r")
 		note/K ForceAll, WaveNote
@@ -60,7 +60,7 @@ end
 
 Static Function CleartheAllWave()
 
-	string AllForceRet= wavelist("*Force_Ret",";","")
+	string AllForceRet= wavelist("*Force_ret",";","")
 	
 	
 	variable n
@@ -266,7 +266,7 @@ Function RunAll()
 	ReturnRupForces()
 	ReturnRupForcesZero()
 	ReturnSlopes()
-	//ReturnRelevantLCs()
+	ReturnRelevantLCs()
 end
 
 Static Function/D DE_Median(w) // Returns median value of wave w
@@ -335,9 +335,13 @@ Static Function CalcAllLCs(ForceWave,SepWave,PointWave,SepOff,LCsBack)
 		if(n==0)
 		prevpnt=SurfacePnt
 		else
-				prevpnt=PointWave[n-1]+10//+max(100,PointWave[1]-PointWave[n-1]
+			prevpnt=PointWave[n-1]+10//+max(100,PointWave[1]-PointWave[n-1]
 
 		endif
+				if(prevpnt>PointWave[n]-10)
+			prevpnt=PointWave[n]-10
+		endif
+		
 		TempLcs[n]= CalcCurrLC(ForceWave,SepWave,prevpnt,PointWave[n],SepOff,HistOut)
 	
 	endfor
@@ -376,10 +380,14 @@ Static Function CalculateSlopes(ForceWave,SepWave,PointWave,SepOff,SlopesBack)
 				prevpnt=max(PointWave[n]-backcalc,SurfacePnt)
 
 		else
-			prevpnt=max(PointWave[n]-backcalc,PointWave[n-1]+25)
+			prevpnt=max(PointWave[n]-backcalc,PointWave[n-1]+10)
+		endif
+		
+		if(prevpnt>PointWave[n]-10)
+			prevpnt=PointWave[n]-10
 		endif
 		make/o/n=0 HistOUt
-
+		
 		duplicate/free/R=[prevpnt,PointWave[n]] ForceWave, FFit
 		CurveFit/Q/W=2 line FFit
 		wave w_coef,w_sigma
@@ -393,26 +401,73 @@ Static Function CalculateSlopes(ForceWave,SepWave,PointWave,SepOff,SlopesBack)
 
 end
 	
+Static Function ReturnWaveNamesForaNum(number,Trans)
+
+	variable number,Trans
+	variable prevpnt
+	string AllForceRet= wavelist("*Force_Ret",";","")
+	print "N:"+num2str(number)
+	print stringfromlist(number,AllForceRet)
+	wave ForceRet=$stringfromlist(number,AllForceRet)
+	print replacestring("Ret",stringfromlist(number,AllForceRet),"Ext")
+	wave ForceExt=$replacestring("Ret",stringfromlist(number,AllForceRet),"Ext")
+
+	print replacestring("Force",stringfromlist(number,AllForceRet),"Sep")
+	wave SepRet=$replacestring("Force",stringfromlist(number,AllForceRet),"Sep")
+
+	print replacestring("Force",stringfromlist(number,AllForceRet),"Sep")
+	print replacestring("Force",stringfromlist(number,AllForceRet),"Starts")
+	wave PointWave=$replacestring("Force_ret",stringfromlist(number,AllForceRet),"Starts")
+	variable offset=-1*str2num(stringbykey("DE_SChollOffset",note(ForceRet),":","\r"))-5e-9
+	print "Offset: "+num2str(offset)
+	FindLevels/P/Q SepRet, -1*offset
+	wave w_FindLevels
+	variable SurfacePnt=DE_MultiFEC#DE_Median(W_FindLevels)
+	if(Trans==0)
+		prevpnt=SurfacePnt
+	else
+		prevpnt=PointWave[Trans-1]+10-numpnts(ForceExt)//+max(100,PointWave[1]-PointWave[n-1]
+
+	endif
+	print "Startpnt: " +num2str(prevpnt)
+	print "Endpnt: " +num2str(PointWave[Trans]-numpnts(ForceExt))
+
+
+end
 	
 Static Function CalcCurrLC(ForceWave,SepWave,StartPnt,EndPnt,SepOff,HistOut)
 	wave ForceWave,SepWave,HistOut
 	variable StartPnt,EndPnt,SepOff
-	
-	duplicate/o/r=[startpnt,endpnt] FOrceWave TempForce,TempLC
-	duplicate/o/r=[startpnt,endpnt] SepWave TempSep
+
+	duplicate/free/r=[startpnt,endpnt] FOrceWave TempForce,TempLC
+	duplicate/free/r=[startpnt,endpnt] SepWave TempSep
 	endpnt-=startpnt
 
 	startpnt=0
 	TempForce*=-1
 	TempSep+=SepOff
-	TempLC=DE_WLC#ContourTransform(TempForce,TempSep,.4e-9,298)
-	variable lastLC=DE_WLC#ContourTransform(TempForce[endpnt],TempSep[endpnt],.4e-9,298)
-	variable startLC=TempSep[endpnt]
-	variable stepLC=2*(lastlc-startlc)/49
-	make/o/n=50 TempHist 
+	TempLC=DE_WLC#ContourTransform_Per_QMC(TempForce,TempSep,.4e-9,298)
+	//variable lastLC=DE_WLC#ContourTransform_Per_QMC(TempForce[endpnt],TempSep[endpnt],.4e-9,298)
+	//variable lastLC=DE_WLC#FindLC_Woodside(TempForce[endpnt],TempSep[endpnt],.4e-9,25e-9,298)
+	//variable startLC=wavemin(TempLC)
+	//variable startLC=TempSep[endpnt]
+		variable startLC=max(TempSep[numpnts(TempSep)-1],wavemin(TempLC))-3e-9
+
+	variable lastLC=min(wavemax(TempLC),2*TempSep[numpnts(TempSep)-1])+3e-9
+		variable stepLC,numsteps
+
+	if((lastlc-startlc)/49<1e-9)
+	stepLC=1e-9
+	numsteps=ceil((lastlc-startlc)/1e-9)
+	else
+	stepLC=1*(lastlc-startlc)/49
+	numsteps=50
+	endif
+	
+	make/o/n=(numsteps) TempHist 
 	variable Q=numpnts(TempLC)
-	Histogram/C/B={startLC,stepLC,50} TempLC,TempHist;
-	CurveFit/Q/W=2 gauss TempHist 
+	Histogram/C/B={startLC,stepLC,numsteps} TempLC,TempHist;
+	CurveFit/Q/W=2 gauss TempHist /d
 	wave w_coef,w_sigma
 	variable result=w_coef[2]
 	killwaves w_coef,w_sigma
@@ -1098,7 +1153,6 @@ Static Function PlotOne(ForceWaveNumber,[Trans])
 	FindLevels/P/Q SepRetWave, -1*offset
 	wave w_FindLevels
 	variable SurfacePnt=DE_MultiFEC#DE_Median(W_FindLevels)
-	print backtime
 	for(n=0;n<numpnts(AdjPoints);n+=1)
 		if(n==0)
 			prevpnt=max(AdjPoints[n]-backcalc,SurfacePnt)
@@ -1136,12 +1190,12 @@ Static Function PlotOne(ForceWaveNumber,[Trans])
 				ThisEvent+=numpnts(ForceExtWave)
 
 		wave ThisFit=$("Fit"+num2str(Trans))
-		print (ThisFit[numpnts(Thisfit)-1]-ThisFit[0])/(pnt2x(Thisfit,numpnts(Thisfit)-1)-pnt2x(Thisfit,0))
+		print "Slope: "+ num2str((ThisFit[numpnts(Thisfit)-1]-ThisFit[0])/(pnt2x(Thisfit,numpnts(Thisfit)-1)-pnt2x(Thisfit,0)))
 		SetAxis/W=$WindowName bottom pnt2x(ForceRetWave,AdjPoints[trans])-3*backtime,pnt2x(ForceRetWave,AdjPoints[trans])+backtime
 		SetAxis/W=$WindowName/A=2 left
-		print str2num(stringfromlist(Trans,Stringbykey("RupForce",note(ForceRetWave),":","\r")))+str2num(Stringbykey("DE_FOff",note(ForceRetWave),":","\r"))
+		print "Force: "+num2str(str2num((stringfromlist(Trans,Stringbykey("RupForce",note(ForceRetWave),":","\r"))))+str2num(Stringbykey("DE_FOff",note(ForceRetWave),":","\r")))
 		make/o/n=1 RupPnt
-		RupPnt=-str2num(stringfromlist(Trans,Stringbykey("RupForce",note(ForceRetWave),":","\r")))//-str2num(Stringbykey("DE_FOff",note(ForceRetWave),":","\r"))
+		RupPnt=(-str2num(stringfromlist(Trans,Stringbykey("RupForce",note(ForceRetWave),":","\r"))))//-str2num(Stringbykey("DE_FOff",note(ForceRetWave),":","\r"))
 		SetScale/P x pnt2x(ForceRetWave,str2num(stringfromlist(Trans,Stringbykey("RupPnts",note(ForceRetWave),":","\r")))),0.0001,"s", RupPnt
 
 		Appendtograph/W=$WindowName RupPnt
@@ -1183,7 +1237,6 @@ Static Function TraceSVA(sva) : SetVariableControl
 				case "DE_ViewFECs1":
 				
 					Controlinfo/W=ViewFEcs DE_ViewFECs0
-					print v_value
 					PlotOne(V_Value,Trans=dval)
 				break
 				default:
