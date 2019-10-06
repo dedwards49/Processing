@@ -108,19 +108,34 @@ Static Function LoadTheWaves(SearchString)
 		CurrentName=CurrentFile[0,strlen(CurrentFile)-5]
 		if(FindListItem(Currentname,AllForce)!=-1)
 			CurrentName=replaceString("Force",CurrentName,"Starts")
+			Wave ForceWave=$replacestring("Starts",CurrentName,"Force_ret")
+			Wave SepWave=$replacestring("Starts",CurrentName,"Sep_ret")
+
 			LoadWave/Q/G/P=DataPath/N=GARBAGE/L={0, 1, 0, 0, 0 } CurrentFile
 			
 			wave garbage0
 			if(Garbage0[0]==0)
-				deletepoints 0,1, Garbage0
-			
+				if(numpnts(Garbage0)==1)
+					Garbage0[0]=0
+				else
+					deletepoints 0,1, Garbage0
+				endif
+			elseif(Garbage0[0]<0)
+				String NoteIn=replacestringbykey("DE_FeatherZero",note(ForceWave),num2str(Garbage0[0]),":","\r")
+				note/K ForceWave NoteIn
+				note/K SepWave NoteIn
+				if(numpnts(Garbage0)==1)
+					Garbage0[0]=0
+				else
+					deletepoints 0,1, Garbage0
+				endif
 			endif
 			
 			duplicate/o GARBAGE0 $CurrentName
 		else
 		endif
 	endfor
-		killpath Datapath
+	killpath Datapath
 
 
 end

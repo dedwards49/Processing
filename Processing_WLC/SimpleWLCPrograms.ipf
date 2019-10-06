@@ -593,7 +593,7 @@ variable last,Nug2Step,RLCstep1,RLCStep2
 	WLCParms[][1]=298
 	WLCParms[6][2]=last
 	WLCParms[5][2]=last-Nug2Step
-	WLCParms[4][2]=last-4*Nug2Step
+	WLCParms[4][2]=last-2*Nug2Step
 	WLCParms[3][2]=last-3*Nug2Step
 	WLCParms[2][2]=last-4*Nug2Step
 	WLCParms[1][2]=last-4*Nug2Step-RLCstep1
@@ -603,6 +603,27 @@ variable last,Nug2Step,RLCstep1,RLCStep2
 	wave WLC_Force,WLC_Ext
 	duplicate/o WLC_Force RLC_WLC_Force
 	duplicate/o WLC_Ext RLC_WLC_Ext
+	killwaves WLC_Force,WLC_Ext
+
+
+end
+
+function TestMakeParmsELCBD(last,Nug2Step,ELCstep)
+variable last,Nug2Step,ELCstep
+	make/o/n=(6,3) WLCParms
+	WLCParms[][0]=.4e-9
+	WLCParms[][1]=298
+	WLCParms[5][2]=last
+	WLCParms[4][2]=last-Nug2Step
+	WLCParms[3][2]=last-2*Nug2Step
+	WLCParms[2][2]=last-3*Nug2Step
+	WLCParms[1][2]=last-4*Nug2Step
+	WLCParms[0][2]=last-4*Nug2Step-ELCstep
+
+	WLC_Arb(WLCParms)
+	wave WLC_Force,WLC_Ext
+	duplicate/o WLC_Force ELC_WLC_Force
+	duplicate/o WLC_Ext ELC_WLC_Ext
 	killwaves WLC_Force,WLC_Ext
 
 

@@ -4,7 +4,7 @@
 #include "SimpleWLCPrograms"
 #include "DE_Filtering"
 #include "DE_NewFeather"
-
+#include "DE_AdjustInvols"
 Function BatchProcess(Threshold,tau,[bottom,top])
 
 	variable bottom,top,Threshold,tau
@@ -81,6 +81,23 @@ Static Function CleartheAllWave()
 
 end
 
+Static Function RecordAllVelocities(WaveOut)
+	wave waveout
+	string AllForceRet= wavelist("*Force_Ret",";","")
+	String ForceWaveList="",SepWaveList=""
+	variable	Bottom=0
+	variable	top=itemsinlist(AllFOrceRet)
+	make/free/n=(top) FreeVelocity
+	variable n
+	string WaveNote
+	//
+	for(n=bottom;n<top;n+=1)
+		wave ForceRetWave=$stringfromlist(n,AllForceRet)
+		FreeVelocity[n]=ReturnVelocity(ForceRetWave)
+	endfor
+	duplicate/o FreeVelocity WaveOut
+end
+
 Static Function CleartheStarts()
 
 	string AlLStarts= wavelist("*STarts",";","")
@@ -134,10 +151,6 @@ Static Function TestZero(ForceRetWave,[distance])
 	variable traceend= v_avg
 	return postrup
 end
-
-
-
-
 
 
 
@@ -197,7 +210,7 @@ Function TweakRupturesandAssignValue(Number)
 		FreeRupPnts+=NUMPNTS(SepExtWave)
 		duplicate/o FreeRupPnts ThisEvent
 		killwaves FreeRupPnts
-		//killwaves FRetSm,SRetSm
+		killwaves FRetSm,SRetSm
 
 	endfor
 
@@ -258,14 +271,22 @@ end
 
 
 
-Function RunAll()
+Function RunAll([OptNoise])
+	variable OptNoise
 	ReassignValue(-1)
 	AddZeroOffsetsToNotes()
-	ProcessFCs_RLCCohDock()
+	if(ParamisDefault(OptNoise))
+		ProcessFCs_RLCCohDock()
+	
+	else
+		ProcessFCs_RLCCohDock(FirstNoise=OptNoise)
+
+	endif
 	//ProcessForceCurves()
-	ReturnRupForces()
-	ReturnRupForcesZero()
-	ReturnSlopes()
+	//ReturnRupForces()
+	//ReturnRupForcesZero()
+	//ReturnSlopes()
+	ProcessAllVelocities()
 	ReturnRelevantLCs()
 end
 
@@ -833,10 +854,25 @@ Static Function ReCalcDependWaves()
 	RupTimes[][1]=FRet[FreeRupPnts[p]]
 end
 
+Static Function ReturnVelocity(ForceWave)
+	wave ForceWave
+	variable velocity
+	if(str2num(stringbykey("VelocitySynch",note(ForceWave),":","\r"))==1)
+			velocity=str2num(stringbykey("Velocity",note(ForceWave),":","\r"))
+		
+		else
+			velocity=str2num(stringbykey("RetractVelocity",note(ForceWave),":","\r"))
+
+		
+		endif
 
 
+	return velocity
+end
 
-Static Function ProcessFCs_RLCCohDock()
+
+Static Function ProcessFCs_RLCCohDock([FirstNoise])
+	variable firstnoise
 	string AllForceRet= wavelist("*Force_Ret",";","")
 	String ForceWaveList="",SepWaveList=""
 	variable n
@@ -844,10 +880,35 @@ Static Function ProcessFCs_RLCCohDock()
 	variable Entries
 	String RupForces,Contours,Slopes
 	variable ZeroForce
-	make/o/n=(0,5) FirstRLC,SecondRLC,FirstDD,SecondDD,SoloCoh,FirstCoh,SecondCoh
+	variable velocity,InvolAdj
+	make/o/n=(0,9) FirstRLC,SecondRLC,FirstDD,SecondDD,SoloCoh,FirstCoh,SecondCoh
 	for(n=0;n<top;n+=1)
 		Wave ForceWave=$StringFromList(n,wavelist("*Force_Ret",";",""))
+		Wave SepWave=$ReplaceString("Force_ret",nameofwave(ForceWave),"Sep_ext")
+		Wave PntWave=$ReplaceString("Force_ret",nameofwave(ForceWave),"Starts")
+		
+		if(n==0)
+			if(ParamisDefault(Firstnoise))
+		
+				FirstNoise=DE_AdjustInvols#ExtractNoisefromWave(ForceWave,PntWave,numpnts(SepWave),1e3)
+				print "FirstNoise:"+num2str(FirstNoise)
+				InvolAdj=1
+
+			else
+				InvolAdj=DE_AdjustInvols#DetermineInvolsAdj(ForceWave,PntWave,numpnts(SepWave),FirstNoise,1e3)
+			endif
+		else
+			InvolAdj=DE_AdjustInvols#DetermineInvolsAdj(ForceWave,PntWave,numpnts(SepWave),FirstNoise,1e3)
+		endif
+		velocity=ReturnVelocity(ForceWave)
 		Entries=CountEntries(ForceWave)
+
+		if((involAdj<.8||involAdj>1.2)&&Entries>=4)
+			print nameofwave(ForceWave)
+			print nameofwave(PntWave)
+			print nameofwave(SepWave)
+			print DE_AdjustInvols#DetermineInvolsAdj(ForceWave,PntWave,numpnts(SepWave),FirstNoise,1e3)
+		endif
 		RupForces=Stringbykey("RupForce",note(ForceWave),":","\r")
 		Contours=Stringbykey("ContourLengths",note(ForceWave),":","\r")
 		ZeroForce=str2num(Stringbykey("DE_FOff",note(ForceWave),":","\r"))
@@ -855,12 +916,12 @@ Static Function ProcessFCs_RLCCohDock()
 		Switch(Entries)
 			case 6:
 			
-				AddanEntrytoWave(FirstRLC,n,0,ZeroForce,RupForces,Contours,Slopes)
-				AddanEntrytoWave(SecondRLC,n,1,ZeroForce,RupForces,Contours,Slopes)
-				AddanEntrytoWave(FirstDD,n,2,ZeroForce,RupForces,Contours,Slopes)
-				AddanEntrytoWave(SecondDD,n,3,ZeroForce,RupForces,Contours,Slopes)
-				AddanEntrytoWave(FirstCoh,n,4,ZeroForce,RupForces,Contours,Slopes)
-				AddanEntrytoWave(SecondCoh,n,5,ZeroForce,RupForces,Contours,Slopes)
+				AddanEntrytoWave(FirstRLC,n,0,ZeroForce,RupForces,Contours,Slopes,velocity,InvolAdj)
+				AddanEntrytoWave(SecondRLC,n,1,ZeroForce,RupForces,Contours,Slopes,velocity,InvolAdj)
+				AddanEntrytoWave(FirstDD,n,2,ZeroForce,RupForces,Contours,Slopes,velocity,InvolAdj)
+				AddanEntrytoWave(SecondDD,n,3,ZeroForce,RupForces,Contours,Slopes,velocity,InvolAdj)
+				AddanEntrytoWave(FirstCoh,n,4,ZeroForce,RupForces,Contours,Slopes,velocity,InvolAdj)
+				AddanEntrytoWave(SecondCoh,n,5,ZeroForce,RupForces,Contours,Slopes,velocity,InvolAdj)
 
 			
 				break
@@ -868,30 +929,30 @@ Static Function ProcessFCs_RLCCohDock()
 			case 5:
 			
 				if(str2num(Stringfromlist(4,RupForces))>str2num(Stringfromlist(3,RupForces)))
-					AddanEntrytoWave(FirstRLC,n,0,ZeroForce,RupForces,Contours,Slopes)
-					AddanEntrytoWave(SecondRLC,n,1,ZeroForce,RupForces,Contours,Slopes)
-					AddanEntrytoWave(FirstDD,n,2,ZeroForce,RupForces,Contours,Slopes)
-					AddanEntrytoWave(SecondDD,n,3,ZeroForce,RupForces,Contours,Slopes)
-					AddanEntrytoWave(SoloCoh,n,4,ZeroForce,RupForces,Contours,Slopes)
+					AddanEntrytoWave(FirstRLC,n,0,ZeroForce,RupForces,Contours,Slopes,velocity,InvolAdj)
+					AddanEntrytoWave(SecondRLC,n,1,ZeroForce,RupForces,Contours,Slopes,velocity,InvolAdj)
+					AddanEntrytoWave(FirstDD,n,2,ZeroForce,RupForces,Contours,Slopes,velocity,InvolAdj)
+					AddanEntrytoWave(SecondDD,n,3,ZeroForce,RupForces,Contours,Slopes,velocity,InvolAdj)
+					AddanEntrytoWave(SoloCoh,n,4,ZeroForce,RupForces,Contours,Slopes,velocity,InvolAdj)
 
 				
 				
 				
 				else
-					AddanEntrytoWave(FirstRLC,n,0,ZeroForce,RupForces,Contours,Slopes)
-					AddanEntrytoWave(FirstDD,n,1,ZeroForce,RupForces,Contours,Slopes)
-					AddanEntrytoWave(SecondDD,n,2,ZeroForce,RupForces,Contours,Slopes)
-					AddanEntrytoWave(FirstCoh,n,3,ZeroForce,RupForces,Contours,Slopes)
-					AddanEntrytoWave(SecondCoh,n,4,ZeroForce,RupForces,Contours,Slopes)
+					AddanEntrytoWave(FirstRLC,n,0,ZeroForce,RupForces,Contours,Slopes,velocity,InvolAdj)
+					AddanEntrytoWave(FirstDD,n,1,ZeroForce,RupForces,Contours,Slopes,velocity,InvolAdj)
+					AddanEntrytoWave(SecondDD,n,2,ZeroForce,RupForces,Contours,Slopes,velocity,InvolAdj)
+					AddanEntrytoWave(FirstCoh,n,3,ZeroForce,RupForces,Contours,Slopes,velocity,InvolAdj)
+					AddanEntrytoWave(SecondCoh,n,4,ZeroForce,RupForces,Contours,Slopes,velocity,InvolAdj)
 				
 				endif
 				break
 			
 			case 4:
-				AddanEntrytoWave(FirstRLC,n,0,ZeroForce,RupForces,Contours,Slopes)
-				AddanEntrytoWave(FirstDD,n,1,ZeroForce,RupForces,Contours,Slopes)
-				AddanEntrytoWave(SecondDD,n,2,ZeroForce,RupForces,Contours,Slopes)
-				AddanEntrytoWave(SoloCoh,n,3,ZeroForce,RupForces,Contours,Slopes)
+				AddanEntrytoWave(FirstRLC,n,0,ZeroForce,RupForces,Contours,Slopes,velocity,InvolAdj)
+				AddanEntrytoWave(FirstDD,n,1,ZeroForce,RupForces,Contours,Slopes,velocity,InvolAdj)
+				AddanEntrytoWave(SecondDD,n,2,ZeroForce,RupForces,Contours,Slopes,velocity,InvolAdj)
+				AddanEntrytoWave(SoloCoh,n,3,ZeroForce,RupForces,Contours,Slopes,velocity,InvolAdj)
 				
 				break
 			
@@ -905,19 +966,22 @@ Static Function ProcessFCs_RLCCohDock()
 	
 end
 
-Static Function AddanEntrytoWave(WaveIn,index,location,ZeroForce,RupFStr,ContourStr,SlopesStr)
+Static Function AddanEntrytoWave(WaveIn,index,location,ZeroForce,RupFStr,ContourStr,SlopesStr,Velocity,InvolAdj)
 
 	wave WaveIn
-	variable index,location,ZeroForce
+	variable index,location,ZeroForce,Velocity,InvolAdj
 	String RupFStr,ContourStr,SlopesStr
 	InsertPoints/M=0 0,1, WaveIn
-	
 	WaveIn[0][0]=index
 	WaveIn[0][1]=str2num(Stringfromlist(location,RupFStr))
 	WaveIn[0][2]=WaveIn[0][1]+ZeroForce
 	WaveIn[0][3]=str2num(Stringfromlist(location,ContourStr))
 	WaveIn[0][4]=str2num(Stringfromlist(location,SlopesStr))
-	
+	WaveIn[0][5]=Velocity
+	WaveIn[0][6]=WaveIn[0][1]*InvolAdj
+	WaveIn[0][7]=WaveIn[0][2]*InvolAdj
+	WaveIn[0][8]=WaveIn[0][4]*InvolAdj
+
 end
 
 Static Function CountEntries(ForceWave)
@@ -925,6 +989,32 @@ Static Function CountEntries(ForceWave)
 	String ForceRups=Stringbykey("RupForce",note(ForceWave),":","\r")
 	return itemsinlist(ForceRups)
 end
+
+Static Function CountTracesWithEvents(cutoff)
+	variable cutoff
+
+	string AllForceRet= wavelist("*Force_Ret",";","")
+
+	variable top=itemsinlist(AllFOrceRet)
+	
+	variable n
+		string WaveNote
+	make/free/n=(top) count
+	for(n=0;n<top;n+=1)
+		print "N:"+num2str(n)
+		wave ForceRetWave=$stringfromlist(n,AllForceRet)
+		if(CountEntries(ForceRetWave)>cutoff)
+				count[n]=1
+				else
+				count[n]=0
+		endif
+
+	endfor
+	wavestats/Q count
+	return v_sum
+end
+
+
 
 Static Function ReturnRelevantLCs()
 	
@@ -979,43 +1069,321 @@ Static Function ReturnRelevantLCs()
 
 end
 
+Static Function/S ListVelocitiesUsed()
+	make/free/n=0 WaveOut
+	variable n=0,m=0,TestCase
+	RecordAllVelocities(WaveOut)
+	make/free/n=1 SingleInc
+	SingleInc[0]=waveOut[0]
+	for(n=1;n<numpnts(waveOut);n+=1)
+		TestCase=0
+		for(m=0;m<numpnts(SingleInc);m+=1)
+			if(SingleInc[m]<waveOut[n]-3e-9||SingleInc[m]>waveOut[n]+3e-9)
+			
+			else
+			TestCase+=1
+			endif
+			
+			
+			
+		endfor
+		if(TestCase==0)
+			insertpoints 0,1, SingleInc
+			SingleInc[0]=waveOut[n]
+			endif
+	endfor
+	string returnstring=""
+	for(n=0;n<numpnts(SingleInc);n+=1)
+		returnstring+=num2str(SingleInc[n])+";"	
+	endfor
+	return returnstring
+end
+
+Static Function ProcessAllVelocities()
+
+	string AllVelocities=ListVelocitiesUsed()
+	variable tot=itemsinlist(AlLVelocities)
+	variable n,Velocity
+	for(n=0;n<tot;n+=1)
+	
+		Velocity=str2num(stringfromList(n,AllVelocities))
+		MakeRupForcesbyVelocity(Velocity)
+		MakeZRupForcesbyVelocity(Velocity)
+
+		MakeSlopesbyVelocity(Velocity)
+		MakeARupForcesbyVelocity(Velocity)
+		MakeAZRupForcesbyVelocity(Velocity)
+		MakeASlopesbyVelocity(Velocity)
+
+	endfor
+	
+
+end
+
 Static Function ReturnRupForces()
 	
 	wave FirstRLC,SecondRLC,FirstDD,SecondDD,SoloCoh,FirstCoh,SecondCoh
 
 	make/o/n=(dimsize(FirstRLC,0)) Rup_FirstRLC
 	Rup_FirstRLC=FirstRLC[p][1]
+	
 	make/o/n=(dimsize(SecondRLC,0)) Rup_SecondRLC
 	Rup_SecondRLC=SecondRLC[p][1]
+	
 	make/o/n=(dimsize(FirstDD,0)) Rup_FirstDD
 	Rup_FirstDD=FirstDD[p][1]
+	
 	make/o/n=(dimsize(SecondDD,0)) Rup_SecondDD
 	Rup_SecondDD=SecondDD[p][1]
+	
 	make/o/n=(dimsize(SoloCoh,0)) Rup_SoloCoh
 	Rup_SoloCoh=SoloCoh[p][1]
+	
 	make/o/n=(dimsize(FirstCoh,0)) Rup_FirstCoh
-	Rup_FirstCoh=FirstCoh[p][1]	
+	Rup_FirstCoh=FirstCoh[p][1]
+		
 	make/o/n=(dimsize(SecondCoh,0)) Rup_SecondCoh
 	Rup_SecondCoh=SecondCoh[p][1]
 	
 	Rup_FirstRLC*=-1;Rup_SecondRLC*=-1;Rup_FirstDD*=-1;
 	Rup_SecondDD*=-1;Rup_SoloCoh*=-1;Rup_FirstCoh*=-1;Rup_SecondCoh*=-1;
 	
-	
-//	wave First,Second,Third,Fourth,Fifth
-//
-//	make/o/n=(dimsize(First,0)) Rup1
-//	Rup1=First[p][1]
-//	make/o/n=(dimsize(Second,0)) Rup2
-//	Rup2=Second[p][1]
-//	make/o/n=(dimsize(Third,0)) Rup3
-//	Rup3=Third[p][1]
-//	make/o/n=(dimsize(Fourth,0)) Rup4
-//	Rup4=Fourth[p][1]
-//	make/o/n=(dimsize(Fifth,0)) Rup5
-//	Rup5=Fifth[p][1]
-//	Rup5*=-1;Rup4*=-1;Rup3*=-1;Rup2*=-1;Rup1*=-1
 
+end
+
+Static Function MakeRupForcesbyVelocity(Velocity)
+	variable Velocity
+	wave FirstRLC,SecondRLC,FirstDD,SecondDD,SoloCoh,FirstCoh,SecondCoh
+	variable nmpsvelocity=round(Velocity/1e-9)
+	variable column=1
+	make/o/n=0 WaveOut
+	PullandPare(FirstRLC,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("Rup_FirstRLC_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(SecondRLC,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("Rup_SecondRLC_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(FirstDD,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("Rup_FirstDD_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(SecondDD,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("Rup_SecondDD_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(SoloCoh,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("Rup_SoloCoh_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(FirstCoh,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("Rup_FirstCoh_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(SecondCoh,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("Rup_SecondCoh_"+num2str(nmpsvelocity))
+
+end
+
+Static Function MakeARupForcesbyVelocity(Velocity)
+	variable Velocity
+	wave FirstRLC,SecondRLC,FirstDD,SecondDD,SoloCoh,FirstCoh,SecondCoh
+	variable nmpsvelocity=round(Velocity/1e-9)
+	variable column=6
+	make/o/n=0 WaveOut
+	PullandPare(FirstRLC,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("ARup_FirstRLC_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(SecondRLC,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("ARup_SecondRLC_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(FirstDD,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("ARup_FirstDD_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(SecondDD,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("ARup_SecondDD_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(SoloCoh,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("ARup_SoloCoh_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(FirstCoh,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("ARup_FirstCoh_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(SecondCoh,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("ARup_SecondCoh_"+num2str(nmpsvelocity))
+
+end
+
+Static Function MakeZRupForcesbyVelocity(Velocity)
+	variable Velocity
+	wave FirstRLC,SecondRLC,FirstDD,SecondDD,SoloCoh,FirstCoh,SecondCoh
+	variable nmpsvelocity=round(Velocity/1e-9)
+	variable column=2
+
+	make/o/n=0 WaveOut
+	PullandPare(FirstRLC,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("ZRup_FirstRLC_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(SecondRLC,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("ZRup_SecondRLC_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(FirstDD,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("ZRup_FirstDD_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(SecondDD,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("ZRup_SecondDD_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(SoloCoh,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("ZRup_SoloCoh_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(FirstCoh,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("ZRup_FirstCoh_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(SecondCoh,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("ZRup_SecondCoh_"+num2str(nmpsvelocity))
+
+end
+
+Static Function MakeAZRupForcesbyVelocity(Velocity)
+	variable Velocity
+	wave FirstRLC,SecondRLC,FirstDD,SecondDD,SoloCoh,FirstCoh,SecondCoh
+	variable nmpsvelocity=round(Velocity/1e-9)
+	variable column=7
+
+	make/o/n=0 WaveOut
+	PullandPare(FirstRLC,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("AZRup_FirstRLC_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(SecondRLC,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("AZRup_SecondRLC_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(FirstDD,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("AZRup_FirstDD_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(SecondDD,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("AZRup_SecondDD_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(SoloCoh,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("AZRup_SoloCoh_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(FirstCoh,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("AZRup_FirstCoh_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(SecondCoh,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("AZRup_SecondCoh_"+num2str(nmpsvelocity))
+
+end
+
+Static Function MakeSlopesbyVelocity(Velocity)
+	variable Velocity
+	wave FirstRLC,SecondRLC,FirstDD,SecondDD,SoloCoh,FirstCoh,SecondCoh
+	variable nmpsvelocity=round(Velocity/1e-9)
+	variable column=8
+
+	make/o/n=0 WaveOut
+	PullandPare(FirstRLC,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("Slope_FirstRLC_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(SecondRLC,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("Slope_SecondRLC_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(FirstDD,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("Slope_FirstDD_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(SecondDD,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("Slope_SecondDD_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(SoloCoh,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("Slope_SoloCoh_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(FirstCoh,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("Slope_FirstCoh_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(SecondCoh,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("Slope_SecondCoh_"+num2str(nmpsvelocity))
+
+end
+
+
+Static Function MakeASlopesbyVelocity(Velocity)
+	variable Velocity
+	wave FirstRLC,SecondRLC,FirstDD,SecondDD,SoloCoh,FirstCoh,SecondCoh
+	variable nmpsvelocity=round(Velocity/1e-9)
+	variable column=4
+
+	make/o/n=0 WaveOut
+	PullandPare(FirstRLC,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("ASlope_FirstRLC_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(SecondRLC,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("ASlope_SecondRLC_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(FirstDD,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("ASlope_FirstDD_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(SecondDD,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("ASlope_SecondDD_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(SoloCoh,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("ASlope_SoloCoh_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(FirstCoh,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("ASlope_FirstCoh_"+num2str(nmpsvelocity))
+	
+	make/o/n=0 WaveOut
+	PullandPare(SecondCoh,column,WaveOut,Velocity)
+	duplicate/o WaveOut $("ASlope_SecondCoh_"+num2str(nmpsvelocity))
+
+end
+
+
+Static Function PullandPare(WaveIn,Colum,WaveOut,Velocity)
+	wave WaveIn,WaveOut
+	variable Velocity,Colum
+	variable n
+	make/free/n=(dimsize(WaveIn,0)) Test,CurrentVel
+	Test=WaveIn[p][Colum]
+	CurrentVel=WaveIn[p][5]
+	for(n=0;n<numpnts(CurrentVel);n+=1)
+		
+		if(CurrentVel[n]<Velocity-3e-9||CurrentVel[n]>Velocity+3e-9)
+		Test[n]=NaN
+		
+		endif
+	endfor
+		wavetransform zapNaNs Test
+
+	duplicate/o Test WaveOut
 end
 
 Static Function ReturnRupForcesZero()
@@ -1265,6 +1633,47 @@ Static Function FakeApproach(InputForceWave,InputSepWave,Ratio,OutputForceWave,O
 		note/K OutputSepWave,note (InputSepWave)
 
 end
+
+function PlotAll()
+	string AllForce=wavelist("*Force_ret",";","")
+	variable tot=itemsinlist(AllForce)
+	
+	variable n,offset
+	for(n=0;n<tot;n+=1)
+		wave w1=$stringfromlist(n,AllForce)
+		wave w2=$replacestring("Force",nameofwave(w1),"Sep")
+		if(n==0)
+			Display w1 vs w2
+		else
+			appendtograph w1 vs w2
+		endif
+		offset= -1*w2[-1*str2num(stringbykey("DE_FeatherZero",note(w1),":","\r"))]
+		ModifyGraph offset($nameofwave(w1))={offset,0}
+
+	
+	endfor
+	ModifyGraph muloffset={0,-1}
+
+
+
+end
+
+Static Function makeWaveNameList(Textwave)
+	wave/T Textwave
+	variable bottom,top
+	string AllForceRet= wavelist("*Force_Ret",";","")
+	String ForceWaveList="",SepWaveList=""
+		Bottom=0
+		top=itemsinlist(AllFOrceRet)
+	variable n
+	make/t/free/n=(top) FreeNames
+	//
+	for(n=bottom;n<top;n+=1)
+		FreeNames[n]= stringfromlist(n,AllForceRet)
+	endfor
+	duplicate/t/o FreeNames Textwave
+end
+
 //
 //
 //Function iterateUnit(Number)

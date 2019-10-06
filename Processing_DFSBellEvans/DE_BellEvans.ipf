@@ -1,7 +1,7 @@
 ﻿#pragma TextEncoding = "UTF-8"
 #pragma rtGlobals=3		// Use modern global access method and strict wave access.
 #pragma ModuleName=DE_BellEvans
-Static Function PareandAverage(Rup,Slope,mAXfORCE)
+Static Function/S PareandAverage(Rup,Slope,mAXfORCE)
 	wave Rup,Slope
 	VARIABLE mAXfORCE	
 	
@@ -39,7 +39,31 @@ Static Function PareandAverage(Rup,Slope,mAXfORCE)
 	print AvgRup
 	print StdRup
 	print SEMRup
+	string ReturnStr=""
+	ReturnStr+=num2str(AvgRup)+";"
+	ReturnStr+=num2str(StdRup)+";"
+	ReturnStr+=num2str(SEMRup)+";"
+	ReturnStr+=num2str(AvgSlope)+";"
+	ReturnStr+=num2str(StdSlope)+";"
+	ReturnStr+=num2str(SEMSlope)+";"
+	return ReturnStr
+	
+end
 
+Static Function AverageandInsert(Rup,Slope,maxforce)
+	wave Rup,Slope
+	variable maxforce
+	String Result=PareandAverage(Rup,Slope,mAXfORCE)
+	variable tot=itemsinlist(Result)
+	variable n
+	for(n=0;n<tot;n+=1)
+		wave w1=$"wave"+num2str(n)
+		insertpoints numpnts(w1),1, w1
+		w1[numpnts(w1)-1]=str2num(stringfromlist(n,Result))
+
+	
+	endfor
+	
 end
 
 Function BellEvans(RuptureForce,Slope)
