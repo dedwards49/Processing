@@ -215,44 +215,84 @@ Static Function LoadTheHMMOutput(options)
 
 end
 
+Static Function RunTheHMMFitting()
+
+	string saveDF = GetDataFolder(1)
+	ControlInfo/W=PythonHMMPanel de_HMMPy_check0
+	String NameofRawwave
+	variable CorrectBG=v_value
+	controlinfo de_HMMPy_popup0
+	String BaseFoldStr=S_value
+	SetDataFolder BaseFoldStr
+	
+	controlinfo de_HMMPy_popup1
+	wave w1=$S_value
+	wave/T parmWave=root:DE_HMMPython:MenuStuff:ParmWave
+	variable filtering=str2num(parmWave[6][1])
+					
+
+					
+	if(waveexists($(nameofwave(w1)+"_drift"))==0)
+		DetermineDrift()
+	else
+	endif
+	wave DriftWave=$(S_value+"_drift")
+	newdataFolder/o/S $(BaseFoldStr+"HMMFit")
+				
+					
+	if(CorrectBG==1)
+		NameofRawwave=nameofwave(w1)
+		Interpolate2/T=2/N=(numpnts(w1))/Y=$(nameofwave(DriftWave)+"_INT") DriftWave
+		wave DriftWaveInt=$(nameofwave(w1)+"_drift_INT")
+		duplicate/o w1 $(NameofRawwave+"_BGC")
+		wave BGC=$(NameofRawwave+"_BGC")
+		BGC-=DriftWaveInt
+		RunTheHMM(BGC,filtering)
+
+					
+	else
+		RunTheHMM(w1,filtering)
+
+	endif 
+
+
+	duplicate/o $"FitWave0" $(S_value+"_Fit")
+	duplicate/o $"StateWave0" $(S_value+"_States")
+	duplicate/o $"TransitionMatrix0" $(S_value+"_Trans")
+	duplicate/o $"MeanWave0" $(S_value+"_Mean")
+
+	wave MeanWave= $(S_value+"_Mean")
+	if(CorrectBG==1)
+		duplicate/o $"Test1" $(S_value+"_Perfect")
+		DE_HMM#PlotandProcessHMM($(S_value+"_States"),w1,$(S_value+"_Perfect"),S_value,MeanWave[0]*1e-9,MeanWave[1]*1e-9)
+		TextBox/C/N=Titl/F=0/A=MCl/X=0/Y=58 "\\f01\\Z15\\F'Bodoni MT'"+nameofwave(w1)+" BG Flattened Python HMM"
+		TextBox/C/N=Sm/F=0/A=MCl/X=-44/Y=53.65 "\Z11\F'Times New Roman'Smoothing: "+num2str(filtering)
+
+	else
+		duplicate/o $"Test1" $(S_value+"_Sm")
+		DE_HMM#PlotandProcessHMM($(S_value+"_States"),w1,$(S_value+"_Sm"),S_value,MeanWave[0]*1e-9,MeanWave[1]*1e-9)
+		TextBox/C/N=Titl/F=0/A=MC/X=0/Y=58 "\\f01\\Z15\\F'Bodoni MT'"+nameofwave(w1)+" Uncorrected Python HMM"
+		TextBox/C/N=Sm/F=0/A=MCl/X=-44/Y=53.65 "\Z11\F'Times New Roman'Smoothing: "+num2str(filtering)
+
+	endif 
+	killwaves $"FitWave0", $"StateWave0",$"TransitionMatrix0",$"test1",$"MeanWave0"
+	SetDataFolder saveDF
+
+
+
+end
+
 Static Function ButtonProc(ba) : ButtonControl
 	STRUCT WMButtonAction &ba
-
+	ControlInfo/W=PythonHMMPanel de_HMMPy_check0
+	String NameofRawwave
+	variable CorrectBG=v_value
 	switch( ba.eventCode )
 		case 2: // mouse up
 			string saveDF 
 			strswitch(ba.ctrlName)
 				case "de_HMMPy_Button0":
-					
-					
-					saveDF = GetDataFolder(1)
-					controlinfo de_HMMPy_popup0
-					SetDataFolder s_value
-					controlinfo de_HMMPy_popup1
-					wave w1=$S_value
-					wave/T parmWave=root:DE_HMMPython:MenuStuff:ParmWave
-
-					if(waveexists($(nameofwave(w1)+"_drift"))==0)
-						DetermineDrift()
-					else
-					endif
-					wave DriftWave=$(S_value+"_drift")
-					variable filtering=str2num(parmWave[6][1])
-
-					RunTheHMM(w1,DriftWave,filtering)
-
-
-					duplicate/o $"FitWave0" $(S_value+"_Fit")
-					duplicate/o $"StateWave0" $(S_value+"_States")
-					duplicate/o $"TransitionMatrix0" $(S_value+"_Trans")
-					duplicate/o $"MeanWave0" $(S_value+"_Mean")
-					wave MeanWave= $(S_value+"_Mean")
-					//print MeanWave
-					duplicate/o $"Test1" $(S_value+"_Perfect")
-					DE_HMM#PlotandProcessHMM($(S_value+"_States"),w1,$(S_value+"_Perfect"),S_value,MeanWave[0]*1e-9,MeanWave[1]*1e-9)
-//
-					killwaves $"FitWave0", $"StateWave0",$"TransitionMatrix0",$"test1"
-					SetDataFolder saveDF
+					RunTheHMMFitting()
 					break
 				
 				case "de_HMMPy_Button1":
@@ -262,11 +302,13 @@ Static Function ButtonProc(ba) : ButtonControl
 					controlinfo de_HMMPy_popup1
 					wave w1=$S_value
 					DetermineDrift()
+					SetDataFolder saveDF
 					break
 				case "de_HMMPy_Button2":
 					
 					
 					saveDF = GetDataFolder(1)
+
 					controlinfo de_HMMPy_popup0
 					SetDataFolder s_value
 					controlinfo de_HMMPy_popup1
@@ -278,15 +320,66 @@ Static Function ButtonProc(ba) : ButtonControl
 					else
 					endif
 					wave DriftWave=$(S_value+"_drift")
-					make/o/n=0 TestSeries_TVD,TestSeries_SVG
-					  TestSeries_TVD[0]= {5e-10,1e-09,2e-09,5e-09,6e-09,7e-09,8e-09,9e-09,1e-08,1.2e-08,1.5e-08,2e-08,2.5e-08,3e-08}
- 					 TestSeries_SVG[0]= {25,51,75,101,151,201,251,301,401,501,601,701,801,901,1001,1251,1501,1751,2001,2251,2501,2751,3001,3251,3501,3751,4001}
-					make/o/c/n=0 TestResult_TVD,TestResult_SVG
-					RunASeries(w1,driftwave,TestSeries_TVD,TestResult_TVD)
-					RunASeries(w1,driftwave,TestSeries_SVG,TestResult_SVG)
+					controlinfo de_HMMPy_popup0
+					NewDataFolder/o/S $(s_value+"TestSeries")
+					killdatafolder/Z DetailedResults
 
-					killwaves $"FitWave0", $"StateWave0",$"TransitionMatrix0",$"test1"
+					make/o/n=0 TestSeries_TVD,TestSeries_SVG
+					TestSeries_TVD[0]= {5e-10,1e-09,2e-09,5e-09,6e-09,7e-09,8e-09,9e-09,1e-08,1.2e-08,1.5e-08,2e-08,2.5e-08,3e-08,5e-8,7e-8,10e-8,15e-8}
+					TestSeries_SVG[0]= {25,51,75,101,151,201,251,301,401,501,601,701,801,901,1001,1251,1501,1751,2001,2251,2501,2751,3001,3251,3501,3751,4001}
+					TestSeries_SVG*=5
+					//TestSeries_TVD[0]= {50e-10,100e-09}
+					//TestSeries_SVG[0]= {501,701}
+					make/o/c/n=0 TestResult_TVD,TestResult_SVG
+					make/o/c/n=0 TestResult_TVD,TestResult_SVG
+
+					
+					if(CorrectBG==1)
+						NameofRawwave=nameofwave(w1)
+						Interpolate2/T=2/N=(numpnts(w1))/Y=$(nameofwave(DriftWave)+"_INT") DriftWave
+						wave DriftWaveInt=$(nameofwave(w1)+"_drift_INT")
+						duplicate/o w1 $(NameofRawwave+"_BGC")
+						wave BGC=$(NameofRawwave+"_BGC")
+						BGC-=DriftWaveInt
+						RunASeries(BGC,TestSeries_SVG,TestResult_SVG)
+						RunASeries(BGC,TestSeries_TVD,TestResult_TVD)
+
+					
+					else
+						RunASeries(w1,TestSeries_SVG,TestResult_SVG)
+						RunASeries(w1,TestSeries_TVD,TestResult_TVD)
+
+					endif
+					wave ResWave
+					killwaves ResWave
+					Display/N=Series TestResult_SVG vs TestSeries_SVG
+					appendtograph/W=Series TestResult_SVG vs TestSeries_SVG
+					appendtograph/W=Series/T TestResult_TVD vs TestSeries_TVD
+					appendtograph/W=Series/T TestResult_TVD vs TestSeries_TVD
+					modifygraph/W=Series cmplxMode(TestResult_SVG)=1
+					modifygraph/W=Series cmplxMode($"TestResult_SVG#1")=2
+					modifygraph/W=Series cmplxMode(TestResult_TVD)=1
+					modifygraph/W=Series cmplxMode($"TestResult_TVD#1")=2
 					SetDataFolder saveDF
+ 
+					break
+					
+				case "de_HMMPy_Button3":
+					saveDF = GetDataFolder(1)
+					controlinfo de_HMMPy_popup0
+					SetDataFolder s_value
+
+					controlinfo de_HMMPy_popup1
+					wave w1=$S_value
+					controlinfo de_HMMPy_popup0
+
+					NewDataFolder/o/S $(s_value+"SplitFit")
+					wave/T parmWave=root:DE_HMMPython:MenuStuff:ParmWave
+					variable filtering=str2num(parmWave[6][1])
+
+					DE_EquilJump#StateandLifetimeswithFiltering(w1,filtering)
+					SetDataFolder saveDF
+
 					break
 			endswitch
 			break
@@ -308,76 +401,71 @@ Static Function Process(StateWave)
 	DE_HMM#PlotandProcessHMM(StateWave,RawWave,$(S_value+"_Perfect"),S_value,MeanWave[0]*1e-9,MeanWave[1]*1e-9)
 
 end
-Function RunASeries(w1,driftwave,filteringwave,ResWave)
-	wave w1,driftwave,filteringwave
+Function RunASeries(w1,filteringwave,ResWave)
+	wave w1,filteringwave
 	wave/c ResWave
 	string wavenamestring=nameofwave(w1)
 	string Basename
 	variable n=0
 	variable filtering
+	newDataFolder/O DetailedResults
 	make/c/free/n=(numpnts(filteringwave)) FreeResults
 	for(n=0;n<numpnts(filteringwave);n+=1)
 	
 		filtering=filteringwave[n]
-		RunTheHMM(w1,DriftWave,filtering)
+		RunTheHMM(w1,filtering)
 		wave trans=$"TransitionMatrix0"
 		variable toprate=trans[0][1]/dimdelta($"Test1",0)
 		variable botrate=trans[1][0]/dimdelta($"Test1",0)
 		FreeResults[n]=cmplx(1/toprate,1/botrate)
-
+		print num2str(filtering)
 		Basename=wavenamestring+"_"+num2str(filtering)
-		duplicate/o $"FitWave0" $(Basename+"_Fit")
-		duplicate/o $"StateWave0" $(Basename+"_States")
-		duplicate/o $"TransitionMatrix0" $(Basename+"_Trans")
-		duplicate/o $"MeanWave0" $(Basename+"_Mean")
-		wave MeanWave= $(Basename+"_Mean")
-	//	print MeanWave
-		duplicate/o $"Test1" $(Basename+"_Perfect")
+				Basename=replacestring("-",Basename,"m")
+				Basename=replacestring(".",Basename,"p")
+
+		duplicate/o $"FitWave0" $(":DetailedResults:"+Basename+"_Fit")
+		duplicate/o $"FitWave0" $(":DetailedResults:"+Basename+"_Fit")
+		duplicate/o $"StateWave0" $(":DetailedResults:"+Basename+"_States")
+		duplicate/o $"TransitionMatrix0" $(":DetailedResults:"+Basename+"_Trans")
+		duplicate/o $"MeanWave0" $(":DetailedResults:"+Basename+"_Mean")
+		duplicate/o $"Test1" $(":DetailedResults:"+Basename+"_Fitted")
+		killwaves/Z $"FitWave0", $":StateWave0",$"TransitionMatrix0",$"MeanWave0" ,$"Test1"
 	endfor
 	duplicate/o/c FreeResults ResWave
 
 end
 
-Static Function RunTheHMM(w1,DriftWave,filtering)
-	Wave w1,DriftWave
+Static Function RunTheHMM(w1,filtering)
+	Wave w1
 	variable filtering
-	String S_Value=nameofwave(w1)
-	Interpolate2/T=2/N=(numpnts(w1))/Y=$(nameofwave(DriftWave)+"_INT") DriftWave
-	wave DriftWaveInt=$(nameofwave(w1)+"_drift_INT")
-	duplicate/o w1 $(S_value+"_BGC")
-	wave BGC=$(S_value+"_BGC")
-	BGC-=DriftWaveInt
+	
 	//killwaves DriftWaveInt
 					
-	duplicate/o BGC Test1
+	duplicate/o w1 Test1
 	if(filtering>=1)
 		Smooth/S=2 Filtering,Test1
 	else
-		DE_Filtering#TVD1D_denoise(BGC,filtering,Test1)
+		DE_Filtering#TVD1D_denoise(w1,filtering,Test1)
 	endif
 					
 	OutportTrace(Test1)
 	make/free/n=0 options
-	options={str2num(stringbykey("State1Rate",note(DriftWave),":","\r")),1e9*str2num(stringbykey("State1Loc",note(DriftWave),":","\r")),1e9*str2num(stringbykey("State2Loc",note(DriftWave),":","\r"))}
+	options={str2num(stringbykey("State1Rate",note(w1),":","\r")),1e9*str2num(stringbykey("State1Loc",note(w1),":","\r")),1e9*str2num(stringbykey("State2Loc",note(w1),":","\r"))}
 	RunHMMOutput(options)
 	SetScale/P x pnt2x(Test1,0),dimdelta(Test1,0),"", $"FitWave0", $"StateWave0"
+
 	wave trans=$"TransitionMatrix0"
 	variable toprate=trans[0][1]/dimdelta(Test1,0)
 	variable botrate=trans[1][0]/dimdelta(Test1,0)
-	print filtering
+	String NewNoteInfo=note(w1)
+	NewNoteInfo=replacestringbykey("DE_HMM_URate",NewNoteInfo,num2str(toprate),":","\r")
+	NewNoteInfo=replacestringbykey("DE_HMM_LRate",NewNoteInfo,num2str(botrate),":","\r")
+	note/K w1, NewNoteInfo
+	note/K $"StateWave0", NewNoteInfo
+	note/K $"FitWave0", NewNoteInfo
+
 	print 1/toprate
 	print 1/botrate
-				
-//	duplicate/o $"FitWave0" $(S_value+"_Fit")
-//	duplicate/o $"StateWave0" $(S_value+"_States")
-//	duplicate/o $"TransitionMatrix0" $(S_value+"_Trans")
-//	duplicate/o $"MeanWave0" $(S_value+"_Mean")
-//	wave MeanWave= $(S_value+"_Mean")
-//	duplicate/o Test1 $(S_value+"_Perfect")
-//	DE_HMM#PlotandProcessHMM($(S_value+"_States"),w1,$(S_value+"_Perfect"),S_value,MeanWave[0]*1e-9,MeanWave[1]*1e-9)
-//
-//	killwaves $"FitWave0", $"StateWave0",$"TransitionMatrix0"
-//	SetDataFolder saveDF
 
 
 end
@@ -421,12 +509,13 @@ Static Function DetermineDrift()
 	variable State2Loc=((HidMarParms0[1][0])+(HidMarParms0[1][1]))*1e-9
 	variable State1Rate=(HidMarParms0[1][dimsize(HidMarParms0,1)-3])*dimdelta(Test1,0)
 	variable State2Rate=(HidMarParms0[1][dimsize(HidMarParms0,1)-2])*dimdelta(Test1,0)
-	string NoteString=""
+	string NoteString=note(w1)
 	NoteString=ReplaceStringbyKey("State1Loc",NoteString,num2str(State1Loc),":","\r")
 	NoteString=ReplaceStringbyKey("State2Loc",NoteString,num2str(State2Loc),":","\r")
 	NoteString=ReplaceStringbyKey("State1Rate",NoteString,num2str(State1Rate),":","\r")
 	NoteString=ReplaceStringbyKey("State2Rate",NoteString,num2str(State2Rate),":","\r")
 	note/K Driftwave NoteString
+	note/K w1 NoteString
 	setscale/P x dimoffset(test1,0), dimdelta(test1,0), "s",  $(S_value+"_drift"),$(S_value+"_DriftFit")//ensuring scaling of input and output wave are the same
 	duplicate/o Test1 $(S_value+"_HmmDriftFit")
 	dowindow DriftFit
@@ -539,6 +628,7 @@ Window PythonHMMPanel() : Panel
 	Button de_HMMPy_button0,pos={250,110},size={150,20},proc=DE_HMMPython#ButtonProc,title="HMM!"
 	Button de_HMMPy_button1,pos={250,140},size={150,20},proc=DE_HMMPython#ButtonProc,title="Recalc Drift!"
 	Button de_HMMPy_button2,pos={250,170},size={150,20},proc=DE_HMMPython#ButtonProc,title="Run a Series!"
+	Button de_HMMPy_button3,pos={50,110},size={150,20},proc=DE_HMMPython#ButtonProc,title="Count by Splitting"
 
 	PopupMenu de_HMMPy_popup0,pos={250,2},size={129,21}
 	PopupMenu de_HMMPy_popup0,mode=1,popvalue="X",value= #"DE_PanelProgs#ListFolders()"
@@ -549,6 +639,7 @@ Window PythonHMMPanel() : Panel
 	ListBox DE_HMMPy_list0,pos={400,2},size={175,150},proc=DE_HMMPython#ListBoxProc,listWave=root:DE_HMMPython:MenuStuff:ParmWave
 	ListBox DE_HMMPy_list0,selWave=root:DE_HMMPython:MenuStuff:SelWave,editStyle= 2,userColumnResize= 1,widths={70,40,70,40}
 
+	Checkbox DE_HMMPY_check0,pos={250,65},size={150,20},title="Correct BG?"
 EndMacro
 
 Static Function/S ListWaves()
@@ -557,7 +648,7 @@ Static Function/S ListWaves()
 	saveDF = GetDataFolder(1)
 	controlinfo de_HMMPy_popup0
 	SetDataFolder s_value
-	String list = WaveList("*", ";", "")
+	String list = WaveList("*Sep_1", ";", "")+WaveList("*Sep_2", ";", "")+WaveList("*Sep_3", ";", "")
 	SetDataFolder saveDF
 	return list
 

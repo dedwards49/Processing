@@ -20,7 +20,7 @@ Function BatchProcess(Threshold,tau,[bottom,top])
 	string WaveNote
 	//
 	for(n=bottom;n<top;n+=1)
-		print "N:"+num2str(n)
+		print "N:"+num2str(n)+" "+stringfromlist(n,AllForceRet)
 		wave ForceRetWave=$stringfromlist(n,AllForceRet)
 		wave ForceExtWave=$replacestring("Ret",nameofwave(ForceRetWave),"Ext")
 		wave SepRetWave=$replacestring("Force",nameofwave(ForceRetWave),"Sep")
@@ -1672,6 +1672,47 @@ Static Function makeWaveNameList(Textwave)
 		FreeNames[n]= stringfromlist(n,AllForceRet)
 	endfor
 	duplicate/t/o FreeNames Textwave
+end
+
+Static Function RupLcChangePair(ForcesOut,LCsOut)
+	wave ForcesOut,LCsOut
+	
+	string AllForceRet= wavelist("*Force_Ret",";","")
+	variable 		start=0
+	variable top=itemsinlist(AllFOrceRet)
+	string RupForces,Contours,ZeroForce,Slopes
+	variable listlen
+	variable n,m
+	make/free/n=0 ForceFree,Lcfree
+	for(n=start;n<top;n+=1)
+		string A=stringfromlist(n,AllForceRet)
+		if(StrSearch(A,"fit",0)==-1)
+			wave ForceRetWave=$stringfromlist(n,AllForceRet)
+			wave ForceExtWave=$replacestring("Ret",nameofwave(ForceRetWave),"Ext")
+			wave SepRetWave=$replacestring("Force",nameofwave(ForceRetWave),"Sep")
+			wave SepExtWave=$replacestring("Force",nameofwave(ForceExtWave),"Sep")
+			wave FRetSm=$replacestring("Force_Ret",nameofwave(ForceRetWave),"FSm")
+			wave SRetSm=$replacestring("Force_Ret",nameofwave(ForceRetWave),"SSm")
+			wave ThisEvent=$replacestring("Force_Ret",nameofwave(ForceRetWave),"Starts")
+			RupForces=Stringbykey("RupForce",note(ForceRetWave),":","\r")
+		
+			Contours=Stringbykey("ContourLengths",note(ForceRetWave),":","\r")
+			ZeroForce=(Stringbykey("DE_FOff",note(ForceRetWave),":","\r"))
+			Slopes=Stringbykey("Slopes",note(ForceRetWave),":","\r")
+			listlen=itemsinlist(RupForces)
+			for(m=0;m<listlen-1;m+=1)
+				insertpoints 0,1,ForceFree,Lcfree
+				ForceFree[0]=str2num(stringfromlist(m,RupForces))
+				Lcfree[0]=str2num(stringfromlist(m+1,Contours))-str2num(stringfromlist(m,Contours))
+		
+			endfor
+			//killwaves FRetSm,SRetSm
+		else
+		endif
+	endfor
+	duplicate/o ForceFree ForcesOut
+	duplicate/o Lcfree LCsOut
+
 end
 
 //

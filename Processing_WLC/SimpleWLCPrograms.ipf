@@ -343,7 +343,7 @@ function WLC_Arb(Parms)
 	make/o/n=(1000*num) WLC_Force,WLC_Ext,WLC_Color
 	variable i
 	for(i=0;i<=num-1;i+=1)
-		WLC_Ext[i*v_npnts,(i+1)*v_npnts-1]=500e-9*(p-i*1000)/999
+		WLC_Ext[i*v_npnts,(i+1)*v_npnts-1]=1000e-9*(p-i*1000)/999
 
 		WLC_Force[i*v_npnts,(i+1)*v_npnts-1]=WLC(WLC_Ext[p],Parms[i][0],Parms[i][2],Parms[i][1])
 		WLC_Color[i*v_npnts,(i+1)*v_npnts-1]=0
@@ -586,6 +586,27 @@ variable last,Nug2Step,ELCstep
 
 
 end
+
+function TestMakeParmspXYMonster(last,ddFln1,ddFln2,LAstep)
+	variable last,ddFln1,ddFln2,LAstep
+	make/o/n=(6,3) WLCParms
+	WLCParms[][0]=.4e-9
+	WLCParms[][1]=298
+	WLCParms[3][2]=last
+	WLCParms[2][2]=last-ddFln2
+	WLCParms[1][2]=last-ddFln2-ddFln1
+	WLCParms[0][2]=last-ddFln2-ddFln1-LAstep
+
+
+	WLC_Arb(WLCParms)
+	wave WLC_Force,WLC_Ext
+	duplicate/o WLC_Force Monster_WLC_Force
+	duplicate/o WLC_Ext Monster_WLC_Ext
+	killwaves WLC_Force WLC_Ext
+
+
+end
+
 function TestMakeParmsRLCBD(last,Nug2Step,RLCstep1,RLCStep2)
 variable last,Nug2Step,RLCstep1,RLCStep2
 	make/o/n=(7,3) WLCParms

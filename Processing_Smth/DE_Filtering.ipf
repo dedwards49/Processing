@@ -385,31 +385,20 @@ ThreadSafe Static Function AcausalLPFilter(Data,FilterRate,[StartIndex,StopIndex
 	TempOffset = Data[RampPoints*2]-Data[RampPoints]
 	Data[0,RampPoints-1] = Data[P+RampPoints]-TempOffset
 
-//DoUpdate
-
-
-
-
 
 	FilterIIR/CASC/LO=(IgorFilterRate)/ORD=2 Data
-//DoUpdate
 	DeletePoints/M=0 0,RampPoints,Data
 	Reverse/P Data
-//DoUpdate
 	Offset2 = Data[0]*2-Data[RampPoints]
 	Offset += Offset2
-//DoUpdate
 	FastOp Data = Data+(-Offset2)
 	InsertPoints/M=0 0,RampPoints,Data
 	TempOffset = Data[RampPoints*2]-Data[RampPoints]
 	Data[0,RampPoints-1] = Data[P+RampPoints]-TempOffset
-//DoUpdate
 	FilterIIR/CASC/LO=(IgorFilterRate)/ORD=2 Data
 	DeletePoints/M=0 0,RampPoints,Data
-//DoUpdate
-//DoUpdate
+
 	FastOp Data = Data+(Offset)
-//DoUpdate
 
 
 	if (UseSubRange)
@@ -486,11 +475,6 @@ Static Function MakeZPositionFinal(Zposition,ForceDist,[Rate])
 	
 	endif
 
-
-	
-
-
-
 	MakeZPositionNew(Zposition,Rate)
 	
 	return(Rate)	
@@ -502,9 +486,6 @@ Static Function MakeZPositionNew(Zposition,Rate)
 
 	AcausalLPFilter(ZPosition,Rate)
 	return(0)
-
-
-	
 	
 End //MakeZPositionNew
 
@@ -533,7 +514,7 @@ Static Function PointAtWaveandSmooth(InputForceWave,points)
 
 end
 
-Static Function/S AutofilterAForceSep(ForceWave,Type,Pnts,[WindowString])
+Static Function AutofilterAForceSep(ForceWave,Type,Pnts,[WindowString])
 	Wave ForceWave
 	String Type,WindowString
 	Variable Pnts

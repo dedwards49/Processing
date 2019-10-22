@@ -1420,7 +1420,7 @@ Macro MultiRampViewer() : Panel
 	PopupMenu de_Viewer_popup0,pos={250,2},size={129,21}
 	PopupMenu de_Viewer_popup0,mode=1,popvalue="X",value= #"DE_PanelProgs#ListFolders()"
 	PopupMenu de_Viewer_popup1,pos={250,40},size={129,21},proc=DE_MultiRampViewer#PopMenuProc
-	PopupMenu de_Viewer_popup1,mode=1,popvalue="X",value= #"DE_MultiRampViewer#ListWaves(\"de_Viewer_popup0\",\"*Force\")"
+	PopupMenu de_Viewer_popup1,mode=1,popvalue="X",value= #"DE_MultiRampViewer#ListWaves(\"de_Viewer_popup0\",\"*Force*\")"
 	
 	PopupMenu de_Viewer_popup2,pos={550,2},size={129,21}
 	PopupMenu de_Viewer_popup2,mode=1,popvalue="X",value= #"DE_PanelProgs#ListFolders()"

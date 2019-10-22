@@ -70,13 +70,15 @@ Static Function SaveOutAllWaves(SearchString)
 	display/N=TMP_D
 	for(n=0;n<tot;n+=1)
 		Wave ForceWave=$stringfromlist(n,AllForce)
+		if(waveexists($ReplaceString("Force",nameofwave(ForceWave),"Sep"))==0)
+		else
 		Wave SepWave=$ReplaceString("Force",nameofwave(ForceWave),"Sep")
 		duplicate/o ForceWave $(replaceString("Force",nameofwave(ForceWave),"Time"))
 		wave TimeWave=$(replaceString("Force",nameofwave(ForceWave),"Time"))
 		Appendtograph/W=TMP_D TimeWave
 		Appendtograph/W=TMP_D ForceWave vs SepWave
 		TimeWave=pnt2x(ForceWave,p)
-
+		endif
 	endfor
 	
 	
@@ -87,11 +89,13 @@ Static Function SaveOutAllWaves(SearchString)
 	KillWindow TMP_D
 	for(n=0;n<tot;n+=1)
 		Wave ForceWave=$stringfromlist(n,AllForce)
-		
+		if(waveexists($ReplaceString("Force",nameofwave(ForceWave),"Sep"))==0)
+		else
 		wave TimeWave=$(replaceString("Force",nameofwave(ForceWave),"Time"))
 
 		TimeWave=pnt2x(ForceWave,p)
 		killwaves timewave
+		endif
 	endfor
 end
 

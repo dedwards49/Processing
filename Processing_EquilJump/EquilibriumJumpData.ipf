@@ -340,7 +340,7 @@ End
 	variable filtering
 	variable StartingState,FoldedLTAvg,UnfoldedLTAvg
 	DFREF startingDFR=GetDataFolderDFR( )
-	setdatafolder GetWavesDataFolderDFR(w0)
+	//setdatafolder GetWavesDataFolderDFR(w0)
 	duplicate/o w0 $(nameofwave(w0)+"_Sm")
 	wave w1=$(nameofwave(w0)+"_Sm")
 	if(filtering>=1)
@@ -391,18 +391,18 @@ End
 	CalculateTwoStateLifeTimes(OutWave,FoldedLiftime,UnFoldedLiftime,StartingState)
 	FoldedLTAvg=mean(FoldedLiftime)
 	UnfoldedLTAvg= mean(UnFoldedLiftime)
-	make/o/n=(40) $(nameofwave(w1)+"_FLHist")
+	make/o/n=(20) $(nameofwave(w1)+"_FLHist")
 	wave FLTHist=$(nameofwave(w1)+"_FLHist")
-	Histogram/C/B={1e-5,(dimdelta(w1,0)*numpnts(w1)/numpnts(Outwave)/4),40} FoldedLiftime FLTHist
-	make/o/n=(40) $(nameofwave(w1)+"_UFLHist")
+	Histogram/C/B={1e-5,(FoldedLTAvg/3),20} FoldedLiftime FLTHist
+	make/o/n=(20) $(nameofwave(w1)+"_UFLHist")
 	wave UFLTHist=$(nameofwave(w1)+"_UFLHist")
-	Histogram/C/B={1e-5,(dimdelta(w1,0)*numpnts(w1)/numpnts(Outwave))/4,40} UnFoldedLiftime UFLTHist
+	Histogram/C/B={1e-5,UnfoldedLTAvg/3,20} UnFoldedLiftime UFLTHist
 	make/D/o/n=3 w_coefL1
-	w_coefL1[0]={0,100,1e-2}
+	w_coefL1[0]={0,100,foldedLTAvg}
 	CurveFit/W=2/Q/G/H="100"/NTHR=0 exp_XOffset kwCWave=w_coefL1 ,FLTHist /D
 	wave FLFit= $("fit_"+nameofwave(FLTHist))	
 	make/D/o/n=3 w_coefL2
-	w_coefL2[0]={0,100,1e-2}
+	w_coefL2[0]={0,100,UnfoldedLTAvg}
 	CurveFit/W=2/Q/G/H="100"/NTHR=0 exp_XOffset kwCWave=w_coefL2,UFLTHist /D 
 	wave UFLFit= $("fit_"+nameofwave(UFLTHist))	
 	wave WFIT=$("fit_"+nameofwave(w1Hist))				
@@ -415,6 +415,10 @@ End
 	sprintf lifetime2AS, "%0.2f",1e3*UnfoldedLTAvg		
 	TextBox/N=Lifetimes/X=0/Y=1/C/N=text0/F=0 "\\K(19712,44800,18944)Folded: "+lifetime1AS+"("+lifetime1S+") ms\r\\K(14848,32256,47104)UnFolded: "+lifetime2AS+"("+lifetime2S+") ms"
 	wave W_sigma,W_FindLevels,W_fitConstants,M_Jacobian
+	
+	TextBox/C/N=Titl/F=0/A=MC/X=0/Y=58 "\\f01\\Z15\\F'Bodoni MT'"+nameofwave(w1)+" Uncorrected Splitting"
+	TextBox/C/N=Sm/F=0/A=MCl/X=-44/Y=53.65 "\Z11\F'Times New Roman'Smoothing: "+num2str(filtering)
+	ModifyGraph margin(top)=21
 	killwaves w_coefs,w_coefL2,w_coefL1,W_sigma,W_FindLevels,W_fitConstants,M_Jacobian
 	SetDataFolder startingDFR
 
@@ -780,7 +784,7 @@ Static Function/S ListWaves()
 	saveDF = GetDataFolder(1)
 	controlinfo de_EQJ_popup0
 	SetDataFolder s_value
-	String list = WaveList("*Equil*", ";", "")
+	String list = WaveList("*Fast*", ";", "")
 	SetDataFolder saveDF
 	return list
 
