@@ -30,7 +30,6 @@ Static Function SelectRamp()
 	variable row=v_value
 	variable startret,mid,endext
 		controlinfo/W=MRViewer de_Viewer_check2
-
 	variable dwell=v_value
 	if(row==0)
 				

@@ -1598,8 +1598,8 @@ Static Function TraceSVA(sva) : SetVariableControl
 				StrSwitch(sva.ctrlName)
 				case "DE_ViewFECs0":
 					Controlinfo/W=ViewFEcs DE_ViewFECs1
-					•DE_MultiFEC#PlotOne(dval)
-					•DE_MultiFEC#PlotOne(dval,Trans=V_Value)
+					DE_MultiFEC#PlotOne(dval)
+					DE_MultiFEC#PlotOne(dval,Trans=V_Value)
 				break
 				
 				case "DE_ViewFECs1":

@@ -327,7 +327,7 @@ Static Function ButtonProc(ba) : ButtonControl
 					make/o/n=0 TestSeries_TVD,TestSeries_SVG
 					TestSeries_TVD[0]= {5e-10,1e-09,2e-09,5e-09,6e-09,7e-09,8e-09,9e-09,1e-08,1.2e-08,1.5e-08,2e-08,2.5e-08,3e-08,5e-8,7e-8,10e-8,15e-8}
 					TestSeries_SVG[0]= {25,51,75,101,151,201,251,301,401,501,601,701,801,901,1001,1251,1501,1751,2001,2251,2501,2751,3001,3251,3501,3751,4001}
-					TestSeries_SVG*=5
+					//TestSeries_SVG*=5
 					//TestSeries_TVD[0]= {50e-10,100e-09}
 					//TestSeries_SVG[0]= {501,701}
 					make/o/c/n=0 TestResult_TVD,TestResult_SVG

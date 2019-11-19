@@ -147,7 +147,7 @@ Static Function GenTracesinnm(DefV,ZSnsrV,Def,ZSnsr,Force,Sep,[Rate])
 		k*=1e-3
 	
 	endif
-
+	
 	variable LVDTSens=str2num(stringbykey("ZLVDTSens",note(DefV),":","\r"))
 	duplicate/free DefV TestDefl,TestZSnsr,TestForce,TestSep
 	duplicate/free ZSnsrV ,TestZSnsr,TestSep
@@ -185,12 +185,17 @@ Static Function ProcessVoltWaves(Type,DefV,ZVolt,BaseString,WaveNumber)
 	note/K ZVolt NewNote
 	make/o/n=0 Garbage1,Garbage2,IDefl,IZSen
 	string tracename
-
+	variable AppVel=str2num(stringbykey("ApproachVelocity",note(DefV),":","\r"))
+	variable RetVel=str2num(stringbykey("RetractVelocity",note(DefV),":","\r"))
 	variable cutpoint
 	strSwitch(Type)
 	
 		case "Multi":
-			GenTracesinnm(DefV,ZVolt,IDefl,IZSen,Garbage1,Garbage2)//,rate=1e2)
+		if(Retvel>400)
+			GenTracesinnm(DefV,ZVolt,IDefl,IZSen,Garbage1,Garbage2,rate=1e3)//,rate=1e2)
+			else
+						GenTracesinnm(DefV,ZVolt,IDefl,IZSen,Garbage1,Garbage2)//,rate=1e2)
+endif
 			make/free/n=0 Mbreaks
 			FindMultiBreaks(IDefl,IZSen,Mbreaks)
 			AddSectionNotes(IDefl,MBreaks)
@@ -315,7 +320,7 @@ Static Function FindMultiBreaks(DEFV,ZSensor,OutWave,[smoothing])
 	variable smoothing
 	wave DEFV,ZSensor,OutWave
 	if(paramisdefault(smoothing))
-		smoothing=501
+		smoothing=5
 	endif
 	variable AppVel=str2num(stringbykey("ApproachVelocity",note(DefV),":","\r"))
 	variable RetVel=str2num(stringbykey("RetractVelocity",note(DefV),":","\r"))

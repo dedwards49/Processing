@@ -298,7 +298,6 @@ static Function MakeSingleStateKey(Forcewave,RuptureWaveLeaving,RuptureWaveEnter
 	AboutToFinish[][4]=pnt2x(FW,AboutToFinish[p][0])
 	AboutToFinish[][1]=FW[AboutToFinish[p][0]]
 	AboutToFinish[][2]=CombinedV[p]
-	print/D AboutToFinish[1][0]
 	variable States=-1
 	for(n=0;n<dimsize(Combined,0);n+=1)
 		if(AboutToFinish[n][2]==2)
@@ -536,6 +535,8 @@ Static Function/C ReturnSeparationSlopes(SepWaveSm,CombinedWave,MinSpacing)
 	variable/C result=cmplx(v_avg,0)
 	wavestats/Q HoldontoUnFoldedSlope
 	result+=cmplx(0,v_avg)
+	wave w_coef,W_sigma
+	killwaves w_coef,W_sigma
 	return result
 
 end
@@ -1029,9 +1030,6 @@ Static Function/C ContourLengthDetermineCombined(ForceWaveSM,SepWaveSm,CombinedW
 		print w_coef
 	endif
 
-			
-		
-	//
 	make/free/n=4 HereYouAre
 	wavestats/Q HoldOnToCU
 	HereYouAre[0]=v_avg
@@ -1049,11 +1047,13 @@ Static Function/C ContourLengthDetermineCombined(ForceWaveSM,SepWaveSm,CombinedW
 	if(ParamisDefault(CopyWavesOUt)||CopyWavesOUt==0)
 	
 	else
-		duplicate/o FoldedSep FoldedSepa
-		duplicate/o Folded	Foldeda
-		duplicate/o UnfoldedSep UnfoldedSepa
-		duplicate/o Unfolded Unfoldeda
-	
+		make/o/n=(numpnts(FoldedSep),2) WLC_Folded
+		WLC_Folded[][0]= Folded[p]
+		WLC_Folded[][1]= FoldedSep[p]
+		make/o/n=(numpnts(unFoldedSep),2) WLC_UnFolded
+		WLC_UnFolded[][0]=UnFolded[p]
+		WLC_UnFolded[][1]=UnFoldedSep[p]
+
 	endif
 	duplicate/o HereYouAre ResOut
 end

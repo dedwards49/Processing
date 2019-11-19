@@ -10,6 +10,8 @@
 #include ":\Misc_PanelPrograms\Panel Progs"
 #include ":\Misc_PanelPrograms\AsylumNaming"
 //#include ":\Processing_Markov\DE_HMM"
+
+
 Function CorrectPauses(ForceWave,SepWave)
 	wave ForceWave,SepWave
 	string originalInds=stringbykey("DE_Ind",note(ForceWave),":","\r")
@@ -164,8 +166,9 @@ end
 
 Static Function AligntoWLC()
 	string saveDF
-	saveDF = GetDataFolder(1)
-
+	
+variable ms=stopmstimer(-2)
+	
 	controlinfo/W=RupRampPanel de_RupRamp_popup0
 	SetDataFolder s_value
 	controlinfo/W=RupRampPanel de_RupRamp_popup4
@@ -189,43 +192,44 @@ Static Function AligntoWLC()
 	controlinfo/W=RupRampPanel de_RupRamp_popup13
 	wave WLCParms=$S_value
 	Controlinfo/W=RupRampPanel de_RupRamp_setvar3
-//
-	variable/C slopes=DE_Dudko#ReturnSeparationSlopes(SepWaveSm,StateWave,500)
-	variable pointstoignore=floor(v_value/real(slopes)/dimdelta(ForceWaveSH_SM,0))
-	make/o/n=0 FoldedForceOut,FoldedSepOut,UnFoldedForceOut,UnFoldedSepOut
-	DE_NewDudko#ReturnFoldandUnfold(ForceWaveSH_SM,SepWaveSm,StateWave,pointstoignore,FoldedForceOut,FoldedSepOut,UnFoldedForceOut,UnFoldedSepOut)
 
-	FoldedForceOut*=-1
-	UnFoldedForceOut*=-1
+	variable/C slopes=DE_Dudko#ReturnSeparationSlopes(SepWaveSm,StateWave,500)
+	
+	
+	variable pointstoignore=floor(v_value/real(slopes)/dimdelta(ForceWaveSH_SM,0))
+	make/free/n=0 AlignFoldedForce,AlignFoldedSep,AlignUnFoldedForce,AlignUnFoldedSep
+	DE_NewDudko#ReturnFoldandUnfold(ForceWaveSH_SM,SepWaveSm,StateWave,pointstoignore,AlignFoldedForce,AlignFoldedSep,AlignUnFoldedForce,AlignUnFoldedSep)
+
+	AlignFoldedForce*=-1
+	AlignUnFoldedForce*=-1
 
 	
-	make/o/n=0 ResultsShift,ResultsNoShift
+	make/free/n=0 ResultsShift,ResultsNoShift
 	controlinfo/W=RupRampPanel de_RupRamp_popup17
 	variable foldedfit
 	strswitch(S_Value)
 	
 		case "Unfolded":
-			AlignSingletoWLC(UnFoldedForceOut,UnFoldedSepOut,WLCParms,0,ResultsNoShift)
-			AlignSingletoWLC(UnFoldedForceOut,UnFoldedSepOut,WLCParms,1,ResultsShift)
+			AlignSingletoWLC(AlignUnFoldedForce,AlignUnFoldedSep,WLCParms,0,ResultsNoShift)
+			AlignSingletoWLC(AlignUnFoldedForce,AlignUnFoldedSep,WLCParms,1,ResultsShift)
 			foldedfit=0
 			break
 		
 		case "Folded":
-			AlignSingletoWLC(FoldedForceOut,FoldedSepOut,WLCParms,0,ResultsNoShift)
-			AlignSingletoWLC(FoldedForceOut,FoldedSepOut,WLCParms,1,ResultsShift)
+			AlignSingletoWLC(AlignFoldedForce,AlignFoldedSep,WLCParms,0,ResultsNoShift)
+			AlignSingletoWLC(AlignFoldedForce,AlignFoldedSep,WLCParms,1,ResultsShift)
 			foldedfit=1
 			break
 		
 		case "Both":
-			AlignTwotoWLC(FoldedForceOut,FoldedSepOut,UnFoldedForceOut,UnFoldedSepOut,WLCParms,0,ResultsNoShift,  0)
-			AlignTwotoWLC(FoldedForceOut,FoldedSepOut,UnFoldedForceOut,UnFoldedSepOut,WLCParms,1,ResultsShift,0)
-
-			foldedfit=2
+			AlignTwotoWLC(AlignFoldedForce,AlignFoldedSep,AlignUnFoldedForce,AlignUnFoldedSep,WLCParms,0,ResultsNoShift,  0)
+			AlignTwotoWLC(AlignFoldedForce,AlignFoldedSep,AlignUnFoldedForce,AlignUnFoldedSep,WLCParms,1,ResultsShift,0)
+//
+//			foldedfit=2
 			break
 	
 	endswitch
-	
-	
+
 	controlinfo/W=RupRampPanel de_RupRamp_check0
 	variable allowsepshift=v_value
 	
@@ -250,11 +254,13 @@ Static Function AligntoWLC()
 
 	duplicate/o ShiftedForceWave $ReplaceString("Force_Shift",nameofwave(ShiftedForceWave),"Force_Align")
 	wave AlignedFWave=$ReplaceString("Force_Shift",nameofwave(ShiftedForceWave),"Force_Align")
-	AlignedFWave-=forceshiftused
+	//AlignedFWave-=forceshiftused
+	FastOP AlignedFWave=ShiftedForceWave-(forceshiftused)
+
 	print num2str(forceshiftused)+";"+num2str(sepshiftused)
 	duplicate/o SepWave $ReplaceString("Sep_Adj",nameofwave(SepWave),"Sep_Align")
 	wave AlignedSepWave=$ReplaceString("Sep_Adj",nameofwave(SepWave),"Sep_Align")
-	AlignedSepWave-=sepshiftused
+	FastOP AlignedSepWave=SepWave-(sepshiftused)
 	
 	String NewNote=ReplaceStringByKey("UsedAlignmentFShift",note(AlignedFWave),num2str(forceshiftused),":","\r")
 	NewNote=ReplaceStringByKey("UsedAlignmentSShift",NewNote,num2str(sepshiftused),":","\r")
@@ -278,6 +284,14 @@ Static Function AligntoWLC()
 	NewNote=ReplaceStringByKey("AltAlignmentSShift",NewNote,num2str(sepshiftalt),":","\r")
 	note/K AlignedFWave, NewNote
 	note/K AlignedSepWave, NewNote
+			make/o/n=(numpnts(AlignFoldedForce),2) AlignFolded
+		AlignFolded[][0]= AlignFoldedForce[p]
+		AlignFolded[][1]= AlignFoldedSep[p]
+		make/o/n=(numpnts(AlignUnFoldedForce),2) AlignUnFolded
+		AlignUnFolded[][0]=AlignUnFoldedForce[p]
+		AlignUnFolded[][1]=AlignUnFoldedSep[p]
+print (stopmstimer(-2)-ms)/1e6
+	saveDF = GetDataFolder(1)
 
 end
 
@@ -293,29 +307,30 @@ Static Function AlignSingletoWLC(ForceIn,SepIn,WLCParms,SepShift,Results)
 	HoldString="11101"
 	endif
 	
-	FuncFit/Q/H=HoldString/NTHR=0 WLC_FIT W_coef  ForceIn /X=SepIn/D
-
+	FuncFit/Q/H=HoldString/NTHR=0 WLC_FIT W_coef  ForceIn /X=SepIn
 	make/free/n=2 TemporaryResults
 
 	TemporaryResults={w_coef[3]-WLCParms[3],w_coef[4]-WLCParms[4]}
-
+	wave w_sigma
+	killwaves W_coef,W_sigma
 	duplicate/o TemporaryResults Results
 end
 
 Static Function AlignTwotoWLC(FoldedForce,FoldedSep,UnfoldedForce,UnfoldedSep,WLCParms,SepShift,Results,FixedShift)
 	wave FoldedForce,FoldedSep,UnfoldedForce,UnfoldedSep,WLCParms,Results
 	variable SepShift,FixedShift
-//	FitForcePair(FoldedForce,FoldedSep,UnFoldedForce,UnFoldedSep,ParmOut,FitOut,[Constrained])
+	//	FitForcePair(FoldedForce,FoldedSep,UnFoldedForce,UnFoldedSep,ParmOut,FitOut,[Constrained])
 	
-//	wave FoldedForce,FoldedSep,UnFoldedForce,UnFoldedSep,ParmOut,FitOut,Constrained
+	//	wave FoldedForce,FoldedSep,UnFoldedForce,UnFoldedSep,ParmOut,FitOut,Constrained
 	variable 	timerRefNum = startMSTimer
 
 
-//	//note that WLCGuess should have the format: Lp,Lc1,Lc2,T,Xoff,Foff,
+	//note that WLCGuess should have the format: Lp,Lc1,Lc2,T,Xoff,Foff,
 	make/free/n=0 Fout,Sout
+	
 	DE_TwoWLCFit#CombineCurves(FoldedForce,FoldedSep,UnFoldedForce,UnFoldedSep,Fout,SOut)
-	duplicate/free WLCParms w_coef
-w_coef[4]=FixedShift+WLCParms[4]
+	duplicate/D/free WLCParms w_coef
+	w_coef[4]=FixedShift+WLCParms[4]
 	//A bit of code to fix the offset to something specific
 	string ConStr="111100"
 	if(SepShift==1)
@@ -323,17 +338,30 @@ w_coef[4]=FixedShift+WLCParms[4]
 	elseif(SepShift==0)
 		ConStr="111110"
 	endif
+	print/D w_coef
+	if(numpnts(Fout)>.5e6)
+		variable down=ceil(numpnts(Fout)/0.5e6)
+		Duplicate/free Fout,Fout_samp
+		Resample/DOWN=(down)/N=1/WINF=Non Fout_samp
+		Duplicate/free Sout,Sout_samp
+		Resample/DOWN=(down)/N=1/WINF=Non Sout_samp
+		FuncFit/N/Q/W=2/H=ConStr DE_FitTwo W_coef  Fout_samp /X=Sout_samp
+	else
+		FuncFit/N/Q/W=2/H=ConStr DE_FitTwo W_coef  Fout /X=SOut /D
 
-	FuncFit/N/Q/W=2/H=ConStr/NTHR=0 DE_FitTwo W_coef  Fout /X=SOut 
+	endif
 	make/free/n=2 TemporaryResults
 
 	TemporaryResults={-w_coef[5]+WLCParms[5],w_coef[4]-WLCParms[4]}
 	make/free/n=0 FWLCFit
 	DE_TwoWLCFit#MakeAMultiFit(SOut,w_coef,FWLCFit)
-	make/o/n=(Numpnts(FWLCFit),2) FitTest
-	FitTest[][1]=FWLCFit[p]
-	FitTest[][0]=SOut[p][0]
+	make/o/n=(Numpnts(FWLCFit),2) AlignFit
+	AlignFit[][0]=FWLCFit[p]
+	AlignFit[][1]=SOut[p][0]
+	wave w_sigma,w_coef
+	killwaves W_sigma,W_coef
 	duplicate/o TemporaryResults Results
+
 end
 
 Static Function/S NumericWaveToStringList(w)
@@ -544,6 +572,48 @@ Static Function CorrectRuptures()
 
 
 end
+
+Static Function PlotWLCParmFit()
+	wave WLC_Folded,WLC_Unfolded,WLCFitfolded,WLCFitUnfolded
+	if(waveexists(WLC_Folded)==0)
+		return 0
+	
+	endif
+	DoWindow WLCParmFit
+	if(V_flag==1)
+		Killwindow WLCParmFit
+	endif
+		
+	Display/N=WLCParmFit WLC_Folded[][0] vs WLC_Folded[][1]
+	Appendtograph/W=WLCParmFit WLC_unFolded[][0] vs WLC_unFolded[][1]
+	Appendtograph/W=WLCParmFit WLCFitfolded
+	Appendtograph/W=WLCParmFit WLCFitUnfolded
+	ModifyGraph/W=WLCParmFit lsize(WLCFitFolded)=1.5,lsize(WLCFitUnfolded)=1.5
+	ModifyGraph/W=WLCParmFit rgb(WLC_Folded)=(19789,44975,19018),rgb(WLC_UnFolded)=(14906,32382,47288),rgb(WLCFitFolded)=(0,0,0),rgb(WLCFitUnfolded)=(0,0,0)
+
+
+end
+
+Static Function PlotAlignFit()
+	wave AlignFolded,AlignUnFolded,AlignFit
+	if(waveexists(AlignFolded)==0)
+		return 0
+	
+	endif
+	DoWindow Aligned
+	if(V_flag==1)
+		Killwindow Aligned
+	endif
+		
+	Display/N=Aligned AlignFolded[][0] vs AlignFolded[][1]
+	Appendtograph/W=Aligned AlignUnFolded[][0] vs AlignUnFolded[][1]
+	Appendtograph/W=Aligned AlignFit[][0] vs AlignFit[][1]
+	ModifyGraph/W=Aligned lsize(AlignFit)=1.5
+	ModifyGraph/W=Aligned rgb(AlignFolded)=(19789,44975,19018),rgb(AlignFolded)=(14906,32382,47288),rgb(AlignFit)=(0,0,0)
+
+
+end
+
 Static Function FitPython()
 	string saveDF
 	variable FOffset, Soffset
@@ -704,6 +774,7 @@ Static Function CutOutPauses(ForceWave,SepWave,DicedForce,DicedSep,CutInfo)
 end
 
 
+
 Static Function/S ChangeStringItem(ListString,ChangeNumber,separator,location)
 	String ListString,separator
 	variable/D location,ChangeNumber
@@ -750,15 +821,14 @@ Static Function DetermineWLCParms()
    DE_DUDKO#ContourLengthDetermineCombined(ForceWaveAlignSM,SepWaveAlignSm,StateWave,pointstoignore,Results,v_value,CopyWavesOUt=1)
 
 	ForceWaveAlignSM*=-1
-	make/o/n=0 WLC1,WLC2
-	DE_DUDKO#MakeWLCs(SepWaveAlignSm,Results,WLC1,WLC2)
+	make/o/n=0 WLCFitFolded,WLCFitUnfolded
+	DE_DUDKO#MakeWLCs(SepWaveAlignSm,Results,WLCFitFolded,WLCFitUnfolded)
 end
 
 Static Function MakeOffsetForceWave()
 	//handle offsetting both the smoothed wave and the unsmoothed wave, also corrects our estimates of the rupture forces
 	string saveDF
 	saveDF = GetDataFolder(1)
-
 	controlinfo/W=RupRampPanel de_RupRamp_popup0
 	SetDataFolder s_value
 	controlinfo/W=RupRampPanel de_RupRamp_popup4

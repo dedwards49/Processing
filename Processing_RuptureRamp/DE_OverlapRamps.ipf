@@ -172,18 +172,68 @@ end
 Static Function/S AddForceOffsetstoForceWave(ForceWave,SepWave,StateWave)
 	wave ForceWave,SepWave,StateWave
 	variable numsteps=CalculateMaxIndexforForceWave(ForceWave)
-	print numsteps
 	variable n=0
 	string Offsets="0;"
 	variable RefOff=CalculateForceOffsetFromPause(ForceWave,0)
 	for(n=1;n<numsteps;n+=1)
 		//Offsets+=num2str(CalculateForceOffsetIndex(ForceWave,SepWave,StateWave,0,n))+";"
-		Offsets+=num2str(CalculateForceOffsetFromPause(ForceWave,n)-RefOff)+";"
+		Offsets+=num2str(RefOff-CalculateForceOffsetFromPause(ForceWave,n))+";"
 	endfor
 	note/K ForceWave,ReplaceStringByKey("DE_FOff", note(ForceWave), Offsets,":","\r" )
 	note/K SepWave,ReplaceStringByKey("DE_FOff", note(ForceWave), Offsets,":","\r" )
 	return (Offsets)
 end
+
+Static Function/S AddPauseOffsetstoForceWave(ForceWave,SepWave,StateWave)
+	wave ForceWave,SepWave,StateWave
+	variable numsteps=CalculateMaxIndexforForceWave(ForceWave)
+	variable n=0
+	string Offsets="0;"
+	variable RefOff=CalculateForceOffsetFromPause(ForceWave,0)
+	for(n=1;n<numsteps;n+=1)
+		//Offsets+=num2str(CalculateForceOffsetIndex(ForceWave,SepWave,StateWave,0,n))+";"
+		Offsets+=num2str(RefOff-CalculateForceOffsetFromPause(ForceWave,n))+";"
+	endfor
+	note/K ForceWave,ReplaceStringByKey("DE_FOff", note(ForceWave), Offsets,":","\r" )
+	note/K SepWave,ReplaceStringByKey("DE_FOff", note(ForceWave), Offsets,":","\r" )
+	return (Offsets)
+end
+
+Static Function ExtractForcePause(ForceWave,n,OutForce)
+	wave ForceWave,OutForce
+	variable n
+	
+	String PauseLoc=stringbykey("DE_PauseLoc",note(ForceWave),":","\r")
+
+
+	String Ind=stringbykey("DE_Ind",note(ForceWave),":","\r")
+	variable Num=itemsinlist(PauseLoc)
+
+
+	variable/D startduplicate,endduplicate
+
+	if(n==Num-1)
+		endduplicate=numpnts(ForceWave)-1
+		startduplicate=	str2num(stringfromlist(2*n,PauseLoc))
+	else 
+		startduplicate=str2num(stringfromlist(2*n,PauseLoc))
+		endduplicate=	str2num(stringfromlist(2*n+1,PauseLoc))
+
+	endif
+	duplicate/o/r=[startduplicate,endduplicate] ForceWave OutForce
+		
+end
+
+Static Function AverageForceinPause(ForceWave,n)
+	wave ForceWave
+	variable n
+
+	make/Free/n=0 PauseForce
+	ExtractForcePause(ForceWave,n,PauseForce)
+	wavestats/q PauseForce
+	return v_avg
+end
+
 
 Static Function ReturnOffForceForState(ForceWave,index)
 
@@ -224,9 +274,10 @@ Static Function CalculateForceOffsetFromPause(ForceWave,RampNumber)
 	variable startpnt=str2num(stringfromlist(2*RampNumber,PauseLocs))
 	variable endpnt=str2num(stringfromlist(2*RampNumber+1,PauseLocs))
 	variable diff=endpnt-startpnt
-	duplicate/o/R=[startpnt+.1*diff,endpnt-.1*diff] ForceWave ForceWaveCut
+	duplicate/free/R=[startpnt+.1*diff,endpnt-.1*diff] ForceWave ForceWaveCut
 
 	wavestats/Q ForceWaveCut
+	print v_avg
 //	
 //	make/free/n=0 F1,F2,S1,S2
 //	ReturnForcesWidestGaps(ForceWave,SepWave,Statewave,index1,index2,F1,S1,F2,S2)

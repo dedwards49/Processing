@@ -42,8 +42,8 @@ Static Function ExtractNoisefromWave(ForceWave,PntWave,offsetpoints,desiredfreq)
 	variable finalpoint=PntWave[numpnts(PntWave)-1]-offsetpoints
 	variable endofwave=numpnts(ForceWave)-1
 	duplicate/o/r=[endofwave-(endofwave-finalpoint)+300,endofwave] ForceWave Garbage
-	•Make/O/D/N=0 coefs; DelayUpdate
-	•Duplicate/free Garbage, filtered; DelayUpdate
+	Make/O/D/N=0 coefs; DelayUpdate
+	Duplicate/free Garbage, filtered; DelayUpdate
 
 	FilterFIR/DIM=0/LO={cutdown,1.2*cutdown,101}/COEF coefs, filtered
 	wavestats/q filtered

@@ -353,19 +353,19 @@ function WLC_Arb(Parms)
 	wavestats/q WLC_Force
 	for(i=0;i<(v_npnts+V_numNans);i+=1)
 		if(i<=1000)
-			if(abs(WLC_Force[i])>.15e-9)//Discoards forces above 500pN
+			if(abs(WLC_Force[i])>.05e-9)//Discoards forces above 500pN
 				WLC_FOrce[i]=NaN
 			endif
 		elseif(i<=3000)
-			if(abs(WLC_Force[i])>.15e-9)//Discoards forces above 500pN
+			if(abs(WLC_Force[i])>.075e-9)//Discoards forces above 500pN
 				WLC_FOrce[i]=NaN
 			endif
-					elseif(i<=5000)
-			if(abs(WLC_Force[i])>.4e-9)//Discoards forces above 500pN
+					elseif(i<=4000)
+			if(abs(WLC_Force[i])>.075e-9)//Discoards forces above 500pN
 				WLC_FOrce[i]=NaN
 			endif
 		else
-			if(abs(WLC_Force[i])>.8e-9)//Discoards forces above 500pN
+			if(abs(WLC_Force[i])>.275e-9)//Discoards forces above 500pN
 				WLC_FOrce[i]=NaN
 			endif
 		endif
@@ -587,15 +587,16 @@ variable last,Nug2Step,ELCstep
 
 end
 
-function TestMakeParmspXYMonster(last,ddFln1,ddFln2,LAstep)
-	variable last,ddFln1,ddFln2,LAstep
-	make/o/n=(6,3) WLCParms
+function TestMakeParmspXYMonster(last,ddFln1,ddFln2,LAstep,LaStep2)
+	variable last,ddFln1,ddFln2,LAstep,LaStep2
+	make/o/n=(6,4) WLCParms
 	WLCParms[][0]=.4e-9
 	WLCParms[][1]=298
-	WLCParms[3][2]=last
-	WLCParms[2][2]=last-ddFln2
-	WLCParms[1][2]=last-ddFln2-ddFln1
-	WLCParms[0][2]=last-ddFln2-ddFln1-LAstep
+	WLCParms[4][2]=last
+	WLCParms[3][2]=last-ddFln2
+	WLCParms[2][2]=last-ddFln2-ddFln1
+	WLCParms[1][2]=last-ddFln2-ddFln1-LAstep
+	WLCParms[0][2]=last-ddFln2-ddFln1-LAstep-LaStep2
 
 
 	WLC_Arb(WLCParms)

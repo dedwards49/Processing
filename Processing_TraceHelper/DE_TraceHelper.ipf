@@ -4,6 +4,52 @@
 #include <Readback ModifyStr>
 #include ":\Misc_PanelPrograms\Panel Progs"
 #include ":\Misc_PanelPrograms\AsylumNaming"
+
+Function PlotAll()
+
+
+String str=wavelist("*Force_Ret",";","")
+variable n
+variable tot=itemsinlist(str)
+display/n=graph0
+for(n=0;n<tot;n+=1)
+wave w1=$stringfromlist(n,Str)
+wave w2=$replacestring("Force",nameofwave(w1),"Sep")
+Appendtograph w1 vs w2
+
+endfor
+
+
+for(n=0;n<tot;n+=1)
+wave w1=$stringfromlist(n,Str)
+DE_Filtering#AutoFilterAForceSep(w1,"SVG",151,WindowString="Graph0")
+
+
+endfor
+
+
+
+
+
+
+end
+Function G()
+String str=wavelist("*Force_Ret",";","")
+
+variable n
+variable tot=itemsinlist(str)
+for(n=0;n<tot;n+=1)
+wave w1=$stringfromlist(n,Str)
+DE_Filtering#AutoFilterAForceSep(w1,"SVG",151,WindowString="Graph0")
+
+
+endfor
+
+
+
+end
+
+
 Static Function TraceSelector(ctrlName,row,col,event) : ListBoxControl
 
 	String ctrlName
@@ -43,7 +89,7 @@ Static Function SelectTraceWindow(graphName)
 	make/T/o/n=0 root:TraceNameLists
 	wave/T TNL=root:TraceNameLists
 	DE_ListToTextWave(ListWavesonPlot, TNL,";")
-
+print TNL
 	wave/T TNL=root:TraceNameLists
 	make/o/n=(numpnts(TNL)) root:SelWave
 	wave Swave=root:SelWave

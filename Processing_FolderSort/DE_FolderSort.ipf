@@ -1,6 +1,7 @@
 ﻿#pragma TextEncoding = "UTF-8"
 #pragma rtGlobals=3		// Use modern global access method and strict wave access.
-Function Test()
+#pragma modulename=DE_FolderSort
+Function StartFolderSorting()
 	NewPath/o/Q DataPath
 	String AllWavesInFolder=SortList(IndexedFile(DataPath, -1, ".ibw"),";",16)
 	variable tot=itemsinlist(AllWavesInFolder)
@@ -35,4 +36,7 @@ Function Test()
 	endfor
 	//killpath Datapath
 
+end
+Menu "FolderSorting"
+	"Start",DE_FolderSort#StartFolderSorting()
 end

@@ -5,6 +5,8 @@
 #include "DTE_Dudko"
 #include "DE_Correctrupture"
 #include "DE_OverlapRamps"
+//This identifies the correction cmplx(ForceShift,SepShift), needed to move the Aligned force waves to be either
+//aligned only by force, or by both force and separation.
 
 Static Function/C CorrectionBasedonRequest(ForceWave,Shifted)
 	wave ForceWave
@@ -40,6 +42,42 @@ Static Function/C CorrectionBasedonRequest(ForceWave,Shifted)
 	return cmplx(DesiredF-UsedFOff,DesiredS-UsedSOff)
 end
 
+Static Function SimpleFindRuptureForce(ForceWave,StateWave,UnfoldingForce,FoldingForce)
+
+	wave ForceWave,StateWave,UnfoldingForce,FoldingForce
+
+	make/free/n=(dimsize(Statewave,0)) Points,RupForce,Type,Trace
+	Points=Statewave[p][0]
+	RupForce=-Statewave[p][1]
+	Type=Statewave[p][2]
+	Trace=Statewave[p][3]
+
+	variable m,CurrentTime,CurrentSep,CurrentForce
+	make/free/n=0 UnfoldingFree,FoldingFree
+	
+	for(m=1;m<numpnts(Type);m+=1)
+			if(Type[m]==-1)//unfolding
+			Insertpoints numpnts(UnfoldingFree),1, UnfoldingFree
+
+			UnfoldingFree[numpnts(UnfoldingFree)-1]=RupForce[m]
+		elseif(Type[m]==1)//folding
+			Insertpoints numpnts(FoldingFree),1, FoldingFree
+
+
+			FoldingFree[numpnts(FoldingFree)-1]=RupForce[m]
+
+		endif
+	endfor
+	
+
+
+	duplicate/o FoldingFree FoldingForce
+	duplicate/o unFoldingFree  UnfoldingForce
+	
+	
+end
+
+
 Static Function FindRuptureForcesbyTimebyIndex(n,WLCParms,ForceWave,Sepwave,StateWave,FoldingForce,UnfoldingForce,[Diagnostic])
 	variable n,Diagnostic
 	wave WLCParms,StateWave,Sepwave,ForceWave,FoldingForce,UnfoldingForce
@@ -61,10 +99,10 @@ Static Function FindRuptureForcesbyTimebyIndex(n,WLCParms,ForceWave,Sepwave,Stat
 	LocalTrace[]=Trace[LocalIndex[0]+p][2]
 	FindValue/V=-2/T=.1 LocalType
 	variable turnaround=v_value
-	duplicate/o/R=[LocalPoints[0],LocalPoints[turnaround]] SepWave, FirstSepWave,FirstSepWaveFolded,FirstSepWaveUnfolded
-	duplicate/o/R=[LocalPoints[turnaround],LocalPoints[numpnts(localpoints)-2]] SepWave, SecondSepWave,SecondSepWaveFolded,SecondSepWaveUnfolded
-	duplicate/o/R=[LocalPoints[0],LocalPoints[turnaround]] ForceWave, FirstForceWave
-	duplicate/o/R=[LocalPoints[turnaround],LocalPoints[numpnts(localpoints)-1]] ForceWave, SecondForceWave
+	duplicate/free/R=[LocalPoints[0],LocalPoints[turnaround]] SepWave, FirstSepWave,FirstSepWaveFolded,FirstSepWaveUnfolded
+	duplicate/free/R=[LocalPoints[turnaround],LocalPoints[numpnts(localpoints)-2]] SepWave, SecondSepWave,SecondSepWaveFolded,SecondSepWaveUnfolded
+	duplicate/free/R=[LocalPoints[0],LocalPoints[turnaround]] ForceWave, FirstForceWave
+	duplicate/free/R=[LocalPoints[turnaround],LocalPoints[numpnts(localpoints)-1]] ForceWave, SecondForceWave
 
 	GenerateSepLine(ForceWave,SepWave,StateWave,n,0,0,FirstSepWaveUnfolded)
 	GenerateSepLine(ForceWave,SepWave,StateWave,n,0,1,FirstSepWaveFolded)
@@ -110,13 +148,238 @@ Static Function FindRuptureForcesbyTimebyIndex(n,WLCParms,ForceWave,Sepwave,Stat
 
 	duplicate/o FoldingFree FoldingForce
 	duplicate/o unFoldingFree  UnfoldingForce
-//	variable FoldedExt= DE_WLC#ReturnExtentionatForce(Force+FOrceOff,-.4e-9,FOldedLC,298)+SepOff
-//	variable UnFoldedExt= DE_WLC#ReturnExtentionatForce(Force+FOrceOff,-.4e-9,UnFOldedLC,298)+SepOff
+
+end
+
+Static Function FindStatesForForce(Force,State,WLCParms,ForceWave,Sepwave,LocalPoints,LocalType, turnaround,OutgoingSepWave,OutgoingSepState,IncomingSepWave,IncomingSepState,[Diagnostic])
+	variable Force,Diagnostic,turnaround
+	String State
+	wave WLCParms,LocalPoints,Sepwave,ForceWave,OutgoingSepWave,OutgoingSepState,IncomingSepWave,IncomingSepState,LocalType
+	variable Folded
+	StrSwitch(State)
+		case "Folded":
+			Folded=1
+			break
+		case "Unfolded":
+			Folded=0
+			break
+		default:
+			print "Bad String input: State"
+			return -1
+	endswitch
+
+	variable FOldedLC=WLCPArms[0]
+	variable UnfoldedLC=WLCPArms[1]
+	Variable FOrceOff=WLCPArms[2]
+	variable SepOff=WLCPArms[3]
+	variable EXtension
+	variable TimeOutgoing,TimeIngoing,OutgoingCounts,IncomingCounts
+
+	if(Folded==1)
+		EXtension=	 DE_WLC#ReturnExtentionatForce(Force-FOrceOff,.4e-9,FOldedLC,298)+SepOff
+		OutgoingCounts=1
+	elseif(Folded==0)
+		Extension=	DE_WLC#ReturnExtentionatForce(Force-FOrceOff,.4e-9,UnFOldedLC,298)+SepOff
+		IncomingCounts=1
+	endif
+	
+
+	
+
+	if(wavemin(OutgoingSepWave)>EXtension)
+			TimeOutgoing=pnt2x(Sepwave,LocalPoints[0])
+		elseif(wavemax(OutgoingSepWave)<EXtension)
+			TimeOutgoing=pnt2x(Sepwave,LocalPoints[turnaround])
+		else
+			FindLevels/Q OutgoingSepWave EXtension
+			wave W_FindLevels
+			TimeOutgoing = mean(W_FindLevels)//-pnt2x(FirstSepWave,0)
+		endif
+		if(wavemax(IncomingSepWave)<EXtension)
+			TimeIngoing=pnt2x(Sepwave,LocalPoints[turnaround])
+		elseif(wavemin(IncomingSepWave)>EXtension)
+			TimeIngoing=pnt2x(Sepwave,LocalPoints[numpnts(LocalPoints)-2])
+		else
+			FindLevels/Q IncomingSepWave EXtension
+			TimeIngoing= mean(W_FindLevels)//-pnt2x(FirstSepWave,0)
+		endif
+	if(Folded==1)
+		
+
+	elseif(Folded==0)
+
+		
+	endif
+
+	
+		
+
+		variable m
+		for(m=1;m<turnaround;m+=1)
+			if(pnt2x(Sepwave,LocalPoints[m])<TimeOutgoing)
+				OutgoingCounts-=(-1)^(Folded)*LocalType[m] 
+	
+			endif
+
+		endfor
+		
+		for(m=turnaround+1;m<numpnts(LocalPoints)-2;m+=1)
+	
+			if(pnt2x(Sepwave,LocalPoints[m])<TimeIngoing)
+				IncomingCounts-=(-1)^(Folded)*LocalType[m] 
+		
+			endif
+		endfor
+		wave W_Sigma
+		killwaves/Z w_coef, W_FindLevels,w_sigma
+
+		return (IncomingCounts+OutgoingCounts)
+	
+end
+
+Static Function FindStatesbyTimebyIndex(Force,n,State,WLCParms,ForceWave,Sepwave,StateWave,[Diagnostic])
+	variable n,Force,Diagnostic
+	String State
+	wave WLCParms,StateWave,Sepwave,ForceWave
+	variable Folded
+	StrSwitch(State)
+		case "Folded":
+			Folded=1
+			break
+		case "Unfolded":
+			Folded=0
+			break
+		default:
+			print "Bad String input: State"
+			return -1
+	endswitch
+
+	variable FOldedLC=WLCPArms[0]
+	variable UnfoldedLC=WLCPArms[1]
+	Variable FOrceOff=WLCPArms[2]
+	variable SepOff=WLCPArms[3]
+	variable EXtension
+	variable TimeOutgoing,TimeIngoing,OutgoingCounts,IncomingCounts
+
+	if(Folded==1)
+		EXtension=	 DE_WLC#ReturnExtentionatForce(Force-FOrceOff,.4e-9,FOldedLC,298)+SepOff
+		OutgoingCounts=1
+	elseif(Folded==0)
+		Extension=	DE_WLC#ReturnExtentionatForce(Force-FOrceOff,.4e-9,UnFOldedLC,298)+SepOff
+		IncomingCounts=1
+	endif
+	
+	make/free/n=(dimsize(Statewave,0)) Points,RupForce,Type,Trace
+	Points=Statewave[p][0]
+	RupForce=-Statewave[p][1]
+	Type=Statewave[p][2]
+	Trace=Statewave[p][3]
+	
+	Extract/INDX/Free Points, LocalIndex, Trace==n
+	make/free/n=(numpnts(LocalIndex)+1) LocalPoints,LocalType,LocalTrace
+	LocalPoints[]=Points[LocalIndex[0]+p][0]
+	LocalType[]=Type[LocalIndex[0]+p][2]
+	LocalTrace[]=Trace[LocalIndex[0]+p][2]
+	FindValue/V=-2/T=.1 LocalType
+	variable turnaround=v_value
+	
+	duplicate/free/R=[LocalPoints[0],LocalPoints[turnaround]] SepWave, OutgoingSepWave,OutgoingSepState
+	duplicate/free/R=[LocalPoints[turnaround],LocalPoints[numpnts(localpoints)-2]] SepWave, IncomingSepWave,IncomingSepState
+	duplicate/free/R=[LocalPoints[0],LocalPoints[turnaround]] ForceWave, OutgoingForceWave
+	duplicate/free/R=[LocalPoints[turnaround],LocalPoints[numpnts(localpoints)-1]] ForceWave, IncomingForceWave
+
+	GenerateSepLine(ForceWave,SepWave,StateWave,n,0,Folded,OutgoingSepState)
+	GenerateSepLine(ForceWave,SepWave,StateWave,n,1,Folded,IncomingSepState)
+	if(wavemin(OutgoingSepWave)>EXtension)
+			TimeOutgoing=pnt2x(Sepwave,LocalPoints[0])
+		elseif(wavemax(OutgoingSepWave)<EXtension)
+			TimeOutgoing=pnt2x(Sepwave,LocalPoints[turnaround])
+		else
+			FindLevels/Q OutgoingSepWave EXtension
+			wave W_FindLevels
+			TimeOutgoing = mean(W_FindLevels)//-pnt2x(FirstSepWave,0)
+		endif
+		if(wavemax(IncomingSepWave)<EXtension)
+			TimeIngoing=pnt2x(Sepwave,LocalPoints[turnaround])
+		elseif(wavemin(IncomingSepWave)>EXtension)
+			TimeIngoing=pnt2x(Sepwave,LocalPoints[numpnts(LocalPoints)-2])
+		else
+			FindLevels/Q IncomingSepWave EXtension
+			TimeIngoing= mean(W_FindLevels)//-pnt2x(FirstSepWave,0)
+		endif
+	if(Folded==1)
+		
+
+	elseif(Folded==0)
+
+		
+	endif
+
+	
+		
+
+		variable m
+		for(m=1;m<turnaround;m+=1)
+			if(pnt2x(Sepwave,LocalPoints[m])<TimeOutgoing)
+				OutgoingCounts-=(-1)^(Folded)*LocalType[m] 
+	
+			endif
+
+		endfor
+		
+		for(m=turnaround+1;m<numpnts(LocalPoints)-2;m+=1)
+	
+			if(pnt2x(Sepwave,LocalPoints[m])<TimeIngoing)
+				IncomingCounts-=(-1)^(Folded)*LocalType[m] 
+		
+			endif
+		endfor
+		wave W_Sigma
+		killwaves/Z w_coef, W_FindLevels,w_sigma
+
+		return (IncomingCounts+OutgoingCounts)
+	
+end
+
+
+//
+//Static Function/C FindStatesbyTimebyIndex(Force,n,WLCParms,ForceWave,Sepwave,StateWave,[Diagnostic])
+//	variable n,Force,Diagnostic
+//	wave WLCParms,StateWave,Sepwave,ForceWave
+//	variable FOldedLC=WLCPArms[0]
+//	variable UnfoldedLC=WLCPArms[1]
+//	Variable FOrceOff=WLCPArms[2]
+//	variable SepOff=WLCPArms[3]
+//	variable FoldedExt= DE_WLC#ReturnExtentionatForce(Force+FOrceOff,.4e-9,FOldedLC,298)+SepOff
+//	variable UnFoldedExt= DE_WLC#ReturnExtentionatForce(Force+FOrceOff,.4e-9,UnFOldedLC,298)+SepOff
 //	variable FoldedTime1,FoldedTime2,UnfoldedTime1,UnfoldedTime2,foldedcounts1,unfoldedcounts1,foldedcounts2,unfoldedcounts2
 //	foldedcounts1=1
 //	unfoldedcounts2=1
 //
 //	//print FoldedExt;print UnFoldedExt
+//	make/free/n=(dimsize(Statewave,0)) Points,RupForce,Type,Trace
+//	Points=Statewave[p][0]
+//	RupForce=-Statewave[p][1]
+//	Type=Statewave[p][2]
+//	Trace=Statewave[p][3]
+//	
+//	Extract/INDX/Free Points, LocalIndex, Trace==n
+//	make/free/n=(numpnts(LocalIndex)+1) LocalPoints,LocalType,LocalTrace
+//	LocalPoints[]=Points[LocalIndex[0]+p][0]
+//	LocalType[]=Type[LocalIndex[0]+p][2]
+//	LocalTrace[]=Trace[LocalIndex[0]+p][2]
+//	FindValue/V=-2/T=.1 LocalType
+//	variable turnaround=v_value
+//	
+//	duplicate/o/R=[LocalPoints[0],LocalPoints[turnaround]] SepWave, FirstSepWave,FirstSepWaveFolded,FirstSepWaveUnfolded
+//	duplicate/o/R=[LocalPoints[turnaround],LocalPoints[numpnts(localpoints)-2]] SepWave, SecondSepWave,SecondSepWaveFolded,SecondSepWaveUnfolded
+//	duplicate/o/R=[LocalPoints[0],LocalPoints[turnaround]] ForceWave, FirstForceWave
+//	duplicate/o/R=[LocalPoints[turnaround],LocalPoints[numpnts(localpoints)-1]] ForceWave, SecondForceWave
+//
+//	GenerateSepLine(ForceWave,SepWave,StateWave,n,0,0,FirstSepWaveUnfolded)
+//	GenerateSepLine(ForceWave,SepWave,StateWave,n,0,1,FirstSepWaveFolded)
+//	GenerateSepLine(ForceWave,SepWave,StateWave,n,1,0,SecondSepWaveUnfolded)
+//	GenerateSepLine(ForceWave,SepWave,StateWave,n,1,1,SecondSepWaveFolded)
 //
 //
 ////	CurveFit/Q line FirstSepWave[0,LocalPoints[1]-LocalPoints[0]] 
@@ -168,7 +431,30 @@ Static Function FindRuptureForcesbyTimebyIndex(n,WLCParms,ForceWave,Sepwave,Stat
 //	endif
 //
 //	variable m
-
+//	for(m=1;m<turnaround;m+=1)
+//
+//		if(pnt2x(Sepwave,LocalPoints[m])<FoldedTime1)
+//			foldedcounts1+= LocalType[m] 
+//
+//		endif
+//		if(pnt2x(Sepwave,LocalPoints[m])<unFoldedTime1)
+//			unfoldedcounts1-= LocalType[m] 
+//
+//		endif
+//	endfor
+//	
+//	for(m=turnaround+1;m<numpnts(LocalPoints)-2;m+=1)
+//
+//		if(pnt2x(Sepwave,LocalPoints[m])<FoldedTime2)
+//			foldedcounts2+= LocalType[m] 
+//
+//
+//		endif
+//		if(pnt2x(Sepwave,LocalPoints[m])<unFoldedTime2)
+//			unfoldedcounts2-= LocalType[m] 
+//
+//		endif
+//	endfor
 //	wave W_Sigma
 //	killwaves/Z w_coef, W_FindLevels,w_sigma
 //	if(!ParamisDefault(Diagnostic))
@@ -187,142 +473,14 @@ Static Function FindRuptureForcesbyTimebyIndex(n,WLCParms,ForceWave,Sepwave,Stat
 //	endif
 //	return cmplx(foldedcounts1+foldedcounts2,unfoldedcounts1+unfoldedcounts2)
 //	
-end
+//end
 
-Static Function/C FindStatesbyTimebyIndex(Force,n,WLCParms,ForceWave,Sepwave,StateWave,[Diagnostic])
-	variable n,Force,Diagnostic
-	wave WLCParms,StateWave,Sepwave,ForceWave
-	variable FOldedLC=WLCPArms[0]
-	variable UnfoldedLC=WLCPArms[1]
-	Variable FOrceOff=WLCPArms[2]
-	variable SepOff=WLCPArms[3]
-	variable FoldedExt= DE_WLC#ReturnExtentionatForce(Force+FOrceOff,-.4e-9,FOldedLC,298)+SepOff
-	variable UnFoldedExt= DE_WLC#ReturnExtentionatForce(Force+FOrceOff,-.4e-9,UnFOldedLC,298)+SepOff
-	variable FoldedTime1,FoldedTime2,UnfoldedTime1,UnfoldedTime2,foldedcounts1,unfoldedcounts1,foldedcounts2,unfoldedcounts2
-	foldedcounts1=1
-	unfoldedcounts2=1
+//This function generates AccState,FoldedAcc,UnfoldedAcc which are accumulated from the StateWave.
+//It concatenates the Statewave onto the AccState. As usual the State wave includes all the exciting
+//points from traces, i.e., for each ramp start(2), unfolding (-1), folding (1), turnaround (-2), and end(0).
+//It also then pulls out just the unfolding (-1) and folding (1) events for the FoldedACc and UnfoldedAcc waves.
 
-	//print FoldedExt;print UnFoldedExt
-	make/free/n=(dimsize(Statewave,0)) Points,RupForce,Type,Trace
-	Points=Statewave[p][0]
-	RupForce=-Statewave[p][1]
-	Type=Statewave[p][2]
-	Trace=Statewave[p][3]
-	
-	Extract/INDX/Free Points, LocalIndex, Trace==n
-	make/free/n=(numpnts(LocalIndex)+1) LocalPoints,LocalType,LocalTrace
-	LocalPoints[]=Points[LocalIndex[0]+p][0]
-	LocalType[]=Type[LocalIndex[0]+p][2]
-	LocalTrace[]=Trace[LocalIndex[0]+p][2]
-	FindValue/V=-2/T=.1 LocalType
-	variable turnaround=v_value
-	
-	duplicate/o/R=[LocalPoints[0],LocalPoints[turnaround]] SepWave, FirstSepWave,FirstSepWaveFolded,FirstSepWaveUnfolded
-	duplicate/o/R=[LocalPoints[turnaround],LocalPoints[numpnts(localpoints)-2]] SepWave, SecondSepWave,SecondSepWaveFolded,SecondSepWaveUnfolded
-	duplicate/o/R=[LocalPoints[0],LocalPoints[turnaround]] ForceWave, FirstForceWave
-	duplicate/o/R=[LocalPoints[turnaround],LocalPoints[numpnts(localpoints)-1]] ForceWave, SecondForceWave
-
-	GenerateSepLine(ForceWave,SepWave,StateWave,n,0,0,FirstSepWaveUnfolded)
-	GenerateSepLine(ForceWave,SepWave,StateWave,n,0,1,FirstSepWaveFolded)
-	GenerateSepLine(ForceWave,SepWave,StateWave,n,1,0,SecondSepWaveUnfolded)
-	GenerateSepLine(ForceWave,SepWave,StateWave,n,1,1,SecondSepWaveFolded)
-
-
-//	CurveFit/Q line FirstSepWave[0,LocalPoints[1]-LocalPoints[0]] 
-//	wave W_coef
-//	FirstSepWaveFolded=W_coef[0]+W_coef[1]*x
-//	CurveFit/Q line FirstSepWave[LocalPoints[turnaround-1]-LocalPoints[0],LocalPoints[turnaround]-LocalPoints[0]] 
-//	FirstSepWaveUnFolded=W_coef[0]+W_coef[1]*x
-//	CurveFit/Q line SecondSepWave[0,LocalPoints[turnaround+1]-LocalPoints[turnaround]] 
-//	SecondSepWaveFolded=W_coef[0]+W_coef[1]*x
-//	CurveFit/Q line SecondSepWave[LocalPoints[numpnts(LocalPoints)-3]-LocalPoints[turnaround],LocalPoints[numpnts(LocalPoints)-2]-LocalPoints[turnaround]] 
-//	SecondSepWaveUnFolded=W_coef[0]+W_coef[1]*x
-
-	if(wavemin(FirstSepWaveFolded)>FoldedExt)
-		FoldedTime1=pnt2x(Sepwave,LocalPoints[0])
-	elseif(wavemax(FirstSepWaveFolded)<FoldedExt)
-		FoldedTime1=pnt2x(Sepwave,LocalPoints[turnaround])
-	else
-		FindLevels/Q FirstSepWaveFolded FoldedExt
-		wave W_FindLevels
-		FoldedTime1 = mean(W_FindLevels)//-pnt2x(FirstSepWave,0)
-	endif
-	
-	if(wavemax(SecondSepWaveFolded)<FoldedExt)
-		FoldedTime2=pnt2x(Sepwave,LocalPoints[turnaround])
-	elseif(wavemin(SecondSepWaveFolded)>FoldedExt)
-			FoldedTime2=pnt2x(Sepwave,LocalPoints[numpnts(LocalPoints)-2])
-	else
-		FindLevels/Q SecondSepWaveFolded FoldedExt
-		FoldedTime2= mean(W_FindLevels)//-pnt2x(FirstSepWave,0)
-	endif
-	
-	if(wavemin(FirstSepWaveUnFolded)>unFoldedExt)
-			unFoldedTime1=pnt2x(Sepwave,LocalPoints[0])
-	elseif(wavemax(FirstSepWaveUnFolded)<unFoldedExt)
-			unFoldedTime1=pnt2x(Sepwave,LocalPoints[turnaround])
-	else
-		FindLevels/Q FirstSepWaveUnFolded unFoldedExt
-		wave W_FindLevels
-		UnfoldedTime1= mean(W_FindLevels)//-pnt2x(FirstSepWave,0)
-	endif
-	
-	if(wavemax(SecondSepWaveUnFolded)<unFoldedExt)
-				unFoldedTime2=pnt2x(Sepwave,LocalPoints[turnaround])
-	elseif(wavemin(SecondSepWaveUnFolded)>unFoldedExt)
-				unFoldedTime2=pnt2x(Sepwave,LocalPoints[numpnts(LocalPoints)-2])
-	else
-		FindLevels/Q SecondSepWaveUnFolded unFoldedExt
-		UnfoldedTime2= mean(W_FindLevels)//-pnt2x(FirstSepWave,0)
-	endif
-
-	variable m
-	for(m=1;m<turnaround;m+=1)
-
-		if(pnt2x(Sepwave,LocalPoints[m])<FoldedTime1)
-			foldedcounts1+= LocalType[m] 
-
-		endif
-		if(pnt2x(Sepwave,LocalPoints[m])<unFoldedTime1)
-			unfoldedcounts1-= LocalType[m] 
-
-		endif
-	endfor
-	
-	for(m=turnaround+1;m<numpnts(LocalPoints)-2;m+=1)
-
-		if(pnt2x(Sepwave,LocalPoints[m])<FoldedTime2)
-			foldedcounts2+= LocalType[m] 
-
-
-		endif
-		if(pnt2x(Sepwave,LocalPoints[m])<unFoldedTime2)
-			unfoldedcounts2-= LocalType[m] 
-
-		endif
-	endfor
-	wave W_Sigma
-	killwaves/Z w_coef, W_FindLevels,w_sigma
-	if(!ParamisDefault(Diagnostic))
-		make/o/n=(100) WFoldedExt,WUnfoldedExt
-		WFoldedExt=FoldedExt
-		WUnfoldedExt=UnFoldedExt
-		duplicate/o/r=[LocalPoints[0],LocalPoints[numpnts(localpoints)-1]] ForceWave ForceOut
-		duplicate/o/r=[LocalPoints[0],LocalPoints[numpnts(localpoints)-1]] SepWave sepOut
-		SetScale/I x pnt2x(FirstSepWave,0),pnt2x(SecondSepWave,numpnts(SecondSepWave)-1),"", WUnfoldedExt,WFoldedExt
-		duplicate/free/R=[LocalPoints[0],LocalPoints[numpnts(localpoints)-1]] SepWave, TotalSep
-		duplicate/o LocalPoints LocalPointsOut,LocalSepsOut
-		variable UG=LocalPointsOut[0]
-		LocalPointsOut-=UG
-		LocalPointsOut=pnt2x(TotalSep,(LocalPointsOut))
-		LocalSepsOut=TotalSep(LocalPointsOut)
-	endif
-	return cmplx(foldedcounts1+foldedcounts2,unfoldedcounts1+unfoldedcounts2)
-	
-end
-
-
-Static Function AccumulateAllRuptures(StateWave,ForceWave,AccState,FoldedAcc,Unfoldedacc,Accum)
+Static Function AccumulateAllRuptures(StateWave,ForceWave,AccState,FoldedAcc,Unfoldedacc)
 
 	wave StateWave,ForceWave,FoldedAcc,Unfoldedacc,AccState
 	variable Accum
@@ -348,7 +506,7 @@ Static Function AccumulateAllRuptures(StateWave,ForceWave,AccState,FoldedAcc,Unf
 
 	variable/C Offsets=CorrectionBasedonRequest(ForceWave,V_value)
 	forceoff=real(Offsets)
-	sepoff=imag(Offsets)
+	//sepoff=imag(Offsets)
 
 //	controlinfo de_dudko_check0
 //	if(V_value==1)
@@ -368,11 +526,10 @@ Static Function AccumulateAllRuptures(StateWave,ForceWave,AccState,FoldedAcc,Unf
 //		sepoff=0
 //
 //	endif
-	//print forceoff
-	//print sepoff
-	FUnfold=ForceWave[PUnfold]+forceoff
+
+	FUnfold=ForceWave[PUnfold]-forceoff
 	RampUnfOld=StateWave[UnPoints[p]][3]
-	FRefold=ForceWave[PRefold]+forceoff
+	FRefold=ForceWave[PRefold]-forceoff
 	RampRefOld=StateWave[RePoints[p]][3]
 	make/free/n=(dimsize(FUnfold,0),4) UnFoldCollect
 	UnFoldCollect[][0]=PrimaryName.vnum
@@ -387,10 +544,12 @@ Static Function AccumulateAllRuptures(StateWave,ForceWave,AccState,FoldedAcc,Unf
 	
 	if(numpnts(FoldedAcc)==0||numpnts(Unfoldedacc)==0)
 	print "Empty Inputs, Accum set to 0"
-	accum=0	
+	accum=0
+	else
+	accum=1	
 	endif
 	duplicate/free statewave statehold
-	statehold[][1]+=forceoff
+	statehold[][1]-=forceoff
 	if(accum==1)
 		Concatenate/NP=0 {FoldCollect,FoldedAcc}, FoldedResult
 		Concatenate/NP=0 {UnFoldCollect,Unfoldedacc }, UnFoldedResult
@@ -434,17 +593,35 @@ Static Function FindRuptureForcesbyTime(WLCParms,ForceWave,Sepwave,StateWave,Fol
 
 end
 
-Static Function/C FindStatesbyTime(Force,WLCParms,ForceWave,Sepwave,StateWave)
+Static Function FindStatesbyTime(Force,State,WLCParms,ForceWave,Sepwave,StateWave)
 	variable Force
 	wave WLCParms,ForceWave,Sepwave,StateWave
+	String State
+	
+	StrSwitch(State)
+		case "Folded":
+		
+		break
+		
+		case "Unfolded":
+		break
+		
+		default:
+		print "BadState"
+		return -1
+			
+	endswitch
+	
 	//variable T=startmstimer
 	variable maxcycle=Statewave[dimsize(StateWave,0)-1][3]
-	variable/c SumStates,ThisLoop
-	SumStates=cmplx(0,0)
+	variable SumStates,ThisLoop
 	variable n
-	variable/c ThisIndex
+	variable ThisIndex
 	for(n=0;n<maxcycle;n+=1)
-	 ThisIndex=FindStatesbyTimebyIndex(Force,n,WLCParms,ForceWave,Sepwave,StateWave)
+	 ThisIndex=FindStatesbyTimebyIndex(Force,n,State,WLCParms,ForceWave,Sepwave,StateWave)
+	//if(thisIndex==0)
+	//print n
+//	endif
 
 	SumStates+= ThisIndex
 	endfor
@@ -468,7 +645,7 @@ Static Function SmartProduceHistograms(Inwave,OutWave,spacing)
 	wave Inwave,OutWave
 	variable spacing
 	if(dimsize(Inwave,1)==0)
-	duplicate/o Inwave Forces
+	duplicate/free Inwave Forces
 	else
 	make/free/n=(dimsize(Inwave,0)) Forces
 	Forces=Inwave[p][3]
@@ -502,7 +679,7 @@ Static Function ButtonProc(ba) : ButtonControl
 	STRUCT WMButtonAction &ba
 	Strswitch(ba.ctrlname)
 			string saveDF
-			
+			variable ms
 		case "de_Dudko_button0":
 			switch( ba.eventCode )
 				case 2: // mouse up
@@ -516,8 +693,11 @@ Static Function ButtonProc(ba) : ButtonControl
 		case "de_Dudko_button1":
 			switch( ba.eventCode )
 				case 2: // mouse up
+				ms=STOPmsTimer(-2)
 					AccumulateButton()
 					ForceStateAccum()
+										print (stopmstimer(-2)-ms)/1e6
+
 					break
 				case -1: // control being killed
 					break
@@ -526,12 +706,15 @@ Static Function ButtonProc(ba) : ButtonControl
 		case "de_Dudko_button2":
 			switch( ba.eventCode )
 				case 2: // mouse up
+					ms=STOPmsTimer(-2)
+					TrimForceWaves(1e5)
 					FittheContour()
 					NewHistogramButton()
 					//HistogramButton()
 					CreateSlopeWave()
 					NumbersCalc()
 					MakeRates()
+					print (stopmstimer(-2)-ms)/1e6
 					break
 				case -1: // control being killed
 					break
@@ -549,12 +732,21 @@ Static Function ButtonProc(ba) : ButtonControl
 		case "de_Dudko_button4": //Just Histogram
 			switch( ba.eventCode )
 				case 2: // mouse up
-				HistogramButton()
+				NewHistogramButton()
 					break
 				case -1: // control being killed
 					break
 			endswitch
 			break
+		case "de_Dudko_button5":
+				switch( ba.eventCode )
+				case 2: // mouse up
+				BatchProcess()
+					break
+				case -1: // control being killed
+					break
+			endswitch
+				break
 			
 	endswitch
 	return 0
@@ -631,7 +823,7 @@ Static Function MakeSomeNicePlots()
 	ModifyGraph useBarStrokeRGB($nameofwave(unFoldedHist))=1,hbFill($nameofwave(unFoldedHist))=2
 	Label bottom "\\f01Force(pN)"
 	ModifyGraph fSize=9,font="Arial"
-	ModifyGraph prescaleExp(bottom)=12, muloffset={-1,0},prescaleExp(L2)=12,lblPosMode(L1)=1,lblPosMode(L3)=1,lblPosMode(L2)=1
+	ModifyGraph prescaleExp(bottom)=12, muloffset={0,0},prescaleExp(L2)=12,lblPosMode(L1)=1,lblPosMode(L3)=1,lblPosMode(L2)=1
 	Label left "\\f01Rate\r (1/s)"
 	Label L1 "\\f01Number"
 	Label L2 "\\f01Slope \r(pN/s)"
@@ -639,14 +831,14 @@ Static Function MakeSomeNicePlots()
 	•ModifyGraph margin(bottom)=29,margin(top)=14,margin(right)=14,margin(left)=43
 
 end
+
+//This will be used to get the WLC parameters for this sucker. The waves have already been accumulated
 Static Function FittheContour()
 	string saveDF = GetDataFolder(1)
 	controlinfo/W=DudkoAnalysis de_Dudko_popup0
 	string AccFolder=S_Value
 	controlinfo/W=DudkoAnalysis de_Dudko_popup1
 	string listofNames=StringListofAccnames(s_value,AccFolder)
-	//	wave AccUn=$stringfromlist(0,listofnames)
-	//	wave AccRe=$stringfromlist(1,listofnames)
 	wave FoldedForceOut=$stringfromlist(4,listofnames)
 	wave FoldedSepOut=$stringfromlist(5,listofnames)
 	wave unfoldedForceOut=$stringfromlist(6,listofnames)
@@ -701,8 +893,8 @@ Static Function CreateSlopeWave()
 	variable slopes=V_Value
 	UnfoldedSlope=WLCSlopeAtForce(UnfoldLC,Offset,UnFoldedForces,slopes)
 	FoldedSlope=WLCSlopeAtForce(FoldLC,Offset,FoldedForces,slopes)
-	UnfoldedSlope*=-1
-	FoldedSlope*=-1
+	//UnfoldedSlope*=-1
+	//FoldedSlope*=-1
 end
 
 Static Function CalculatePullingSpeed()
@@ -733,8 +925,8 @@ end
 
 Static Function WLCSlopeAtForce(LC,Offset,Force,rate)
 	variable LC,Offset,Force,rate
-	variable z=DE_WLC#ReturnExtentionatForce(Force+Offset,-.4e-9,LC,298)
-	return WLCSlope(z,-.4e-9,LC,298)*rate
+	variable z=DE_WLC#ReturnExtentionatForce(Force+Offset,.4e-9,LC,298)
+	return WLCSlope(z,.4e-9,LC,298)*rate
 end
 
 Static Function NumbersCalc()
@@ -753,36 +945,68 @@ Static Function NumbersCalc()
 	duplicate/o FoldedHist $stringfromlist(14,listofnames)
 	wave UnfoldedNum= $stringfromlist(13,listofnames)
 	wave FoldedNum=$stringfromlist(14,listofnames)
+UnfoldedNum=0;FoldedNum=0
+	
+	make/free/n=0 FFilt,SFilt
+	DE_Filtering#FilterForceSep(JustForce,JustSep,FFilt,SFilt,"svg",51)
+		duplicate/free UnfoldedNum HoldUnfolded
+
+	duplicate/free FoldedNum HoldFolded
+	variable maxcycle=CompState[dimsize(CompState,0)-1][3]
+	variable n
+	variable thiscycle
+
+	for(n=0;n<maxcycle;n+=1)
+	HoldUnfolded=0;HoldFolded=0
+		thiscycle=FindNumberforSingleCycle(n,FFilt,SFilt,HoldFolded,HoldUnfolded)
+		UnfoldedNum+=HoldUnfolded
+		foldedNum+=Holdfolded
+
+	endfor
+
+	//	FoldedNum= FindStatesbyTime(FoldedForces,"Unfolded",WLCParms,FFilt,SFilt,CompState)
+
+
+end
+
+Static Function FindNumberforSingleCycle(n,FFilt,SFilt,FoldedNum,UnfoldedNum)
+	wave FFilt,SFilt,FoldedNum,UnfoldedNum
+	variable n
+	controlinfo/W=DudkoAnalysis de_Dudko_popup0
+	string AccFolder=S_Value
+	controlinfo/W=DudkoAnalysis de_Dudko_popup1
+	string listofNames=StringListofAccnames(s_value,AccFolder)
+	wave CompState=$stringfromlist(15,listofnames)
+	wave WLCParms=$(stringfromlist(8,listofnames))
+	wave UnfoldedHist=$stringfromlist(9,listofnames)
+	wave FoldedHist=$stringfromlist(10,listofnames)
 	duplicate/free UnfoldedHist UnFoldedForces
 	UnFoldedForces=pnt2x(UnfoldedHist,p)
 	duplicate/free foldedHist FoldedForces
 	FoldedForces=pnt2x(foldedHist,p)
+	make/free/n=(dimsize(CompState,0)) Points,RupForce,Type,Trace
+	Points=CompState[p][0]
+	RupForce=-CompState[p][1]
+	Type=CompState[p][2]
+	Trace=CompState[p][3]
 	
-	make/free/n=0 FFilt,SFilt
-	DE_Filtering#FilterForceSep(JustForce,JustSep,FFilt,SFilt,"svg",51)
-	UnfoldedNum= 	real(FindStatesbyTime(UnFoldedForces,WLCParms,FFilt,SFilt,CompState))
-	FoldedNum= imag(FindStatesbyTime(FoldedForces,WLCParms,FFilt,SFilt,CompState))
-	
-	//FFilt*=-1
-	//UnFoldedForces*=-1
-	//FoldedForces*=-1
-	//print mean(FFilt)
-	//print UnFoldedForces
-	//FindStatesbyTime(Force,WLCParms,ForceWave,Sepwave,StateWave)
-	//UnfoldedNum= 	real(CalculateStateExistance(UnFoldedForces,CompState,SFilt,WLCParms))
-	//FoldedNum= imag(CalculateStateExistance(FoldedForces,CompState,SFilt,WLCParms))
-	
-	
-//	make/free/n=0 FFilt,SFilt
-//	DE_Filtering#FilterForceSep(JustForce,JustSep,FFilt,SFilt,"tvd",200e-9)
-//	FFilt*=-1
-//	UnFoldedForces*=-1
-//	FoldedForces*=-1
-//	UnfoldedNum= NumberofTracesinState(FFilt,CompState,UnFoldedForces,-1,1)
-//	FoldedNum= NumberofTracesinState(FFilt,CompState,FoldedForces,1,1)
+	Extract/INDX/Free Points, LocalIndex, Trace==n
+	make/free/n=(numpnts(LocalIndex)+1) LocalPoints,LocalType,LocalTrace
+	LocalPoints[]=Points[LocalIndex[0]+p][0]
+	LocalType[]=Type[LocalIndex[0]+p][2]
+	LocalTrace[]=Trace[LocalIndex[0]+p][2]
+	FindValue/V=-2/T=.1 LocalType
+	variable turnaround=v_value
+	duplicate/free/R=[LocalPoints[0],LocalPoints[turnaround]] SFilt, OutgoingSepWave,OutgoingSepFolded,OutgoingSepUnFolded
+	duplicate/free/R=[LocalPoints[turnaround],LocalPoints[numpnts(localpoints)-2]] SFilt, IncomingSepWave,IncomingSepFolded,IncomingSepUNfolded
 
+	GenerateSepLine(FFilt,SFilt,CompState,n,0,1,OutgoingSepFolded)
+	GenerateSepLine(FFilt,SFilt,CompState,n,0,0,OutgoingSepUnFolded)
+	GenerateSepLine(FFilt,SFilt,CompState,n,1,1,IncomingSepFolded)
+	GenerateSepLine(FFilt,SFilt,CompState,n,1,0,IncomingSepUNfolded)
+	FoldedNum=FindStatesForForce(FoldedForces,"Unfolded",WLCParms,FFilt,SFilt,LocalPoints,LocalType, turnaround,OutgoingSepWave,OutgoingSepFolded,IncomingSepWave,IncomingSepFolded)
+	UnFoldedNum=FindStatesForForce(UnFoldedForces,"Folded",WLCParms,FFilt,SFilt,LocalPoints,LocalType, turnaround,OutgoingSepWave,OutgoingSepunFolded,IncomingSepWave,IncomingSepunFolded)
 end
-
 Static Function NumberofTracesinState(ForceWaveSM,CombinedWave,Force,State,Smoothed)
 	wave ForceWaveSM, CombinedWave
 	variable Force,State,Smoothed
@@ -927,14 +1151,14 @@ Static Function MakeTheWaves()
 	String FECUnFoldedForce=BaseName+"_UnFoldedForce"
 	String FECUnFoldedSep=BaseName+"_UnFoldedSep"
 	
-	make/o/n=0 $AccFold,$AccUnFold,$FECFoldedForce, $FECFoldedSep, $FECUnFoldedForce, $FECUnFoldedSep,$FECForce,$FECSep,$CompState
+	make/o/n=0 $AccFold,$AccUnFold,$FECForce,$FECSep,$CompState,$FECFoldedForce, $FECUnFoldedForce,$FECFoldedSep, $FECUnFoldedSep
 	SetDataFolder saveDF
 
 end
 
-
+//This thing just extracts the folded states and the unfolded states and then collects them on top of each other.
+//In this case I'm NOT smoothing the data. Instead, I'll decimate the final wave and then smooth that to try and reduce overhead.
 Static Function ForceStateAccum()
-
 	string saveDF = GetDataFolder(1)
 	controlinfo/W=DudkoAnalysis de_Dudko_popup0
 	string AccFolder=S_Value
@@ -942,12 +1166,14 @@ Static Function ForceStateAccum()
 	string listofNames=StringListofAccnames(s_value,AccFolder)
 	wave JustForce=$stringfromlist(2,listofnames)
 	wave JustSep=$stringfromlist(3,listofnames)
+	
 	wave FoldedForceOut=$stringfromlist(4,listofnames)
 	wave FoldedSepOut=$stringfromlist(5,listofnames)
 	wave unfoldedForceOut=$stringfromlist(6,listofnames)
 	wave unFoldedsepOut=$stringfromlist(7,listofnames)
 
-
+	
+	
 	controlinfo/W=DudkoAnalysis de_Dudko_popup2
 	string ForceFolder=S_Value
 	controlinfo/W=DudkoAnalysis de_Dudko_popup3
@@ -956,9 +1182,11 @@ Static Function ForceStateAccum()
 	controlinfo/W=DudkoAnalysis de_Dudko_popup4
 	wave StateWave=$(ForceFolder+S_Value)
 	
-//	//variable MinSpacing=3000
-//	wave ForceSm=$(ForceFolder+nameofwave(ForceWave)+"_sm")
-//	wave SepSm=$(ForceFolder+nameofwave(SepWave)+"_sm")
+	
+	
+	//duplicate/o ForceWave,FFilt
+	//duplicate/o SepWave,SFilt
+
 	make/free/n=0 FFilt,SFilt
 	DE_Filtering#FilterForceSep(ForceWave,SepWave,FFilt,SFilt,"TVD",25e-9)
 	
@@ -968,37 +1196,19 @@ Static Function ForceStateAccum()
 	make/free/n=0 TempFoldedForceOut,TempFoldedSepOut,TempUnFoldedForceOut,TempUnFoldedSepOut
 	ReturnFoldandUnfold(FFilt,SFilt,StateWave,pointstoignore,TempFoldedForceOut,TempFoldedSepOut,TempUnFoldedForceOut,TempUnFoldedSepOut)
 	variable forceoff,sepoff
-		controlinfo de_dudko_check0
-
+	controlinfo de_dudko_check0
 	variable/C Offsets=CorrectionBasedonRequest(ForceWave,V_Value)
 	forceoff=real(Offsets)
 	sepoff=imag(Offsets)
-//	controlinfo de_dudko_check0
-//	if(V_value==1)
-//	controlinfo de_Dudko_setvar3
-//	forceoff=ChangeTheForce(ForceWave,v_value)
-//	else
-//		forceoff=0
-//
-//	endif
-//	
-//		controlinfo de_dudko_check1
-//	if(V_value==1)
-//		controlinfo de_Dudko_setvar4
-//
-//	sepoff=de_NEWdUDKO#ChangeTheSep(ForceWave,v_value)
-//	else
-//		sepoff=0
-//
-//	endif
+
 	duplicate/free ForceWave ForceWaveTemp
 	duplicate/free SepWave SepWaveTemp
-	ForceWaveTemp+=forceoff
-	SepWaveTemp+=sepoff
-	TempFoldedForceOut+=forceoff
-	TempFoldedSepOut+=sepoff
-	TempUnFoldedForceOut+=forceoff
-	TempUnFoldedSepOut+=sepoff
+	ForceWaveTemp-=forceoff
+	SepWaveTemp-=sepoff
+	TempFoldedForceOut-=forceoff
+	TempFoldedSepOut-=sepoff
+	TempUnFoldedForceOut-=forceoff
+	TempUnFoldedSepOut-=sepoff
 	
 	variable first
 	if(numpnts(JustForce)==0)
@@ -1035,11 +1245,14 @@ Static Function ForceStateAccum()
 	duplicate/o SepWaveTemp JustSep
 
 	endif
+	
 	if(First==1)
 	SetScale/P x 0,1/(5e4),"", FoldedForceOut,FoldedSepOut,UnFoldedForceOut,UnFoldedSepOut,JustForce,JustSep
 	
 	endif
 
+
+	SetDataFolder saveDF
 end
 
 Static Function HistogramButton()
@@ -1059,8 +1272,8 @@ Static Function HistogramButton()
 	SmartProduceHistograms(AccUn,UnHist,v_value*2)
 	SmartProduceHistograms(AccRe,ReHist,v_value)
 
-	SetDataFolder saveDF
 end
+
 
 Static Function NewHistogramButton()
 	string saveDF = GetDataFolder(1)
@@ -1068,18 +1281,22 @@ Static Function NewHistogramButton()
 	string AccFolder=S_Value
 	controlinfo/W=DudkoAnalysis de_Dudko_popup1
 	string listofNames=StringListofAccnames(s_value,AccFolder)
-		wave AccUn=$stringfromlist(0,listofnames)
+	wave AccUn=$stringfromlist(0,listofnames)
 	wave AccRe=$stringfromlist(1,listofnames)
 	wave ForceWave= $stringfromlist(2,listofnames)
 	wave Sepwave= $stringfromlist(3,listofnames)
 	Wave WLCParms= $stringfromlist(8,listofnames)
 	wave StateWave=$stringfromlist(15,listofnames)
+	make/free/n=0 OGFoldingForce,OGUnfoldingForce
+	//FindRuptureForcesbyTime(WLCParms,ForceWave,Sepwave,StateWave,OGFoldingForce,OGUnfoldingForce)
+	//OGUnfoldingForce*=-1
+	//OGFoldingForce*=-1
 
-	make/o/n=0 OGFoldingForce,OGUnfoldingForce
-	FindRuptureForcesbyTime(WLCParms,ForceWave,Sepwave,StateWave,OGFoldingForce,OGUnfoldingForce)
+	SimpleFindRuptureForce(ForceWave,StateWave,OGUnfoldingForce,OGFoldingForce)
 
 //
-	make/o/n=0 $(AccFolder+nameofwave(AccUn)+"_Hist"),$(AccFolder+nameofwave(AccRe)+"_Hist")
+	make/o/n=0 $(AccFolder+nameofwave(AccUn)+"_Hist")
+	make/o/n=0 $(AccFolder+nameofwave(AccRe)+"_Hist")
 	wave UnHist=$(AccFolder+nameofwave(AccUn)+"_Hist")
 	wave ReHist=$(AccFolder+nameofwave(AccRe)+"_Hist")
 	controlinfo/w=DudkoAnalysis de_Dudko_setvar1
@@ -1089,7 +1306,8 @@ Static Function NewHistogramButton()
 
 	SetDataFolder saveDF
 end
-
+//This runs the accumulate function on the selected waves in the panel. It concatenates the info from the state
+//wave into CompState, it also nicely splits out JUST the unfolding and folding points into the waves AccRe,AccUn
 Static Function AccumulateButton()
 
 	string saveDF = GetDataFolder(1)
@@ -1106,7 +1324,7 @@ Static Function AccumulateButton()
 	wave ForceWave=$(ForceFolder+S_Value)
 	controlinfo/W=DudkoAnalysis de_Dudko_popup4
 	wave StateWave=$(ForceFolder+S_Value)
-	AccumulateAllRuptures(StateWave,ForceWave,CompState,AccRe,AccUn,1)
+	AccumulateAllRuptures(StateWave,ForceWave,CompState,AccRe,AccUn)
 end
 
 Static Function/S StringListofAccnames(InputName,FolderStr)
@@ -1130,6 +1348,9 @@ Static Function/S StringListofAccnames(InputName,FolderStr)
 	listofNames+=";"+FolderStr+ReplaceString("AccUnFold",InputName,"CompState")
 	listofNames+=";"+FolderStr+ReplaceString("AccUnFold",InputName,"AccUnFold_Rate")
 	listofNames+=";"+FolderStr+ReplaceString("AccUnFold",InputName,"AccFold_Rate")
+	listofNames+=";"+FolderStr+ReplaceString("AccUnFold",InputName,"FoldedState")
+	listofNames+=";"+FolderStr+ReplaceString("AccUnFold",InputName,"UnfoldedState")
+
 	return listofNames
 end
 
@@ -1141,6 +1362,44 @@ Static Function SVP(ctrlName,varNum,varStr,varName) : SetVariableControl
 
 End
 
+Static Function TrimForceWaves(Cutoff)
+variable cutoff
+
+	string saveDF = GetDataFolder(1)
+	controlinfo/W=DudkoAnalysis de_Dudko_popup0
+	string AccFolder=S_Value
+	controlinfo/W=DudkoAnalysis de_Dudko_popup1
+	string listofNames=StringListofAccnames(s_value,AccFolder)
+	wave FoldedForceOut=$stringfromlist(4,listofnames)
+	wave FoldedSepOut=$stringfromlist(5,listofnames)
+	wave unfoldedForceOut=$stringfromlist(6,listofnames)
+	wave unFoldedsepOut=$stringfromlist(7,listofnames)
+	
+	variable downgrade
+			variable down
+
+	if(numpnts(FoldedForceOut)>cutoff)
+		down=ceil(numpnts(FoldedForceOut)/cutoff)
+		Resample/DOWN=(down)/N=1/WINF=Non FoldedForceOut
+		Resample/DOWN=(down)/N=1/WINF=Non FoldedSepOut
+	else
+
+	endif
+		if(numpnts(unfoldedForceOut)>cutoff)
+		
+		down=ceil(numpnts(unfoldedForceOut)/cutoff)
+		Resample/DOWN=(down)/N=1/WINF=Non unfoldedForceOut
+		Resample/DOWN=(down)/N=1/WINF=Non unFoldedsepOut
+	else
+
+	endif
+
+
+end
+
+
+
+//This takes FoldedForceWave and UnfoldedForce Wave (and accompanying SepWaves), and fits them with a WLC.
 Static Function WLCFitter(FoldedForceWave,FoldedSepWave,UnFoldedForceWave,UnFoldedSepWave,OutputResults,fitfoldedfirst)
 	Wave FoldedForceWave,FoldedSepWave,UnFoldedForceWave,UnFoldedSepWave,OutputResults
 	variable fitfoldedfirst
@@ -1149,7 +1408,7 @@ Static Function WLCFitter(FoldedForceWave,FoldedSepWave,UnFoldedForceWave,UnFold
 
 	W_coef[0] = {-.4e-9,100e-9,298,0,fitstart}
 	Make/free/T/N=2 T_Constraints
-//	//T_Constraints[0] = {"K4<"+num2str(fitstart+3e-9),"K4>"+num2str(fitstart-30e-9),"K3<"+num2str(1e-12),"K3>"+num2str(-1e-12)}
+	//T_Constraints[0] = {"K4<"+num2str(fitstart+3e-9),"K4>"+num2str(fitstart-30e-9),"K3<"+num2str(1e-12),"K3>"+num2str(-1e-12)}
 	T_Constraints[0] = {"K4<"+num2str(fitstart+10e-9),"K4>"+num2str(fitstart-30e-9)}
 	if(FitFOldedFirst==1)
 		FuncFit/Q/H="10100"/NTHR=0 WLC_FIT W_coef  FoldedForceWave /X=FoldedSepWave/C=T_Constraints/D
@@ -1193,6 +1452,8 @@ Static Function ChangeTheSep(AlignedWave,DesiredNewSepOffset)
 
 end
 
+
+
 Window DudkoAnalysis() : Panel
 
 	PauseUpdate; Silent 1		// building window...
@@ -1209,7 +1470,7 @@ Window DudkoAnalysis() : Panel
 	PopupMenu de_Dudko_popup1,pos={15,50},size={129,21},Title="AccumulateFile",proc=DE_NewDudko#PopMenuProc
 	PopupMenu de_Dudko_popup1,mode=1,popvalue="X",value= #"DE_NewDudko#ListWaves(\"de_Dudko_popup0\",\"*Acc*Unf*\")"
 
-	PopupMenu de_Dudko_popup2,pos={75,90},size={129,21},Title="ForceFolder"
+	PopupMenu de_Dudko_popup2,pos={75,90},size={129,21},Title="ForceFolder",proc=DE_NewDudko#PopMenuProc1
 	PopupMenu de_Dudko_popup2,mode=1,popvalue="X",value= #"DE_PanelProgs#ListFolders()"
 	PopupMenu de_Dudko_popup3,pos={15,120},size={129,21},Title="Force",proc=DE_NewDudko#PopMenuProc
 	PopupMenu de_Dudko_popup3,mode=1,popvalue="X",value= #"DE_NewDudko#ListWaves(\"de_Dudko_popup2\",\"*Force*\")"
@@ -1221,6 +1482,7 @@ Window DudkoAnalysis() : Panel
 	Button de_Dudko_button2,pos={75,175},size={150,21},proc=DE_NewDudko#ButtonProc,title="Find Contour"
 	Button de_Dudko_button3,pos={75,210},size={150,21},proc=DE_NewDudko#ButtonProc,title="Make plots"
 	Button de_Dudko_button4,pos={75,250},size={150,21},proc=DE_NewDudko#ButtonProc,title="JustHistogram"
+	Button de_Dudko_button5,pos={250,250},size={150,50},proc=DE_NewDudko#ButtonProc,title="Batch"
 
 	SetVariable de_Dudko_setvar1,pos={250,175},size={150,16},value= _num:10,title="Bins"
 	SetVariable de_Dudko_setvar2,pos={350,175},size={150,16},value= _num:20e-9,title="Velocity"
@@ -1522,9 +1784,13 @@ Static Function GenerateSepLine(ForceWave,SepWave,StateWave,n,Direc,Folded,OutAp
 	make/free/n=0 SepFree,ForceFree
 
 	GenerateSingleRamp(ForceWave,SepWave,StateWave,n,Direc,Folded,ForceFree,SepFree)
-
-	CurveFit/Q line SepFree
 	duplicate/free SepFree,LineFree
+	if(numpnts(SepFree)>1e5)
+		variable down=ceil(numpnts(SepFree)/1e5)
+		Resample/DOWN=(down) SepFree;
+
+	endif
+	CurveFit/Q line SepFree
 	wave W_coef,W_sigma
 	LineFree=W_coef[0]+W_coef[1]*x
 	duplicate/o LineFree OutApprox
@@ -1549,9 +1815,239 @@ Static Function PopMenuProc(pa) : PopupMenuControl
 	return 0
 End
 
-Static Function SimpleLoadingRate()
+Static Function PopMenuProc1(pa) : PopupMenuControl
+	STRUCT WMPopupAction &pa
+
+	switch( pa.eventCode )
+		case 2: // mouse up
+			Variable popNum = pa.popNum
+			String popStr = pa.popStr
+			//variable target1= WhichListItem(stringfromlist(0,DE_NewDudko#ListWaves("de_Dudko_popup2","*Force_Align")),DE_NewDudko#ListWaves("de_Dudko_popup2","*Force*"))
+			ControlUpdate/w=RupRampPanel de_Dudko_popup3
+			popupmenu de_Dudko_popup3 win=DudkoAnalysis,popmatch="*Force_Align"
+			ControlUpdate/w=RupRampPanel de_Dudko_popup4
+			popupmenu de_Dudko_popup4 win=DudkoAnalysis,popmatch="*2States*"
+			break
+		case -1: // control being killed
+			break
+	endswitch
+
+	return 0
+End
 
 
+Static Function BatchProcess()
+	String ctrlName
+		MakeTheWaves()
+		string saveDF = GetDataFolder(1)
+		controlinfo/W=DudkoAnalysis de_Dudko_popup0
+		string AccFolder=S_Value
+		SetDataFolder S_Value
+
+		controlinfo/W=DudkoAnalysis de_Dudko_setvar0
+		string BaseName=S_Value
+		//String AccFold=BaseName+"_AccFold"
+		String AccUnFold=BaseName+"_AccUnFold"
+//	String CompState=BaseName+"_CompState"
+//
+//	String FECForce=BaseName+"_Force"
+//	String FECSep=BaseName+"_Sep"
+//
+//	String FECFoldedForce=BaseName+"_FoldedForce"
+//	String FECFoldedSep=BaseName+"_FoldedSep"
+//	String FECUnFoldedForce=BaseName+"_UnFoldedForce"
+//	String FECUnFoldedSep=BaseName+"_UnFoldedSep"
+//	
+	//make/o/n=0 $AccFold,$AccUnFold,$FECForce,$FECSep,$CompState,$FECFoldedForce, $FECUnFoldedForce,$FECFoldedSep, $FECUnFoldedSep
+	
+	
+	
+		ControlUpdate/w=RupRampPanel de_Dudko_popup1
+		popupmenu de_Dudko_popup1 win=DudkoAnalysis,popmatch=AccUnFold
+			
+			
+		NewPanel /W=(187,368,437,831) as "Devin"
+		make/T/o/n=0 FolderList
+		string FolderString=DE_PanelProgs#ListFolders()
+		variable n
+		for(n=0;n<itemsinlist(FolderString);n+=1)
+		
+			insertpoints numpnts(FolderList),1,FolderList
+			FolderList[numpnts(FolderList)-1]=stringfromlist(n,FolderString)
+		endfor
+		
+		make/o/n=(numpnts(FolderList)) SelWave
+		wave SW=SelWave
+		ListBox de_scholl_list0,pos={000,20},size={150,300},proc=DE_NewDudko#LBP,listWave=FolderList
+		ListBox de_scholl_list0,row= 0,selWave= SW,selRow= 0,mode= 4
+		DoWindow/C tmp_Select // Set to an unlikely name
+//
+		BatchSelect("tmp_Select",0)
+		for(n=0;n<numpnts(SW);n+=1)
+			If(SW[n]==1)
+			print FolderList[n]
+			ControlUpdate/w=DudkoAnalysis de_Dudko_popup2
+						ControlUpdate/w=DudkoAnalysis de_Dudko_popup3
+			ControlUpdate/w=DudkoAnalysis de_Dudko_popup4
+			popupmenu de_Dudko_popup2 win=DudkoAnalysis,popmatch=FolderList[n]
+			ControlUpdate/w=DudkoAnalysis de_Dudko_popup3
+			ControlUpdate/w=DudkoAnalysis de_Dudko_popup4
+			ControlUpdate/w=DudkoAnalysis de_Dudko_popup2
+			ControlUpdate/w=RupRampPanel de_Dudko_popup3
+			popupmenu de_Dudko_popup3 win=DudkoAnalysis,popmatch="*Force_Align"
+			ControlUpdate/w=RupRampPanel de_Dudko_popup4
+			popupmenu de_Dudko_popup4 win=DudkoAnalysis,popmatch="*2States*"
+			AccumulateButton()
+			ForceStateAccum()
+			else
+			
+			
+			endif
+		
+		
+		
+		endfor
+					print "Starting Contour"
+					variable	ms=STOPmsTimer(-2)
+					TrimForceWaves(1e5)
+					FittheContour()
+					NewHistogramButton()
+					//HistogramButton()
+					CreateSlopeWave()
+					NumbersCalc()
+					MakeRates()
+					print (stopmstimer(-2)-ms)/1e6
+	Makesomeniceplots()
+		killwaves FolderList,SW
+
+		SetDataFolder saveDF
+
+//	controlinfo de_scholl_list1
+//	variable row1=V_Value
+//
+//	controlinfo de_scholl_setvar3
+//	variable start=V_Value
+//	controlinfo de_scholl_setvar4
+//	variable ends=V_Value
+//	
+//	
+//	wave/t/z LW1=root:SchollPanel:ListWave1
+//	wave/t/z LW2=root:SchollPanel:ListWave2
+//
+//	struct ForceWave Name1
+//	DE_Naming#WavetoStruc(LW1[row1],Name1)
+//
+//
+//	controlinfo de_scholl_setvar5
+//	string ZsnsrName1=DE_Naming#StringCreate(Name1.Name,Name1.VNum,S_Value,Name1.SDirec)
+//
+//	
+//	wave w1=$LW1[row1]
+//	wave w2=$ZsnsrName1
+//	make/o/n=(numpnts(LW2)) root:SchollPanel:SelWave2
+//	wave SW2=root:SchollPanel:SelWave2
+//	SW2=0
+
+//	make/o/n=0 ResultWave
+//	controlinfo de_scholl_popup0
+//
+//	DE_FECWiggle#FindWiggleParms(w1,w2, ResultWave,start,ends,FitType=S_Value,ResName="Resids")
+//	wave w7=Resids
+//
+//	duplicate/o w7 root:schollpanel:FitResiduals
+//	duplicate/o w2 root:schollpanel:FitResidualsX
+//	killwaves w7
+//
+//
+//	variable n
+//	
+//	for(n=0;n<numpnts(SW2);n+=1)
+//	
+//		if(SW2[n]==1)
+//			struct ForceWave Name2
+//
+//			DE_Naming#WavetoStruc(LW2[n],Name2)
+//			string NewName
+//			string ForceName
+//			string SepName
+//			controlinfo de_scholl_setvar6
+//			string ZsnsrName2=DE_Naming#StringCreate(Name2.Name,Name2.VNum,S_Value,Name2.SDirec)
+//			wave w3=$LW2[n]
+//			wave w4=$ZsnsrName2
+//			NewName=DE_Naming#StringCreate(Name2.Name,Name2.VNum,"DeflCor",Name2.SDirec)
+//			ForceName=DE_Naming#StringCreate(Name2.Name,Name2.VNum,"Force",Name2.SDirec)
+//			SepName=DE_Naming#StringCreate(Name2.Name,Name2.VNum,"Sep",Name2.SDirec)
+//			controlinfo de_scholl_popup0
+//
+//			DE_FECWiggle#SingleProcess(Resultwave,w2,w3,w4,start,ends,NewName=NewName,ForceName=ForceName,SepName=SepName,FitType=S_Value)
+//		else
+//		endif
+//	
+//	endfor
+//	killwaves resultwave
+End
+
+Static Function LBP(ctrlName,row,col,event) : ListBoxControl
+
+	String ctrlName
+	Variable row
+	Variable col
+	Variable event	//1=mouse down, 2=up, 3=dbl click, 4=cell select with mouse or keys
+	//5=cell select with shift key, 6=begin edit, 7=end
+
+End		
+
+Static Function BatchSelect(graphName,autoAbortSecs)
+	String graphName
+	Variable autoAbortSecs
+	DoWindow/F $graphName // Bring graph to front
+	if (V_Flag == 0) // Verify that graph exists
+		Abort "UserCursorAdjust: No such graph."
+		return -1
+	endif
+
+	NewPanel /K=2 /W=(187,368,437,531) as "Pause for Cursor"
+	DoWindow/C tmp_PauseforCursor // Set to an unlikely name
+	AutoPositionWindow/E/M=1/R=$graphName // Put panel near the graph
+	DrawText 21,20,"Adjust the cursors and then"
+	DrawText 21,40,"Click Continue."
+	Button button0,pos={80,58},size={92,20},title="Continue"
+	Button button0,proc=DE_Schollpanel#BatchSelect_ContButtonProc
+	Variable didAbort= 0
+	if( autoAbortSecs == 0 )
+		PauseForUser tmp_PauseforCursor,$graphName
+	else
+		SetDrawEnv textyjust= 1
+		DrawText 162,103,"sec"
+		SetVariable sv0,pos={48,97},size={107,15},title="Aborting in "
+		SetVariable sv0,limits={-inf,inf,0},value= _NUM:10
+		Variable td= 10,newTd
+		Variable t0= ticks
+		Do
+			newTd= autoAbortSecs - round((ticks-t0)/60)
+			if( td != newTd )
+				td= newTd
+				SetVariable sv0,value= _NUM:newTd,win=tmp_PauseforCursor
+				if( td <= 10 )
+					SetVariable sv0,valueColor= (65535,0,0),win=tmp_PauseforCursor
+				endif
+			endif
+			if( td <= 0 )
+				DoWindow/K tmp_PauseforCursor
+				didAbort= 1
+				break
+			endif
+			PauseForUser/C tmp_PauseforCursor,$graphName
+		while(V_flag)
+	endif
+	return didAbort
+End
 
 
-end
+Static Function BatchSelect_ContButtonProc(ctrlName) : ButtonControl
+	String ctrlName
+	print "RUNNING"
+	DoWindow/K tmp_PauseforCursor // Kill panel
+	DoWindow/K tmp_Select // Kill panel
+
+End
