@@ -1,7 +1,7 @@
 ﻿#pragma TextEncoding = "UTF-8"
 #pragma rtGlobals=3		// Use modern global access method and strict wave access.
 //#include "C:\Users\dedwards\src_prh\IgorUtil\PythonApplications\FEATHER\Example\MainFeather"
-#include "D:\Devin\Documents\Software\AppFEATHER\AppIgor\Example\MainFeather"
+#include "C:\Devin\Documents\Software\AppFEATHER\AppIgor\Example\MainFeather"
 #pragma modulename=DE_NewFeather
 Static Function OutportForce(ForceWave,SepWave)
 	wave ForceWave,SepWave

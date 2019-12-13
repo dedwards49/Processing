@@ -60,7 +60,6 @@ Static Function SelectRamp()
 	Removefromgraph/W=MRViewer#Data YDispSm
 	Removefromgraph/W=MRViewer#Data YDispLessSm
 	Removefromgraph/W=MRViewer#Data YDispLessSm
-	
 	duplicate/o/r=[startRet,EndExt] ForceWave root:DE_Viewer:YDisp
 	wave Ydisp=root:DE_Viewer:YDisp
 	duplicate/o/r=[startRet,EndExt] SepWave root:DE_Viewer:XDisp
@@ -75,8 +74,12 @@ Static Function SelectRamp()
 	duplicate/o/r=[startRet,EndExt] SepWaveLessSm root:DE_Viewer:XDispLessSm
 	wave XDispLessSm=root:DE_Viewer:XDispLessSm
 
+	wave PauseStartY=root:DE_Viewer:PauseStartY  
+	wave PauseStartX=root:DE_Viewer:PauseStartX
+	variable help= str2num(StringfromList(2*row,stringbykey("DE_PauseLoc",note(ForceWave),":","\r")))
+	PauseStartY[0]=ForceWave[str2num(StringfromList(2*row,stringbykey("DE_PauseLoc",note(ForceWave),":","\r")))]
+	PauseStartX[0]=pnt2x(ForceWave,str2num(StringfromList(2*row,stringbykey("DE_PauseLoc",note(ForceWave),":","\r"))))
 	Controlinfo de_Viewer_setvar0
-
 	Appendtograph/W=MRViewer#Data YDisp[0,Mid-startRet] vs XDisp[0,Mid-startRet]
 	Appendtograph/W=MRViewer#Data YDisp[Mid-startRet,EndExt-startRet] vs XDisp[Mid-startRet,EndExt-startRet] 
 	Appendtograph/W=MRViewer#Data YDispLessSm[0,Mid-startRet] vs XDispLessSm[0,Mid-startRet]
@@ -517,6 +520,7 @@ Static Function UpdateLocalPoints()
 				CDownX[m]=leftx(FW)+deltax(FW )*(ADown[n]-startret)
 
 				//CDownX[m]=pnt2x(FW,ADown[n]-startret)
+	
 				CDownF[m]=FW[ADown[n]-startret]
 			else
 									CDownX[m]=leftx(FWUnSm)+deltax(FWUnSm)*(ADown[n]-startret)
@@ -828,7 +832,6 @@ Static Function RemoveCurrentMarkers()
 	else
 		for(n=0;n<numpnts(CDownforce);n+=1)
 			FindValue/T=1e-16 /V=(CDownforce[n]) ADownForce
-			print v_value
 			deletepoints V_value,1, ADownForce	
 			deletepoints V_value,1, ADown	
 			deletepoints V_value,1, ADownLoad	
@@ -1294,9 +1297,7 @@ Static Function PlotStartandEnd()
 	ModifyGraph rgb($(nameofwave(RWave)+"#1"))=(0,0,0);DelayUpdate
 	ModifyGraph rgb($(nameofwave(EWave)+"#1"))=(0,0,0)	
 	wavestats/q/r=[numpnts(EWave)*.02,numpnts(EWave)*.12] EWave
-	print v_avg
 	wavestats/q/r=[numpnts(RWave)*.88,numpnts(RWave)*98] RWave
-	print v_avg
 
 end
 
@@ -1462,10 +1463,15 @@ Macro MultiRampViewer() : Panel
 	
 	make/D/o/n=0 root:DE_Viewer:AllUpPoints,root:DE_Viewer:AllDownPoints,root:DE_Viewer:CurrUpF,root:DE_Viewer:CurrUpX,root:DE_Viewer:CurrDownF,root:DE_Viewer:CurrDownX
 	make/D/o/n=0 root:DE_Viewer:SelUpX,root:DE_Viewer:SelUpY,root:DE_Viewer:SelDownX,root:DE_Viewer:SelDownY
+		make/D/o/n=0 root:DE_Viewer:SelUpX,root:DE_Viewer:SelUpY,root:DE_Viewer:SelDownX,root:DE_Viewer:SelDownY
+		make/D/o/n=1 root:DE_Viewer:PauseStartY,root:DE_Viewer:PauseStartX
+
 	appendtograph/W=MRViewer#TimeData  root:DE_Viewer:CurrUpF vs root:DE_Viewer:CurrUpX
 	appendtograph/W=MRViewer#TimeData root:DE_Viewer:CurrDownF vs root:DE_Viewer:CurrDownX
 	appendtograph/W=MRViewer#TimeData root:DE_Viewer:SelUpY vs root:DE_Viewer:SelUpX
 	appendtograph/W=MRViewer#TimeData root:DE_Viewer:SelDownY vs root:DE_Viewer:SelDownX
+	appendtograph/W=MRViewer#TimeData root:DE_Viewer:PauseStartY vs root:DE_Viewer:PauseStartX
+
 	ModifyGraph mode(SelUpY)=3,marker(SelUpY)=17,mode(SelDownY)=3,marker(SelDownY)=17
 	ModifyGraph msize(SelUpY)=4,rgb(SelUpY)=(14848,32256,47104),msize(SelDownY)=4;DelayUpdate
 	ModifyGraph rgb(SelDownY)=(19712,44800,18944)
@@ -1529,25 +1535,55 @@ EndMacro
 
 Static Function CheckWaveForOrdering(w0,w1)
 	wave w0,w1
+		controlinfo de_Viewer_list0
+	variable row=v_value
+	
+	wave ForceWave=root:DE_Viewer:FullForceTrace
+	if(WaveExists(ForceWave)==0)
+	
+	return -1
+	endif
+	variable PausePoint=str2num(StringfromList(2*row,stringbykey("DE_PauseLoc",note(ForceWave),":","\r")	))
+	variable pauseTime=pnt2x(ForceWave,PausePoint)
+	wave CurrDownP= root:DE_Viewer:CurrDownP
+	wave CurrUpP= root:DE_Viewer:CurrUpP
+	wave FW= root:DE_Viewer:YDispSm					
+						
 
 	if(numpnts(w1)==0||numpnts(w0)==0)
 		return 0
 	endif
 
 	variable n,Errors
+	variable pointtime
+	for(n=0;n<numpnts(w0);n+=1)
+		pointtime=pnt2x(	ForceWave,	w0[n])	
+		if(pointtime>=pauseTime-1e-3)
+			Errors+=1
+		endif
+	endfor
+	for(n=0;n<numpnts(w1);n+=1)
+
+		pointtime=pnt2x(	ForceWave,	w1[n])	
+		if(pointtime>=pauseTime-1e-3)
+			Errors+=1
+		endif
+	endfor
+	
 	if(w0[0]>w1[0])
 		Errors+=1
 	endif
 	for(n=1;n<numpnts(w0);n+=1)
 		//for(n=1;n<3;n+=1)
 		if(n>=numpnts(w1))
-		Errors+=1
+			Errors+=1
 	
 		elseif(w0[n]<w1[n-1]||w0[n]>w1[n])
 			Errors+=1
 		endif
 	
 	endfor
+	
 
 	if( Errors==0)
 		return 0

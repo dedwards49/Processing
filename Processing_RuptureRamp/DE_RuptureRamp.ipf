@@ -2,7 +2,7 @@
 #pragma modulename=DE_RuptureRamp
 #include "DE_Filtering"
 #include "SimpleWLCPrograms"
-#include "C:Users:dedwards:src_prh:IgorUtil:IgorCode:Util:OperatingSystemUtil"
+#include "C:Users:Perkins Lab:src_prh:IgorUtil:IgorCode:Util:OperatingSystemUtil"
 #include "DTE_Dudko"
 #include "DE_OverlapRamps"
 #include "DE_CorrectRupture"
@@ -10,7 +10,98 @@
 #include ":\Misc_PanelPrograms\Panel Progs"
 #include ":\Misc_PanelPrograms\AsylumNaming"
 //#include ":\Processing_Markov\DE_HMM"
+Static Function MakeAPlainRupWave()
+	
 
+	string saveDF
+	variable FOffset, Soffset
+
+	saveDF = GetDataFolder(1)
+
+	controlinfo/W=RupRampPanel de_RupRamp_popup0
+	SetDataFolder s_value
+	controlinfo/W=RupRampPanel de_RupRamp_popup1
+	wave ForceWave=$S_value
+	
+	String DE_Ind=stringbykey("DE_Ind",note(ForceWave),":","\r")
+	string DE_Pause=stringbykey("DE_PauseLoc",note(ForceWave),":","\r")
+	variable Num=ItemsInList(DE_Ind)/2
+	variable n
+	variable tenth=str2num(stringfromlist(0,DE_Pause))/10
+	make/o/n=(Num) RupPntU,RupPntD
+	RupPntU[0]=tenth
+	RupPntD[0]=str2num(stringfromlist(0,DE_Pause))-tenth
+	for(n=1;n<num;n+=1)
+		RupPntU[n]=str2num(stringfromlist(2*n-1,DE_Pause))+tenth
+		RupPntD[n]=str2num(stringfromlist(2*n,DE_Pause))-tenth
+	
+	
+	
+	endfor
+
+	SetDataFolder saveDF
+
+end
+
+Function PlotHelp(GraphString,Type)
+	String GraphString,Type
+	string Traces= tracenamelist(GraphString,";",1)
+	variable tot=itemsinlist(Traces)
+	variable n
+	String UsedAllowed
+	variable ForceAdj,SepAdj,ShiftedFOff,ShiftedSOff,UnShiftedFOff,UnShiftedSOff,UsedFoff,UsedSoff,AltFOff,AltSOff
+	for(n=0;n<tot;n+=1)
+		wave w1=TraceNameToWaveRef(GraphString, stringfromlist(n,Traces) )
+		if(strsearch(nameofwave(w1),"Align",0)==-1)
+		
+		else
+				UsedFoff=str2num(Stringbykey("UsedAlignmentFShift",note(w1),":","\r"))
+				UsedSOff=str2num(Stringbykey("UsedAlignmentSShift",note(w1),":","\r"))
+				AltFOff=str2num(Stringbykey("AltAlignmentFShift",note(w1),":","\r"))
+				AltSOff=str2num(Stringbykey("AltAlignmentSShift",note(w1),":","\r"))
+			if(str2num(Stringbykey("UsedAlignmentSShift",note(w1),":","\r"))==0)
+				UsedAllowed="No"
+				ShiftedFOff=str2num(Stringbykey("AltAlignmentFShift",note(w1),":","\r"))
+				ShiftedSOff=str2num(Stringbykey("AltAlignmentSShift",note(w1),":","\r"))
+				UnShiftedFOff=str2num(Stringbykey("UsedAlignmentFShift",note(w1),":","\r"))
+				UnShiftedSOff=str2num(Stringbykey("UsedAlignmentSShift",note(w1),":","\r"))
+				
+			else
+				UsedAllowed="Yes"
+				unShiftedFOff=str2num(Stringbykey("AltAlignmentFShift",note(w1),":","\r"))
+				unShiftedSOff=str2num(Stringbykey("AltAlignmentSShift",note(w1),":","\r"))
+				ShiftedFOff=str2num(Stringbykey("UsedAlignmentFShift",note(w1),":","\r"))
+				ShiftedSOff=str2num(Stringbykey("UsedAlignmentSShift",note(w1),":","\r"))
+			endif
+			
+			Strswitch(Type)
+				case "Used":
+					ForceAdj=0
+					SepAdj=0
+					break
+				case "Shifted":
+					ForceAdj=UsedFoff-ShiftedFOff
+					SepAdj=UsedSOff-ShiftedSOff
+				break	
+				case "UnShifted":
+					ForceAdj=UsedFoff-unShiftedFOff
+					SepAdj=UsedSOff-UnShiftedSOff
+				break	
+				case "Alt":
+					ForceAdj=UsedFoff-AltFOff
+					SepAdj=UsedSOff-AltSOff
+				break	
+				default:
+					ForceAdj=0
+					SepAdj=0
+			endswitch
+				ModifyGraph/W=$GraphString offset($nameofwave(w1))={SepAdj,-ForceAdj}
+		endif
+		
+	endfor
+	
+
+end
 
 Function CorrectPauses(ForceWave,SepWave)
 	wave ForceWave,SepWave
@@ -47,8 +138,8 @@ Static Function PythonFitter( UseWave,Method,Threshold,AMount)//Variables demand
 	Wave UseWave//Input wave
 	String Method
 	Variable Threshold,AMount
-	String Destination = "D:\Data\StepData\Test1.ibw"
-	String NewHome = "D:\Data\StepData\Shit.txt"
+	String Destination = "C:\Data\StepData\Test1.ibw"
+	String NewHome = "C:\Data\StepData\Shit.txt"
 
 	Save/O/C UseWave as Destination
 	String BasePythonCommand = "cmd.exe /c activate & python D:\Devin\Python\StepAttempt\StepAttempt.py "
@@ -125,6 +216,11 @@ Static Function ButtonProc(ba) : ButtonControl
 				case  "de_RupRamp_button11":
 					MakeSmoothedAlignedWave()
 					break
+					case  "de_RupRamp_button12":
+					RunASingle()
+					break
+					
+					
 			endswitch
 			break
 		case -1: // control being killed
@@ -133,6 +229,31 @@ Static Function ButtonProc(ba) : ButtonControl
 
 	return 0
 End
+Static Function RunASingle()
+string saveDF
+
+	saveDF = GetDataFolder(1)
+controlinfo/W=RupRampPanel de_RupRamp_popup0
+	SetDataFolder s_value
+	controlinfo/W=RupRampPanel de_RupRamp_popup8
+	wave UpPoints=$S_value
+	wave DownPoints=$ReplaceString("PntU",S_value,"PntD")
+	controlinfo/W=RupRampPanel de_RupRamp_popup18
+	String Direc=S_Value
+	controlinfo/W=RupRampPanel de_RupRamp_popup19
+	String Type=S_Value
+	if(cmpstr("Up",Direc)==0)
+		wave PntWave=UpPoints
+	elseif(cmpstr("Down",Direc)==0)
+		wave PntWave=DownPoints
+
+	endif	
+	controlinfo/W=RupRampPanel de_RupRamp_setvar4
+	variable index=v_value
+	DE_CorrRup#FixPicksSingle(PntWave,index,101,Type)
+		SetDataFolder saveDF
+
+end
 
 Static Function MakeSmoothedAlignedWave()
 	
@@ -167,7 +288,7 @@ end
 Static Function AligntoWLC()
 	string saveDF
 	
-variable ms=stopmstimer(-2)
+	variable ms=stopmstimer(-2)
 	
 	controlinfo/W=RupRampPanel de_RupRamp_popup0
 	SetDataFolder s_value
@@ -190,7 +311,10 @@ variable ms=stopmstimer(-2)
 	controlinfo/W=RupRampPanel de_RupRamp_popup10
 	wave ForceWaveSH_SM=$S_value
 	controlinfo/W=RupRampPanel de_RupRamp_popup13
-	wave WLCParms=$S_value
+	string WLCWaveName=S_value
+	controlinfo/W=RupRampPanel de_RupRamp_popup20
+	string WLCWaveFolder=S_value
+	wave WLCParms=$(WLCWaveFolder+WLCWaveName)
 	Controlinfo/W=RupRampPanel de_RupRamp_setvar3
 
 	variable/C slopes=DE_Dudko#ReturnSeparationSlopes(SepWaveSm,StateWave,500)
@@ -290,7 +414,7 @@ variable ms=stopmstimer(-2)
 		make/o/n=(numpnts(AlignUnFoldedForce),2) AlignUnFolded
 		AlignUnFolded[][0]=AlignUnFoldedForce[p]
 		AlignUnFolded[][1]=AlignUnFoldedSep[p]
-print (stopmstimer(-2)-ms)/1e6
+//print (stopmstimer(-2)-ms)/1e6
 	saveDF = GetDataFolder(1)
 
 end
@@ -1008,6 +1132,7 @@ Window RuptureRamp_Panel() : Panel
 	Button de_RupRamp_button9,pos={165,620},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="DoThisALL"
 	Button de_RupRamp_button10,pos={320,420},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Align To WLC"
 	Button de_RupRamp_button11,pos={320,480},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Smooth Aligned"
+	Button de_RupRamp_button12,pos={450,660},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Single"
 
 	//Button de_RupRamp_button11,pos={100,420},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Align To Previous"
 
@@ -1045,19 +1170,29 @@ Window RuptureRamp_Panel() : Panel
 	PopupMenu de_RupRamp_popup12,popvalue="X",value= "TVD;SVG",mode=1
 	PopupMenu de_RupRamp_popup15,pos={480,480},size={129,21},title="Type",proc=DE_RuptureRamp#PopMenuProc
 	PopupMenu de_RupRamp_popup15,popvalue="X",value= "TVD;SVG",mode=1
-	PopupMenu de_RupRamp_popup13,pos={50,450},size={129,21},title="Alignment Parms"
-	PopupMenu de_RupRamp_popup13,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*WLCAlign*\")"
+
 	
-	PopupMenu de_RupRamp_popup17,pos={270,450},size={129,21},title="Alignment Type"
+	PopupMenu de_RupRamp_popup17,pos={320,450},size={129,21},title="Alignment Type"
 	PopupMenu de_RupRamp_popup17,mode=1,popvalue="X",value="Both;Unfolded;Folded"
 	
-	PopupMenu de_RupRamp_popup14,pos={20,480},size={129,21},title="Aligned Wave"
+	PopupMenu de_RupRamp_popup14,pos={50,480},size={129,21},title="Aligned Wave"
 	PopupMenu de_RupRamp_popup14,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*Force*Align\")"
 	PopupMenu de_RupRamp_popup16,pos={20,520},size={129,21},title="Aligned Smoothed Wave"
 	PopupMenu de_RupRamp_popup16,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*Force*Align*Sm\")"
 	//PopupMenu de_RupRamp_popup14,pos={100,450},size={129,21},title="Alignmentto:"
-	//PopupMenu de_RupRamp_popup14,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*Force*Align*\")"
+	//PopupMenu de_RupRamp_popup14,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup20\",\"*Force*Align*\")"
 	
+	PopupMenu de_RupRamp_popup18,pos={50,660},size={150,20},title="Up or Down"
+	PopupMenu de_RupRamp_popup18,mode=1,popvalue="X",value="Up;Down"
+	PopupMenu de_RupRamp_popup19,pos={50,690},size={150,20},title="WLC or Line"
+	PopupMenu de_RupRamp_popup19,mode=1,popvalue="root:",value="WLC;Line"
+	
+	PopupMenu de_RupRamp_popup20,pos={0,450},size={150,20},title="Alignment Folder"
+	PopupMenu de_RupRamp_popup20,mode=1,popvalue="X",value= #"DE_PanelProgs#ListFolders()"
+		PopupMenu de_RupRamp_popup13,pos={125,450},size={129,21},title="Alignment Parms"
+	PopupMenu de_RupRamp_popup13,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup20\",\"*WLCAlign*\")"
+	SetVariable de_RupRamp_setvar4,pos={350,660},size={50.00,18.00},proc=DE_RuptureRamp#SetVarProc,value=_num:0
+	SetVariable de_RupRamp_setvar4,limits={0,inf,0}
 	
 	SetVariable de_RupRamp_setvar0,pos={547.00,240.00},size={50.00,18.00},proc=DE_RuptureRamp#SetVarProc,value=_num:10e-9
 	SetVariable de_RupRamp_setvar0,limits={0,inf,0}
@@ -1119,7 +1254,8 @@ Static Function/S ListWaves(ControlStr,SearchString)
 
 	saveDF = GetDataFolder(1)
 	controlinfo $ControlStr
-	SetDataFolder s_value
+	string Result=s_value
+	SetDataFolder Result
 	String list = WaveList(SearchString, ";", "")
 	SetDataFolder saveDF
 	return list
@@ -1134,6 +1270,34 @@ Menu "Ramp"
 
 	//end
 	
+end
+
+Static Function CheckPointWave()
+	
+	controlinfo/W=RupRampPanel de_RupRamp_popup4
+	if(cmpstr(S_Value,"")==0)
+		print "No Force Wave"
+		return 0
+	else
+		wave ForceWave=$S_Value
+	endif
+	
+	controlinfo/W=RupRampPanel de_RupRamp_popup3
+	if(cmpstr(S_Value,"")==0)
+		print "No Points Wave"
+		return 0
+	else
+		wave UpPoints=$S_value
+		wave DownPoints=$ReplaceString("PntU",S_value,"PntD")
+	endif
+
+	variable n
+	for(n=0;n<numpnts(UpPoints);n+=1)
+	endfor
+	for(n=0;n<numpnts(DownPoints);n+=1)
+	endfor
+
+
 end
 
 //Static Function DriftMarkovFitter( UseWave, stateCount, modeCount, timeStep, driftBound, sigmaBound, transitionBound, iterationCount, [RAM, Threads])//Variables demanded by MarkovFit Code

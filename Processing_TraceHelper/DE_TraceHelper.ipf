@@ -4,7 +4,7 @@
 #include <Readback ModifyStr>
 #include ":\Misc_PanelPrograms\Panel Progs"
 #include ":\Misc_PanelPrograms\AsylumNaming"
-
+#include "DE_Filtering"
 Function PlotAll()
 
 
@@ -22,7 +22,7 @@ endfor
 
 for(n=0;n<tot;n+=1)
 wave w1=$stringfromlist(n,Str)
-DE_Filtering#AutoFilterAForceSep(w1,"SVG",151,WindowString="Graph0")
+DE_Filtering#AutoFilterAForceSep(w1,"SVG",11,WindowString="Graph0")
 
 
 endfor
@@ -204,14 +204,14 @@ Static Function DE_ListToTextWave(ListWavesonPlot, Waveout,Divider)
 	string ListWavesonPlot,Divider
 	wave Waveout
 	
-	make/T/free/n=(itemsinlist(ListWavesonPlot,Divider)) Test
+	make/T/free/n=(itemsinlist(ListWavesonPlot,Divider)) Tester
 	
 	variable n
 	for(n=0;n<itemsinlist(ListWavesonPlot,Divider);n+=1)
-		Test[n]=StringFromList(n, ListWavesonPlot,Divider)
+		Tester[n]=StringFromList(n, ListWavesonPlot,Divider)
 		
 	endfor
-	duplicate/o Test Waveout
+	duplicate/o Tester Waveout
 end
 Menu "TraceHelper"
 	//SubMenu "Processing"
@@ -220,4 +220,39 @@ Menu "TraceHelper"
 
 	//end
 	
+end
+
+
+Static Function ColorList(index,column)
+
+	variable index,column
+	make/free/n=(3,7) ColorWave
+	ColorWave[][1]={58596,6682,7196}
+	ColorWave[][2]={14906,32382,47288}
+	ColorWave[][3]={39064,20046,41891}
+	ColorWave[][4]={19789,44975,19018}
+	ColorWave[][5]={65535,32639,0}
+	ColorWave[][6]={26214,26212,0}
+	ColorWave[][7]={65535,16385,55749}
+	print ColorWave
+	if(index>7)
+	return 0
+	endif
+	return ColorWave[column][index]
+
+
+
+end
+
+Static Function SimpleColorAPlot(graphstring)
+	string GraphString
+	String TraceLists=Tracenamelist(GraphString,";",1)
+	variable n
+	for(n=0;n<itemsinlist(Tracelists);n+=1)
+		
+		Modifygraph/W=$graphString rgb($stringfromlist(n,TraceLists))=(ColorList(n+1,0),ColorList(n+1,1),ColorList(n+1,2))
+	
+	endfor
+
+
 end

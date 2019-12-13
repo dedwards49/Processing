@@ -1,6 +1,6 @@
 #pragma rtGlobals=3		// Use modern global access method and strict wave access.
 #pragma ModuleName = DE_IWT
-#include "C:\Users\dedwards\src_prh\IgorUtil\PythonApplications\InverseWeierstrass\InverseWeierstrass"
+#include "C:\Users\Perkins Lab\src_prh\IgorUtil\PythonApplications\InverseWeierstrass\InverseWeierstrass"
 #include ":\Misc_PanelPrograms\AsylumNaming"
 #include ":\Misc_PanelPrograms\Panel Progs"
 #include "DE_Filtering"

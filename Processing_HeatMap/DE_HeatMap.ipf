@@ -27,8 +27,8 @@ Static Function GenerateSingleWaveswithShifts(YIn,Xin,Yout,Xout)
 
 	duplicate/free Yin YFree
 	duplicate/free Xin Xfree
-	variable/c Offsets=ReturnXYOffsetfromGraph(Yin,"pared")
-	YFree+=imag(Offsets)
+	variable/c Offsets=ReturnXYOffsetfromGraph(Yin,"graph0")
+	YFree-=imag(Offsets)
 	XFree+=real(Offsets)
 	YFree*=-1
 	duplicate/o YFree Yout
@@ -49,21 +49,20 @@ Static Function MakeSingleHeatMap(YIn,Xin,Xdims,Ydims,MapOut)
 end
 
 Static Function AccumulateHeatMaps()
-	String ForceWaveNames=tracenamelist("pared",";",1)
+	String ForceWaveNames=tracenamelist("graph0",";",1)
 	variable tot=itemsinlist(ForceWaveNames)
-
 	ForceWaveNames=RemoveListItem(tot-1, ForceWaveNames)
 	tot=itemsinlist(ForceWaveNames)
 	variable n=0
-	variable nx=1000
-	variable ny=1000
-	make/o/n=(nx) XBins;XBins=-10e-9+300e-9*x/(nx-1)
-	make/o/n=(ny) YBins;YBins=-25e-12+1500e-12*x/(ny-1)
+	variable nx=325
+	variable ny=250
+	make/o/n=(nx) XBins;XBins=0e-9+325e-9*x/(nx-1)
+	make/o/n=(ny) YBins;YBins=-10e-12+250e-12*x/(ny-1)
 	make/o/n=(nx-1,ny-1) Final=0
 	for(n=0;n<tot;n+=1)
 	print n
 		wave FW=$stringfromlist(n,ForceWaveNames)
-		wave SW=$replacestring("Force",nameofwave(FW),"Sep")
+		wave SW=$replacestring("FSM",nameofwave(FW),"SSM")
 		make/free/n=(0,0) MapOut
 		MakeSingleHeatMap(FW,SW,XBins,YBins,MapOut)
 		Final+=MapOut

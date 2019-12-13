@@ -357,11 +357,11 @@ function WLC_Arb(Parms)
 				WLC_FOrce[i]=NaN
 			endif
 		elseif(i<=3000)
-			if(abs(WLC_Force[i])>.075e-9)//Discoards forces above 500pN
+			if(abs(WLC_Force[i])>.1e-9)//Discoards forces above 500pN
 				WLC_FOrce[i]=NaN
 			endif
 					elseif(i<=4000)
-			if(abs(WLC_Force[i])>.075e-9)//Discoards forces above 500pN
+			if(abs(WLC_Force[i])>.4e-9)//Discoards forces above 500pN
 				WLC_FOrce[i]=NaN
 			endif
 		else
@@ -465,6 +465,60 @@ variable last,NUg2
 
 
 end
+
+function TestMakeParms0013(last,NUg2)
+variable last,NUg2
+	make/o/n=(3,3) WLCParms
+	WLCParms[][0]=.4e-9
+	WLCParms[][1]=298
+		WLCParms[2][2]=last
+		WLCParms[1][2]=last-NUg2
+		WLCParms[0][2]=last-2*NUg2
+
+
+
+	
+
+
+
+
+
+	WLC_Arb(WLCParms)
+	wave WLC_Force,WLC_Ext
+	duplicate/o WLC_Force NuG2_WLC_Force
+	duplicate/o WLC_Ext NUG2_WLC_Ext
+
+
+
+end
+
+function TestMakeParms0014(last,GB1)
+variable last,GB1
+	make/o/n=(3,3) WLCParms
+	WLCParms[][0]=.4e-9
+	WLCParms[][1]=298
+		WLCParms[2][2]=last
+		WLCParms[1][2]=last-GB1
+		WLCParms[0][2]=last-2*GB1
+
+
+
+	
+
+
+
+
+
+	WLC_Arb(WLCParms)
+	wave WLC_Force,WLC_Ext
+	duplicate/o WLC_Force GB1_WLC_Force
+	duplicate/o WLC_Ext GB1_WLC_Ext
+
+
+
+end
+
+
 
 function TestMakeParmsNewalpha(alpha,marker,last)
 variable alpha,marker,last
@@ -607,6 +661,28 @@ function TestMakeParmspXYMonster(last,ddFln1,ddFln2,LAstep,LaStep2)
 
 
 end
+
+function TestMakeParmspXYRevMonster(last,ddFln1,ddFln2,Half,FullLenRev)
+	variable last,ddFln1,ddFln2,FullLenRev,Half
+	make/o/n=(5,4) WLCParms
+	WLCParms[][0]=.4e-9
+	WLCParms[][1]=298
+	WLCParms[4][2]=last
+	WLCParms[3][2]=last-ddFln2
+	WLCParms[2][2]=last-ddFln2-ddFln1
+	WLCParms[1][2]=last-ddFln2-ddFln1-Half
+	WLCParms[0][2]=last-ddFln2-ddFln1-FullLenRev
+
+
+	WLC_Arb(WLCParms)
+	wave WLC_Force,WLC_Ext
+	duplicate/o WLC_Force RevMon_WLC_Force
+	duplicate/o WLC_Ext RevMon_WLC_Ext
+	killwaves WLC_Force WLC_Ext
+
+
+end
+
 
 function TestMakeParmsRLCBD(last,Nug2Step,RLCstep1,RLCStep2)
 variable last,Nug2Step,RLCstep1,RLCStep2

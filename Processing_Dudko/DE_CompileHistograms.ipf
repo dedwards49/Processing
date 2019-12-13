@@ -5,6 +5,7 @@
 #include "DTE_Dudko"
 #include "DE_Correctrupture"
 #include "DE_OverlapRamps"
+#include "Scholl_panel"
 //This identifies the correction cmplx(ForceShift,SepShift), needed to move the Aligned force waves to be either
 //aligned only by force, or by both force and separation.
 
@@ -177,6 +178,7 @@ Static Function FindStatesForForce(Force,State,WLCParms,ForceWave,Sepwave,LocalP
 
 	if(Folded==1)
 		EXtension=	 DE_WLC#ReturnExtentionatForce(Force-FOrceOff,.4e-9,FOldedLC,298)+SepOff
+
 		OutgoingCounts=1
 	elseif(Folded==0)
 		Extension=	DE_WLC#ReturnExtentionatForce(Force-FOrceOff,.4e-9,UnFOldedLC,298)+SepOff
@@ -184,7 +186,6 @@ Static Function FindStatesForForce(Force,State,WLCParms,ForceWave,Sepwave,LocalP
 	endif
 	
 
-	
 
 	if(wavemin(OutgoingSepWave)>EXtension)
 			TimeOutgoing=pnt2x(Sepwave,LocalPoints[0])
@@ -211,8 +212,6 @@ Static Function FindStatesForForce(Force,State,WLCParms,ForceWave,Sepwave,LocalP
 		
 	endif
 
-	
-		
 
 		variable m
 		for(m=1;m<turnaround;m+=1)
@@ -693,10 +692,10 @@ Static Function ButtonProc(ba) : ButtonControl
 		case "de_Dudko_button1":
 			switch( ba.eventCode )
 				case 2: // mouse up
-				ms=STOPmsTimer(-2)
+					ms=STOPmsTimer(-2)
 					AccumulateButton()
 					ForceStateAccum()
-										print (stopmstimer(-2)-ms)/1e6
+					//print (stopmstimer(-2)-ms)/1e6
 
 					break
 				case -1: // control being killed
@@ -714,7 +713,8 @@ Static Function ButtonProc(ba) : ButtonControl
 					CreateSlopeWave()
 					NumbersCalc()
 					MakeRates()
-					print (stopmstimer(-2)-ms)/1e6
+					CalcErrorBars()
+					//print (stopmstimer(-2)-ms)/1e6
 					break
 				case -1: // control being killed
 					break
@@ -795,7 +795,10 @@ Static Function MakeSomeNicePlots()
 	wave FoldedNum=$stringfromlist(14,listofnames)
 	wave UnfoldedRate=$(stringfromlist(16,listofnames))
 	wave FoldedRate=$(stringfromlist(17,listofnames))
-
+	wave UnfoldedErrorP=$(stringfromlist(21,listofnames)+"_P")
+	wave FoldedErrorP= $(stringfromlist(20,listofnames)+"_P")
+	wave UnfoldedErrorM=$(stringfromlist(21,listofnames)+"_M")
+	wave FoldedErrorM= $(stringfromlist(20,listofnames)+"_M")
 	Display UnfoldedRate,FoldedRate
 	AppendToGraph/L=L1 FoldedNum,UnfoldedNum
 	AppendToGraph/L=L2 FoldedSlope,UnfoldedSlope
@@ -821,6 +824,11 @@ Static Function MakeSomeNicePlots()
 	ModifyGraph useBarStrokeRGB($nameofwave(FoldedHist))=1,hbFill($nameofwave(FoldedHist))=2
 	ModifyGraph mode($nameofwave(unFoldedHist))=5,rgb($nameofwave(unFoldedHist))=(58368,6656,7168);
 	ModifyGraph useBarStrokeRGB($nameofwave(unFoldedHist))=1,hbFill($nameofwave(unFoldedHist))=2
+	
+	ErrorBars $nameofwave(UnfoldedRate) Y,wave=(UnfoldedErrorP,UnfoldedErrorM);DelayUpdate
+	ErrorBars $nameofwave(FoldedRate) Y,wave=(FoldedErrorP,FoldedErrorM)
+
+
 	Label bottom "\\f01Force(pN)"
 	ModifyGraph fSize=9,font="Arial"
 	ModifyGraph prescaleExp(bottom)=12, muloffset={0,0},prescaleExp(L2)=12,lblPosMode(L1)=1,lblPosMode(L3)=1,lblPosMode(L2)=1
@@ -845,7 +853,7 @@ Static Function FittheContour()
 	wave unFoldedsepOut=$stringfromlist(7,listofnames)
 	make/o/n=0 $stringfromlist(8,listofnames)
 	wave OutputResults=$stringfromlist(8,listofnames)
-	WLCFitter(FoldedForceOut,FoldedSepOut,unfoldedForceOut,unFoldedsepOut,OutputResults,1)
+	WLCFitter(FoldedForceOut,FoldedSepOut,unfoldedForceOut,unFoldedsepOut,OutputResults,0)
 	display FoldedForceOut vs FoldedSepOut
 	appendtograph unfoldedForceOut vs unFoldedsepOut
 	wave FFIt=$("fit_"+nameofwave(FoldedForceOut))
@@ -854,6 +862,56 @@ Static Function FittheContour()
 	appendtograph UFIt
 
 end 
+
+Static Function  CalcErrorBars()
+
+
+	string saveDF = GetDataFolder(1)
+	controlinfo/W=DudkoAnalysis de_Dudko_popup0
+	string AccFolder=S_Value
+	controlinfo/W=DudkoAnalysis de_Dudko_popup1
+	string listofNames=StringListofAccnames(s_value,AccFolder)
+	wave FoldedForceOut=$(stringfromlist(4,listofnames))
+	wave FoldedSepOut=$(stringfromlist(5,listofnames))
+	wave unfoldedForceOut=$(stringfromlist(6,listofnames))
+	wave unFoldedsepOut=$(stringfromlist(7,listofnames))
+	wave WLCParms=$(stringfromlist(8,listofnames))
+	wave UnfoldedHist=$(stringfromlist(9,listofnames))
+	wave FoldedHist=$(stringfromlist(10,listofnames))
+	wave UnfoldedSlope=$(stringfromlist(11,listofnames))
+	wave FoldedSlope=$(stringfromlist(12,listofnames))
+	wave UnfoldedNum= $stringfromlist(13,listofnames)
+	wave FoldedNum=$stringfromlist(14,listofnames)
+
+	duplicate/o UnfoldedHist $(stringfromlist(21,listofnames)),$(stringfromlist(21,listofnames)+"_P"),$(stringfromlist(21,listofnames)+"_M")
+	duplicate/o FoldedHist $(stringfromlist(20,listofnames)), $(stringfromlist(20,listofnames)+"_P"), $(stringfromlist(20,listofnames)+"_M")
+	
+	wave UnfoldedError=$(stringfromlist(21,listofnames))
+	wave FoldedError= $(stringfromlist(20,listofnames))
+	
+	wave UnfoldedErrorP=$(stringfromlist(21,listofnames)+"_P")
+	wave FoldedErrorP= $(stringfromlist(20,listofnames)+"_P")
+	wave UnfoldedErrorM=$(stringfromlist(21,listofnames)+"_M")
+	wave FoldedErrorM= $(stringfromlist(20,listofnames)+"_M")
+	//UnfoldedError=(1/(UnfoldedHist*dimdelta(UnfoldedHist,0))+1/UnfoldedNum)^(1/2)
+	//FoldedError=(1/(foldedHist*dimdelta(foldedHist,0))+1/foldedNum)^(1/2)
+	
+		wave UnfoldedRate=$(stringfromlist(16,listofnames))
+	wave FoldedRate=$(stringfromlist(17,listofnames))
+	
+	UnfoldedError=(1/(UnfoldedHist)+1/UnfoldedNum)^(1/2)
+	FoldedError=(1/(foldedHist)+1/foldedNum)^(1/2)
+	UnfoldedErrorP=exp(ln(UnfoldedRate)+UnfoldedError)
+		UnfoldedErrorM=exp(ln(UnfoldedRate)-UnfoldedError)
+
+	foldedErrorP=exp(ln(foldedRate)+FoldedError)
+
+	foldedErrorm=exp(ln(foldedRate)-FoldedError)
+
+	//FoldedError=(1/(foldedHist)+1/foldedNum)^(1/2)
+
+
+end
 
 Static Function CreateSlopeWave()
 
@@ -945,11 +1003,11 @@ Static Function NumbersCalc()
 	duplicate/o FoldedHist $stringfromlist(14,listofnames)
 	wave UnfoldedNum= $stringfromlist(13,listofnames)
 	wave FoldedNum=$stringfromlist(14,listofnames)
-UnfoldedNum=0;FoldedNum=0
+	UnfoldedNum=0;FoldedNum=0
 	
 	make/free/n=0 FFilt,SFilt
 	DE_Filtering#FilterForceSep(JustForce,JustSep,FFilt,SFilt,"svg",51)
-		duplicate/free UnfoldedNum HoldUnfolded
+	duplicate/free UnfoldedNum HoldUnfolded
 
 	duplicate/free FoldedNum HoldFolded
 	variable maxcycle=CompState[dimsize(CompState,0)-1][3]
@@ -1191,7 +1249,7 @@ Static Function ForceStateAccum()
 	DE_Filtering#FilterForceSep(ForceWave,SepWave,FFilt,SFilt,"TVD",25e-9)
 	
 	variable/C slopes=DE_Dudko#ReturnSeparationSlopes(SFilt,StateWave,500)
-	variable pointstoignore=floor(2e-9/real(slopes)/dimdelta(FFilt,0))
+	variable pointstoignore=floor(.1e-9/real(slopes)/dimdelta(FFilt,0))
 	//AccumulateAllRuptures(StateWave,ForceWave,AccRe,AccUn,Restart)
 	make/free/n=0 TempFoldedForceOut,TempFoldedSepOut,TempUnFoldedForceOut,TempUnFoldedSepOut
 	ReturnFoldandUnfold(FFilt,SFilt,StateWave,pointstoignore,TempFoldedForceOut,TempFoldedSepOut,TempUnFoldedForceOut,TempUnFoldedSepOut)
@@ -1350,6 +1408,8 @@ Static Function/S StringListofAccnames(InputName,FolderStr)
 	listofNames+=";"+FolderStr+ReplaceString("AccUnFold",InputName,"AccFold_Rate")
 	listofNames+=";"+FolderStr+ReplaceString("AccUnFold",InputName,"FoldedState")
 	listofNames+=";"+FolderStr+ReplaceString("AccUnFold",InputName,"UnfoldedState")
+	listofNames+=";"+FolderStr+ReplaceString("AccUnFold",InputName,"FoldedError")
+	listofNames+=";"+FolderStr+ReplaceString("AccUnFold",InputName,"UnfoldedError")
 
 	return listofNames
 end
@@ -1409,7 +1469,7 @@ Static Function WLCFitter(FoldedForceWave,FoldedSepWave,UnFoldedForceWave,UnFold
 	W_coef[0] = {-.4e-9,100e-9,298,0,fitstart}
 	Make/free/T/N=2 T_Constraints
 	//T_Constraints[0] = {"K4<"+num2str(fitstart+3e-9),"K4>"+num2str(fitstart-30e-9),"K3<"+num2str(1e-12),"K3>"+num2str(-1e-12)}
-	T_Constraints[0] = {"K4<"+num2str(fitstart+10e-9),"K4>"+num2str(fitstart-30e-9)}
+	T_Constraints[0] = {"K3<"+num2str(3e-12),"K3>"+num2str(-3e-12),"K4<"+num2str(fitstart+10e-9),"K4>"+num2str(fitstart-30e-9)}
 	if(FitFOldedFirst==1)
 		FuncFit/Q/H="10100"/NTHR=0 WLC_FIT W_coef  FoldedForceWave /X=FoldedSepWave/C=T_Constraints/D
 
@@ -1725,6 +1785,7 @@ Static Function GenerateSingleRamp(Forcewave,SepWave,StateWave,n,Direc,Folded,Fo
 	LocalPoints[]=Points[LocalIndex[0]+p][0]
 	LocalType[]=Type[LocalIndex[0]+p][2]
 	LocalTrace[]=Trace[LocalIndex[0]+p][2]
+
 	FindValue/V=-2/T=.1 LocalType
 	variable turnaround=v_value
 	variable currfolded
@@ -1916,75 +1977,15 @@ Static Function BatchProcess()
 					CreateSlopeWave()
 					NumbersCalc()
 					MakeRates()
-					print (stopmstimer(-2)-ms)/1e6
+					calcErrorBars()
+					//print (stopmstimer(-2)-ms)/1e6
 	Makesomeniceplots()
+	//CalculatePullingSpeed()
 		killwaves FolderList,SW
 
 		SetDataFolder saveDF
 
-//	controlinfo de_scholl_list1
-//	variable row1=V_Value
-//
-//	controlinfo de_scholl_setvar3
-//	variable start=V_Value
-//	controlinfo de_scholl_setvar4
-//	variable ends=V_Value
-//	
-//	
-//	wave/t/z LW1=root:SchollPanel:ListWave1
-//	wave/t/z LW2=root:SchollPanel:ListWave2
-//
-//	struct ForceWave Name1
-//	DE_Naming#WavetoStruc(LW1[row1],Name1)
-//
-//
-//	controlinfo de_scholl_setvar5
-//	string ZsnsrName1=DE_Naming#StringCreate(Name1.Name,Name1.VNum,S_Value,Name1.SDirec)
-//
-//	
-//	wave w1=$LW1[row1]
-//	wave w2=$ZsnsrName1
-//	make/o/n=(numpnts(LW2)) root:SchollPanel:SelWave2
-//	wave SW2=root:SchollPanel:SelWave2
-//	SW2=0
 
-//	make/o/n=0 ResultWave
-//	controlinfo de_scholl_popup0
-//
-//	DE_FECWiggle#FindWiggleParms(w1,w2, ResultWave,start,ends,FitType=S_Value,ResName="Resids")
-//	wave w7=Resids
-//
-//	duplicate/o w7 root:schollpanel:FitResiduals
-//	duplicate/o w2 root:schollpanel:FitResidualsX
-//	killwaves w7
-//
-//
-//	variable n
-//	
-//	for(n=0;n<numpnts(SW2);n+=1)
-//	
-//		if(SW2[n]==1)
-//			struct ForceWave Name2
-//
-//			DE_Naming#WavetoStruc(LW2[n],Name2)
-//			string NewName
-//			string ForceName
-//			string SepName
-//			controlinfo de_scholl_setvar6
-//			string ZsnsrName2=DE_Naming#StringCreate(Name2.Name,Name2.VNum,S_Value,Name2.SDirec)
-//			wave w3=$LW2[n]
-//			wave w4=$ZsnsrName2
-//			NewName=DE_Naming#StringCreate(Name2.Name,Name2.VNum,"DeflCor",Name2.SDirec)
-//			ForceName=DE_Naming#StringCreate(Name2.Name,Name2.VNum,"Force",Name2.SDirec)
-//			SepName=DE_Naming#StringCreate(Name2.Name,Name2.VNum,"Sep",Name2.SDirec)
-//			controlinfo de_scholl_popup0
-//
-//			DE_FECWiggle#SingleProcess(Resultwave,w2,w3,w4,start,ends,NewName=NewName,ForceName=ForceName,SepName=SepName,FitType=S_Value)
-//		else
-//		endif
-//	
-//	endfor
-//	killwaves resultwave
 End
 
 Static Function LBP(ctrlName,row,col,event) : ListBoxControl

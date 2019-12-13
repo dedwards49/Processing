@@ -274,7 +274,7 @@ Static Function CalculateForceOffsetFromPause(ForceWave,RampNumber)
 	variable startpnt=str2num(stringfromlist(2*RampNumber,PauseLocs))
 	variable endpnt=str2num(stringfromlist(2*RampNumber+1,PauseLocs))
 	variable diff=endpnt-startpnt
-	duplicate/free/R=[startpnt+.1*diff,endpnt-.1*diff] ForceWave ForceWaveCut
+	duplicate/free/R=[startpnt+.05*diff,endpnt-.05*diff] ForceWave ForceWaveCut
 
 	wavestats/Q ForceWaveCut
 	print v_avg

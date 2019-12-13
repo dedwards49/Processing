@@ -1634,7 +1634,7 @@ Static Function FakeApproach(InputForceWave,InputSepWave,Ratio,OutputForceWave,O
 
 end
 
-function PlotAll()
+static function PlotAll()
 	string AllForce=wavelist("*Force_ret",";","")
 	variable tot=itemsinlist(AllForce)
 	
