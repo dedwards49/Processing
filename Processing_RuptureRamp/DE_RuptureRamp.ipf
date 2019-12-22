@@ -142,7 +142,7 @@ Static Function PythonFitter( UseWave,Method,Threshold,AMount)//Variables demand
 	String NewHome = "C:\Data\StepData\Shit.txt"
 
 	Save/O/C UseWave as Destination
-	String BasePythonCommand = "cmd.exe /c activate & python D:\Devin\Python\StepAttempt\StepAttempt.py "
+	String BasePythonCommand = "cmd.exe /C activate & python C:\Devin\Python\StepAttempt\StepAttempt.py "
 	String MethodCommand="-method "+ method +" "
 	String InputCom="-inputfile "+ Destination+" "
 	String OutputCom="-outputfile "+ NewHome+" "
@@ -151,6 +151,7 @@ Static Function PythonFitter( UseWave,Method,Threshold,AMount)//Variables demand
 
 //
 	String PythonCommand=BasePythonCommand+MethodCommand+InputCom+OutputCom+SmoothCommand+ThreshCommand
+	print PythonCommand
 	ModOperatingSystemUtil#execute_python(PythonCommand)
 	LoadWave/O/N/G/D NewHome
 	
@@ -235,7 +236,7 @@ string saveDF
 	saveDF = GetDataFolder(1)
 controlinfo/W=RupRampPanel de_RupRamp_popup0
 	SetDataFolder s_value
-	controlinfo/W=RupRampPanel de_RupRamp_popup8
+	controlinfo/W=RupRampPanel de_RupRamp_popup3
 	wave UpPoints=$S_value
 	wave DownPoints=$ReplaceString("PntU",S_value,"PntD")
 	controlinfo/W=RupRampPanel de_RupRamp_popup18
@@ -346,8 +347,8 @@ Static Function AligntoWLC()
 			break
 		
 		case "Both":
-			AlignTwotoWLC(AlignFoldedForce,AlignFoldedSep,AlignUnFoldedForce,AlignUnFoldedSep,WLCParms,0,ResultsNoShift,  0)
-			AlignTwotoWLC(AlignFoldedForce,AlignFoldedSep,AlignUnFoldedForce,AlignUnFoldedSep,WLCParms,1,ResultsShift,0)
+			AlignTwotoWLC(AlignFoldedForce,AlignFoldedSep,AlignUnFoldedForce,AlignUnFoldedSep,WLCParms,0,ResultsNoShift,  30e-9)
+			AlignTwotoWLC(AlignFoldedForce,AlignFoldedSep,AlignUnFoldedForce,AlignUnFoldedSep,WLCParms,1,ResultsShift,30e-9)
 //
 //			foldedfit=2
 			break

@@ -352,16 +352,16 @@ function WLC_Arb(Parms)
 	
 	wavestats/q WLC_Force
 	for(i=0;i<(v_npnts+V_numNans);i+=1)
-		if(i<=1000)
+		if(i<=2000)
 			if(abs(WLC_Force[i])>.05e-9)//Discoards forces above 500pN
 				WLC_FOrce[i]=NaN
 			endif
-		elseif(i<=3000)
-			if(abs(WLC_Force[i])>.1e-9)//Discoards forces above 500pN
+		elseif(i<=6000)
+			if(abs(WLC_Force[i])>.2e-9)//Discoards forces above 500pN
 				WLC_FOrce[i]=NaN
 			endif
 					elseif(i<=4000)
-			if(abs(WLC_Force[i])>.4e-9)//Discoards forces above 500pN
+			if(abs(WLC_Force[i])>.5e-9)//Discoards forces above 500pN
 				WLC_FOrce[i]=NaN
 			endif
 		else

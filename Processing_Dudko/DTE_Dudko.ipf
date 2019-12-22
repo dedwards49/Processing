@@ -2184,9 +2184,7 @@ Static Function/C SeparateintoStates(ForceWaveSM,SepWaveSm,CombinedWave,MinSpaci
 	duplicate/o UnFolded UForce
 end
 
-Menu "Dudko"
-	"Open Dudko", dudko_panel()
-end
+
 //Static Function MinFoldForce(SingleKey)
 //
 //	Wave SingleKey

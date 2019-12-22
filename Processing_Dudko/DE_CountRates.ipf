@@ -32,7 +32,6 @@ Static Function/C FindCrossTimesForHistogram(HistogramIn,State,WLCPArms,WaveOut)
 	
 	make/free/n=(numpnts(HistogramIn)+1) FreeHist
 	variable n
-
 	for(n=0;n<numpnts(HistogramIn)+1;n+=1)
 		 startForce= pnt2x(HistogramIn,n)
 		if(Folded==1)
@@ -51,7 +50,6 @@ Static Function FindDwellsforSingleRamp(FFilt,SFilt,StateWave,FoldedHistogram,Un
 	wave FoldedHistogram,UnfoldedHistogram,WLCParms,FFilt,SFilt,StateWave,ReturnTimesFolded,ReturnTimesUnfolded
 	variable index
 	make/n=0/free CrossExFolded,CrossExUNfolded
-
 	
 	make/free/n=(dimsize(StateWave,0)) Points,RupForce,Type,Trace
 	Points=StateWave[p][0]
@@ -94,6 +92,7 @@ Static Function FindDwellsforSingleRamp(FFilt,SFilt,StateWave,FoldedHistogram,Un
 		
 
 	endfor
+
 	duplicate/o CrossTimeFolded ReturnTimesFolded
 	duplicate/o  CrossTimeunFolded ReturnTimesUnfolded
 end
@@ -183,6 +182,7 @@ static Function AddUpTimes(Fsm,StateWave,index,FoldedTimes,UnfoldedTimes,FoldedH
 
 	for(n=1;n<turnaround;n+=1)
 		targettime=pnt2x(Fsm,LocalPoints[n])
+		
 		FreeNewState[n-1][19]=targettime
 		if(currentlyfolded==0)
 
@@ -190,6 +190,7 @@ static Function AddUpTimes(Fsm,StateWave,index,FoldedTimes,UnfoldedTimes,FoldedH
 			pointentered=v_levelx
 			FindLevel/Q FoldedTimesOut, targettime
 			targetpoint=v_levelx
+
 			FreeFHist[floor(targetpoint)]+=1
 			FreeNewState[n-1][0]=(-1)^currentlyFolded
 			FreeNewState[n-1][1]=1
@@ -227,6 +228,7 @@ static Function AddUpTimes(Fsm,StateWave,index,FoldedTimes,UnfoldedTimes,FoldedH
 			endif
 			FindLevel/Q UnFoldedTimesOut, targettime
 			targetpoint=v_levelx
+
 
 			FreeUFHist[floor(targetpoint)]+=1
 			FreeNewState[n-1][0]=(-1)^currentlyFolded
@@ -319,6 +321,7 @@ static Function AddUpTimes(Fsm,StateWave,index,FoldedTimes,UnfoldedTimes,FoldedH
 			endif
 			FindLevel/Q FoldedTimesIn, targettime
 			targetpoint=v_levelx
+
 			FreeFHist[floor(targetpoint)]+=1
 			FreeNewState[n-2][0]=(-1)^currentlyFolded
 			FreeNewState[n-2][1]=-1
@@ -348,8 +351,11 @@ static Function AddUpTimes(Fsm,StateWave,index,FoldedTimes,UnfoldedTimes,FoldedH
 		elseif(currentlyfolded==1)
 			FindLevel/Q UnFoldedTimesIn, timeentered
 			pointentered=v_levelx
+
 			FindLevel/Q UnFoldedTimesIn, targettime
+
 			targetpoint=v_levelx
+
 			FreeUFHist[floor(targetpoint)]+=1
 			FreeNewState[n-2][0]=(-1)^currentlyFolded
 			FreeNewState[n-2][1]=-1
@@ -419,7 +425,7 @@ static Function AddUpTimes(Fsm,StateWave,index,FoldedTimes,UnfoldedTimes,FoldedH
 	duplicate/o FreeNewState ModStateWaveOUt
 end
 
-Function PushThrough(ForceWave,SepWave,Smoothed,StateWave,InFHistograms,InUHistograms,WLCParms,Shifting)
+Static Function PushThrough(ForceWave,SepWave,Smoothed,StateWave,InFHistograms,InUHistograms,WLCParms,Shifting)
 	wave ForceWave,SepWave,StateWave,InFHistograms,InUHistograms,WLCParms
 	string Shifting
 	variable smoothed
@@ -447,7 +453,7 @@ Function PushThrough(ForceWave,SepWave,Smoothed,StateWave,InFHistograms,InUHisto
 	UAddHist=0
 	UAddTime=0
 	variable bottom=0
-	//top=10
+	//top=11
 	for(n=bottom;n<top;n+=1)
 		make/free/n=0 Ftimes,UTimes,FHistOut,UHistOut,ModStateWaveOut
 		FindDwellsforSingleRamp(FSm,SSM,StateWave,InFHistograms,InUHistograms,WLCParms,n,ReturnTimesFolded,ReturnTimesUnfolded)
@@ -486,10 +492,11 @@ Function PushThrough(ForceWave,SepWave,Smoothed,StateWave,InFHistograms,InUHisto
 	SetScale/P x pnt2x(InFHistograms,0),dimdelta(InFHistograms,0),"", ReturnTimesFolded;SetScale/P x pnt2x(InUHistograms,0),dimdelta(InUHistograms,0),"", ReturnTimesUnfolded
 	URate=UAddHist[p]/UAddTime[p]
 	FRate=FAddHist[p]/FAddtime[p]
-	DE_Filtering#FilterForceSep(ForceWave,SepWave,FSm,SSm,"tvd",100e-9)
+	DE_Filtering#FilterForceSep(ForceWave,SepWave,FSm,SSm,"svg",51)
 	SSm+=imag(Shifts)
 	Fsm+=real(Shifts)
 end
+
 
 Static Function/C CorrectShift(ForceWave,Type)
 	wave ForceWave
@@ -572,7 +579,7 @@ Function RunJustFromFolder(FolderString,Shifting)
 	duplicate/o UAddHist $(NameString+"_UNfoldHist")
 	duplicate/o UAddTime $(NameString+"_UnfoldTimes")
 	duplicate/o Urate $(NameString+"_UnfoldRate")
-		duplicate/o UAddTime $(NameString+"_UnfoldTimes")
+	duplicate/o UAddTime $(NameString+"_UnfoldTimes")
 	duplicate/o ResultstoHold $(NameString+"_AllTrans")
 	duplicate/o ReturnTimesFoldedMassive $(NameString+"_FoldTimes")
 	duplicate/o ReturnTimesUnfoldedMassive $(NameString+"_UnfoldTimes")
@@ -595,43 +602,39 @@ Function RunOnCombinedData(BaseString,ForceShifting,WLCShifting,[AltWLC])
 	variable WLCTYPE
 	wave ForceWave=$(BaseString+"_Force")
 	wave SepWave=$(BaseString+"_Sep")
+	wave StateWave=$(BaseString+"_CompState")
+	//stupidly I wrote the code so that it takes the WLC of the form {UnfoldedLC,FoldedLC,ForceShift,SepShift}
+	//this just fixes that a bit if the WLC fits are from the older Dudko analysis (of the form {FoldedLC,UnfoldedLC,Forcehift,SepShift}
 	if(strsearch(nameofwave(WLC),"_WLCParms",0)!=0)
-	
-	
-	
+		duplicate/free WLC WLCOut
+
+		WLCOut[2]*=-1
 	elseif(strsearch(nameofwave(WLC),"_WLCParms_Adj",0)!=0)
-		make/free/n=0 WLCOut;DE_CountRates#CorrectWLC(WLC,WLCOut,ForceWave,SepWave,"Shifted")
+		make/free/n=0 WLCOut;DE_CountRates#CorrectWLC(WLC,WLCOut,ForceWave,SepWave,WLCShifting)
 
-	
-	
 	endif
+	string UFHIstString=(BaseString+"_Count_UFHIst")
+	string FHIstString=(BaseString+"_Count_FHIst")
+	make/o/n=16 $UFHIstString/Wave=UFHIst
+	make/o/n=22 $FHIstString/Wave=FHIst
+	SetScale/P x 6e-12,.5e-12,"", FHist;SetScale/P x 6e-12,1e-12,"", UFhist
 
-
-//	string UFHIstString=(BaseString+"_Count_UFHIst")
-//	string FHIstString=(BaseString+"_Count_FHIst")
-//	make/o/n=12 $UFHIstString/Wave=UFHIst
-//	make/o/n=16 $FHIstString/Wave=FHIst
-//	
-//	
-//	make/free/n=0 WLCOut;DE_CountRates#CorrectWLC(ForcedWLC,WLCOut,ForceWave,SepWave,"Shifted")
-//	SetScale/P x 6e-12,.5e-12,"", FHist;SetScale/P x 8e-12,1e-12,"", UFhist
-//	wave StateWave=$(BaseString+"_CompState")
-//
-//	variable maxcycle=StateWave[dimsize(StateWave,0)-1][3]
-//	variable n
-//	variable thiscycle
-//	make/free/n=0 ReturnTimesFolded,ReturnTimesUnfolded
-//	make/free/n=(dimsize(StateWave,0)) Points,RupForce,Type,Trace,StateTime
-//	Points=StateWave[p][0]
-//	RupForce=-StateWave[p][1]
-//	Type=StateWave[p][2]
-//	Trace=StateWave[p][3]
-//	StateTime=StateWave[p][4]
-//	variable startpoint, starttime
-//	duplicate/free WLC WLCOrganized
-//	WLCOrganized[2]*=-1
-//	PushThrough(ForceWave,SepWave,0,StateWave,FHist,UFhist,WLCOut,Shifting)
-
+	PushThrough(ForceWave,SepWave,0,StateWave,FHist,UFhist,WLCOut,ForceShifting)
+	string NameString=stringfromlist(0,nameofwave(ForceWave),"_")+"_"+stringfromlist(1,nameofwave(ForceWave),"_")
+	wave FAddHist,FaddTime,Frate,URate,UAddHist,UAddTime,FSm,SSm,ResultstoHold,ReturnTimesFoldedMassive,ReturnTimesUnfoldedMassive
+	duplicate/o FAddHist $(NameString+"_FoldHist")
+	duplicate/o FAddTime $(NameString+"_FoldTimes")
+	duplicate/o Frate $(NameString+"_FoldRate")
+	duplicate/o UAddHist $(NameString+"_UNfoldHist")
+	duplicate/o UAddTime $(NameString+"_UnfoldTimes")
+	duplicate/o Urate $(NameString+"_UnfoldRate")
+	duplicate/o UAddTime $(NameString+"_UnfoldTimes")
+	duplicate/o ResultstoHold $(NameString+"_AllTrans")
+	duplicate/o ReturnTimesFoldedMassive $(NameString+"_FoldTimes")
+	duplicate/o ReturnTimesUnfoldedMassive $(NameString+"_UnfoldTimes")
+		killwaves FAddHist,FaddTime,Frate,URate,UAddHist,UAddTime,ResultstoHold,ReturnTimesFoldedMassive,ReturnTimesUnfoldedMassive
+		killwaves FSm,SSM
+	killwaves UFHIst,FHISt
 end
 
 
@@ -694,11 +697,17 @@ Static Function PlotThingsNiceWithaNameString(BaseNameString)
 end
 
 
-//Function RedoRates(InputWave,OrigFoldHist,OrigUnFoldHist,FoldedTimes,unFoldedTimes,UTimeMaster,FTimeMaster,UHistMaster,FHistMaster)
+
+Function CalculateErrors(FolderString,BaseNameString)
+	String FolderString,BaseNameString
 
 
-//	Wave InputWave,OrigFoldHist,OrigUnFoldHist,FoldedTimes,unFoldedTimes,UTimeMaster,FTimeMaster,UHistMaster,FHistMaster
-Function CompileTransitionWaves(FolderString,BaseNameString)
+	CompileTransitionWaves(FolderString,BaseNameString)
+	IterativeResampling(FolderString,BaseNameString,500)
+end
+
+
+Static Function CompileTransitionWaves(FolderString,BaseNameString)
 	String FolderString,BaseNameString
 	Wave InputWave=$(folderstring+":"+BaseNameString+"_AllTrans")
 	wave OrigFoldHist=$(folderstring+":"+BaseNameString+"_FoldHist")
@@ -963,7 +972,7 @@ Function CompileTransitionWaves(FolderString,BaseNameString)
 	killwaves NewFoldingHist,NewFoldingRate,NewFoldingTimes,NewunFoldingRate,NewunFoldingTimes,NewunFoldingHist
 end
 
-Function ResampleTheTransWaves(FolderString,BaseNameString,[OutPutString])
+Static Function ResampleTheTransWaves(FolderString,BaseNameString,[OutPutString])
 	string FolderString,BaseNameString,OutPutString
 //	wave UTimeMaster,FTimeMaster,UHistMaster,FHistMaster,NewUTimeMaster,NewFTimeMaster,NewUHistMaster,NewFHistMaster
 	wave UTimeMaster=$(FolderString+":"+BaseNameString+"_MasterUDwell")
@@ -1004,7 +1013,7 @@ Function ResampleTheTransWaves(FolderString,BaseNameString,[OutPutString])
 
 end
 
-Function IterativeResampling(FolderString,BaseNameString,iterations)
+Static Function IterativeResampling(FolderString,BaseNameString,iterations)
 variable iterations
 	String FolderString,BaseNameString
 
@@ -1053,7 +1062,10 @@ variable iterations
 	RemoveZeros(Fstd)
 		RemoveZeros(UMean)
 	RemoveZeros(FMean)
+	duplicate/o Ustd $(FolderString+":"+BaseNameString+"_UErr")
+		duplicate/o Fstd $(FolderString+":"+BaseNameString+"_FErr")
 
+	killwaves Umean,FMEan,Fstd,Ustd
 	killwaves $(FolderString+":ReSult_UHist"),$(FolderString+":Result_UDwell"),$(FolderString+":Result_FDwell"),$(FolderString+":Result_FHist")
 	killwaves $(FolderString+":Resample_MasterUDwell"),$(FolderString+":Resample_MasterFDwell"),$(FolderString+":Resample_MasterUHist"),$(FolderString+":Resample_MasterFHist")
 	killwaves FRate,URate,HoldFRate,HoldURate,TotURate,TotFRate
@@ -1086,7 +1098,7 @@ Static Function RemoveZeros(WaveIn)
 	endfor
 end	
 	
-Function ProcessingTransitionWave(FolderString,BaseNameString,[OutputString])
+Static Function ProcessingTransitionWave(FolderString,BaseNameString,[OutputString])
 	String FolderString,BaseNameString,OutputString
 	wave UTimeMaster=$(FolderString+":"+BaseNameString+"_MasterUDwell")
 	wave FTimeMaster=$(FolderString+":"+BaseNameString+"_MasterFDwell")
@@ -1269,38 +1281,36 @@ Static Function PlotForceandFit(FolderString,Type,Filtering)
 	//print WLCFree
 end
 
-Function QuickFit(ForceWave,SepWave,WLCParms,Type,Filtering)
-	wave ForceWave,SepWave,WLCParms
-	variable Filtering
-	string Type
-	
+Function QuickFit(SepWave,WLCParms)
+	wave SepWave,WLCParms
+
 	make/o/n=1000 $("WLCSeparation")/Wave=WLCSep
 	make/o/n=1000 $(":WLCForce1")/Wave=WLCForce1
 	make/o/n=1000 $(":WLCForce2")/Wave=WLCForce2
 	
 	
-	duplicate/o ForceWave $("MyFSm")
-	Wave FSm=$("MyFSm")
-	duplicate/o SepWave $("MySSm")
-	Wave SSm=$("MySSm")	
-	variable/c Shifts=CorrectShift(ForceWave,Type)
-	if(Filtering>5)
-	DE_Filtering#FilterForceSep(ForceWave,SepWave,FSm,SSm,"SVG",filtering)
-	elseif(filtering<1)
-	DE_Filtering#FilterForceSep(ForceWave,SepWave,FSm,SSm,"Tvd",filtering)
-
-	else
-	print "BadFilering"
-	return 0
-	endif
+//	duplicate/o ForceWave $("MyFSm")
+//	Wave FSm=$("MyFSm")
+//	duplicate/o SepWave $("MySSm")
+//	Wave SSm=$("MySSm")	
+//	variable/c Shifts=CorrectShift(ForceWave,Type)
+//	if(Filtering>5)
+//	DE_Filtering#FilterForceSep(ForceWave,SepWave,FSm,SSm,"SVG",filtering)
+//	elseif(filtering<1)
+//	DE_Filtering#FilterForceSep(ForceWave,SepWave,FSm,SSm,"Tvd",filtering)
+//
+//	else
+//	print "BadFilering"
+//	return 0
+//	endif
 	
 	
 	
-	SSm-=imag(Shifts)
-	Fsm-=real(Shifts)
-	make/free/n=0 WLCFree
-	CorrectWLC(WLCParms,WLCFree,ForceWave,SepWave,Type)
-
+	//SSm-=imag(Shifts)
+	//Fsm-=real(Shifts)
+	//make/free/n=0 WLCFree
+	//CorrectWLC(WLCParms,WLCFree,ForceWave,SepWave,Type)
+	duplicate/free WLCParms WLCFRee
 	WLCSep=wavemin(SepWave)+(Wavemax(SepWave)-Wavemin(SepWave))/999*x
 	WLCForce1=WLC(WLCSep-WLCFree[3],.4e-9,WLCFree[0],298)-WLCFree[2]
 	WLCForce2=WLC(WLCSep-WLCFree[3],.4e-9,WLCFree[1],298)-WLCFree[2]

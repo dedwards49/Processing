@@ -1715,7 +1715,41 @@ Static Function RupLcChangePair(ForcesOut,LCsOut)
 
 end
 
-//
+Static Function BootstrapAndReturn(Forces,Slopes,iters)
+
+	wave Forces,Slopes
+	variable iters
+	variable n
+	wavestats/Q Forces
+	print v_avg
+	print v_sem
+
+	wavestats/Q Slopes
+	print v_avg
+	print v_sem
+
+	make/free/n=(iters) IteratedForceaverage,IteratedSlopeAverage
+	for(n=0;n<iters;n+=1)
+		make/free/n=(numpnts(Forces)) Integer, ResampledForces,ResampledSlopes
+		Integer=p
+		StatsResample/n=(numpnts(Integer)) Integer
+		wave W_Resampled
+		ResampledForces=Forces[W_Resampled[p]]
+		ResampledSlopes=Slopes[W_Resampled[p]]
+		wavestats/q ResampledForces
+		IteratedForceaverage[n]=v_avg
+		wavestats/q ResampledSlopes
+		IteratedSlopeAverage[n]=v_avg
+	endfor
+	wavestats/Q IteratedForceaverage
+	print v_avg
+	print v_sdev
+	wavestats/Q IteratedSlopeAverage
+	print v_avg
+	print v_sdev
+	
+	killwaves W_Resampled
+end
 //
 //Function iterateUnit(Number)
 //variable Number

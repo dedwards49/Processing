@@ -8,24 +8,24 @@
 Function PlotAll()
 
 
-String str=wavelist("*Force_Ret",";","")
-variable n
-variable tot=itemsinlist(str)
-display/n=graph0
-for(n=0;n<tot;n+=1)
-wave w1=$stringfromlist(n,Str)
-wave w2=$replacestring("Force",nameofwave(w1),"Sep")
-Appendtograph w1 vs w2
+	String str=wavelist("*Force_Ret",";","")
+	variable n
+	variable tot=itemsinlist(str)
+	display/n=graph0
+	for(n=0;n<tot;n+=1)
+		wave w1=$stringfromlist(n,Str)
+		wave w2=$replacestring("Force",nameofwave(w1),"Sep")
+		Appendtograph w1 vs w2
 
-endfor
-
-
-for(n=0;n<tot;n+=1)
-wave w1=$stringfromlist(n,Str)
-DE_Filtering#AutoFilterAForceSep(w1,"SVG",11,WindowString="Graph0")
+	endfor
 
 
-endfor
+	for(n=0;n<tot;n+=1)
+		wave w1=$stringfromlist(n,Str)
+		DE_Filtering#AutoFilterAForceSep(w1,"SVG",11,WindowString="Graph0")
+
+
+	endfor
 
 
 
@@ -33,17 +33,40 @@ endfor
 
 
 end
+static function PlotAllwithShift()
+	string AllForce=wavelist("*Force_ret",";","")
+	variable tot=itemsinlist(AllForce)
+	
+	variable n,offset
+	for(n=0;n<tot;n+=1)
+		wave w1=$stringfromlist(n,AllForce)
+		wave w2=$replacestring("Force",nameofwave(w1),"Sep")
+		if(n==0)
+			Display w1 vs w2
+		else
+			appendtograph w1 vs w2
+		endif
+		offset= -1*w2[-1*str2num(stringbykey("DE_FeatherZero",note(w1),":","\r"))]
+		ModifyGraph offset($nameofwave(w1))={offset,0}
+
+	
+	endfor
+	ModifyGraph muloffset={0,-1}
+
+
+
+end
 Function G()
-String str=wavelist("*Force_Ret",";","")
+	String str=wavelist("*Force_Ret",";","")
 
-variable n
-variable tot=itemsinlist(str)
-for(n=0;n<tot;n+=1)
-wave w1=$stringfromlist(n,Str)
-DE_Filtering#AutoFilterAForceSep(w1,"SVG",151,WindowString="Graph0")
+	variable n
+	variable tot=itemsinlist(str)
+	for(n=0;n<tot;n+=1)
+		wave w1=$stringfromlist(n,Str)
+		DE_Filtering#AutoFilterAForceSep(w1,"SVG",151,WindowString="Graph0")
 
 
-endfor
+	endfor
 
 
 
@@ -56,23 +79,23 @@ Static Function TraceSelector(ctrlName,row,col,event) : ListBoxControl
 	Variable row
 	Variable col
 	Variable event	//1=mouse down, 2=up, 3=dbl click, 4=cell select with mouse or keys
-					//5=cell select with shift key, 6=begin edit, 7=end
-		wave SWave= root:SelWave
+	//5=cell select with shift key, 6=begin edit, 7=end
+	wave SWave= root:SelWave
 	wave/T TNL=root:TraceNameLists
-		variable n
-		Svar GraphName=root:STrGN
-		String list
-		wfprintf list, "%s;", TNL
-		string X1= ListMatch(list,"*WLC*",";") 	
-		string WLCTrace=stringFromList(0,X1)
-		ModifyGraph/W=$GraphName hideTrace=1
-				ModifyGraph/W=$GraphName hideTrace($WLCTrace)=0
+	variable n
+	Svar GraphName=root:STrGN
+	String list
+	wfprintf list, "%s;", TNL
+	string X1= ListMatch(list,"*WLC*",";") 	
+	string WLCTrace=stringFromList(0,X1)
+	ModifyGraph/W=$GraphName hideTrace=1
+	ModifyGraph/W=$GraphName hideTrace($WLCTrace)=0
 
-		for(n=0;n<numpnts(SWave);n+=1)
-			if(SWave[n]==1)
-				ModifyGraph/W=$GraphName hideTrace($TNL[n])=0
-			endif
-		endfor
+	for(n=0;n<numpnts(SWave);n+=1)
+		if(SWave[n]==1)
+			ModifyGraph/W=$GraphName hideTrace($TNL[n])=0
+		endif
+	endfor
 end
 Static Function SelectTraceWindow(graphName)
 	String graphName
@@ -89,52 +112,52 @@ Static Function SelectTraceWindow(graphName)
 	make/T/o/n=0 root:TraceNameLists
 	wave/T TNL=root:TraceNameLists
 	DE_ListToTextWave(ListWavesonPlot, TNL,";")
-print TNL
+	print TNL
 	wave/T TNL=root:TraceNameLists
 	make/o/n=(numpnts(TNL)) root:SelWave
 	wave Swave=root:SelWave
 	Swave=1
 	ListBox de_trace win=Devin, pos={000,20},size={150,300},proc=DE_TraceHelper#TraceSelector,listWave=TNL
 	ListBox de_trace win=Devin,selWave=Swave,row= 0,selRow= 0,mode= 4
-//	DoWindow/C tmp_Select // Set to an unlikely name
-//AutoPositionWindow/E/M=1/R=$graphName
+	//	DoWindow/C tmp_Select // Set to an unlikely name
+	//AutoPositionWindow/E/M=1/R=$graphName
 
-//
-//	NewPanel /K=2 /W=(187,368,437,531) as "Pause for Cursor"
-//	DoWindow/C tmp_PauseforCursor // Set to an unlikely name
-//	AutoPositionWindow/E/M=1/R=$graphName // Put panel near the graph
-//	DrawText 21,20,"Adjust the cursors and then"
-//	DrawText 21,40,"Click Continue."
-//	Button button0,pos={80,58},size={92,20},title="Continue"
-//	Button button0,proc=DE_Schollpanel#BatchSelect_ContButtonProc
-//	Variable didAbort= 0
-//	if( autoAbortSecs == 0 )
-//		PauseForUser tmp_PauseforCursor,$graphName
-//	else
-//		SetDrawEnv textyjust= 1
-//		DrawText 162,103,"sec"
-//		SetVariable sv0,pos={48,97},size={107,15},title="Aborting in "
-//		SetVariable sv0,limits={-inf,inf,0},value= _NUM:10
-//		Variable td= 10,newTd
-//		Variable t0= ticks
-//		Do
-//			newTd= autoAbortSecs - round((ticks-t0)/60)
-//			if( td != newTd )
-//				td= newTd
-//				SetVariable sv0,value= _NUM:newTd,win=tmp_PauseforCursor
-//				if( td <= 10 )
-//					SetVariable sv0,valueColor= (65535,0,0),win=tmp_PauseforCursor
-//				endif
-//			endif
-//			if( td <= 0 )
-//				DoWindow/K tmp_PauseforCursor
-//				didAbort= 1
-//				break
-//			endif
-//			PauseForUser/C tmp_PauseforCursor,$graphName
-//		while(V_flag)
-//	endif
-//	return didAbort
+	//
+	//	NewPanel /K=2 /W=(187,368,437,531) as "Pause for Cursor"
+	//	DoWindow/C tmp_PauseforCursor // Set to an unlikely name
+	//	AutoPositionWindow/E/M=1/R=$graphName // Put panel near the graph
+	//	DrawText 21,20,"Adjust the cursors and then"
+	//	DrawText 21,40,"Click Continue."
+	//	Button button0,pos={80,58},size={92,20},title="Continue"
+	//	Button button0,proc=DE_Schollpanel#BatchSelect_ContButtonProc
+	//	Variable didAbort= 0
+	//	if( autoAbortSecs == 0 )
+	//		PauseForUser tmp_PauseforCursor,$graphName
+	//	else
+	//		SetDrawEnv textyjust= 1
+	//		DrawText 162,103,"sec"
+	//		SetVariable sv0,pos={48,97},size={107,15},title="Aborting in "
+	//		SetVariable sv0,limits={-inf,inf,0},value= _NUM:10
+	//		Variable td= 10,newTd
+	//		Variable t0= ticks
+	//		Do
+	//			newTd= autoAbortSecs - round((ticks-t0)/60)
+	//			if( td != newTd )
+	//				td= newTd
+	//				SetVariable sv0,value= _NUM:newTd,win=tmp_PauseforCursor
+	//				if( td <= 10 )
+	//					SetVariable sv0,valueColor= (65535,0,0),win=tmp_PauseforCursor
+	//				endif
+	//			endif
+	//			if( td <= 0 )
+	//				DoWindow/K tmp_PauseforCursor
+	//				didAbort= 1
+	//				break
+	//			endif
+	//			PauseForUser/C tmp_PauseforCursor,$graphName
+	//		while(V_flag)
+	//	endif
+	//	return didAbort
 End
 Static Function PlotABunch(firstnum,lastnum,Basename,DirectionList)
 	variable firstnum,lastnum
@@ -142,15 +165,15 @@ Static Function PlotABunch(firstnum,lastnum,Basename,DirectionList)
 	variable n,m
 	display
 	for(n=firstnum;n<lastnum;n+=1)
-	for(m=0;m<itemsinlist(DirectionList,";");m+=1)
-		wave w1=$DE_Naming#StringCreate(Basename,n,"Force",stringfromlist(m,DirectionList,";"))
-		wave w2=$DE_Naming#StringCreate(Basename,n,"Sep",stringfromlist(m,DirectionList,";"))
-		if(waveexists(w1)&&waveexists(w1))
-			appendtograph w1 vs w2
-		endif
-		//
+		for(m=0;m<itemsinlist(DirectionList,";");m+=1)
+			wave w1=$DE_Naming#StringCreate(Basename,n,"Force",stringfromlist(m,DirectionList,";"))
+			wave w2=$DE_Naming#StringCreate(Basename,n,"Sep",stringfromlist(m,DirectionList,";"))
+			if(waveexists(w1)&&waveexists(w1))
+				appendtograph w1 vs w2
+			endif
+			//
 
-	endfor
+		endfor
 	endfor
 
 
@@ -162,7 +185,7 @@ Function FilteringAllonPlot()
 	string CurrentForce,CurrentSep,Info
 	variable xoff,yoff,xmult,ymult
 	for(n=0;n< itemsinlist(list);n+=1)
-//	for(n=0;n<1;n+=1)
+		//	for(n=0;n<1;n+=1)
 		CurrentForce=stringfromlist(n,list)
 		CurrentSep=Replacestring("Force",CurrentForce,"Sep")
 		wave w1=$CurrentForce
@@ -174,7 +197,7 @@ Function FilteringAllonPlot()
 		ymult= GetNumFromModifyStr(info,"muloffset","{",1)
 
 		if(waveexists($CurrentSep)==1)
-		print currentsep
+			print currentsep
 			wave w2=$CurrentSep
 
 			make/o/n=0 $(CurrentForce+"_Sm"),$(CurrentSep+"_Sm")
@@ -183,7 +206,7 @@ Function FilteringAllonPlot()
 			DE_Filtering#FilterForceSep(w1,w2,w3,w4,"SVG",25)
 			appendtograph w3 vs w4
 			ModifyGraph offset($nameofwave(w3))={xoff,yoff}
-						ModifyGraph muloffset($nameofwave(w3))={xmult,ymult}
+			ModifyGraph muloffset($nameofwave(w3))={xmult,ymult}
 
 		else
 		endif
@@ -236,7 +259,7 @@ Static Function ColorList(index,column)
 	ColorWave[][7]={65535,16385,55749}
 	print ColorWave
 	if(index>7)
-	return 0
+		return 0
 	endif
 	return ColorWave[column][index]
 

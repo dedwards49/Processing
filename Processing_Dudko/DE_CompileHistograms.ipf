@@ -115,8 +115,8 @@ Static Function FindRuptureForcesbyTimebyIndex(n,WLCParms,ForceWave,Sepwave,Stat
 			if(LocalType[m]==-1)//unfolding
 			Insertpoints numpnts(UnfoldingFree),1, UnfoldingFree
 			CurrentTime=pnt2x(Sepwave,LocalPoints[m])
-
 			CurrentSep=FirstSepWaveFolded(CurrentTime)
+
 			CurrentForce=WLC(CurrentSep-SepOff,-.4e-9,FOldedLC,298)-FOrceOff
 			UnfoldingFree[numpnts(UnfoldingFree)-1]=CurrentForce
 		elseif(LocalType[m]==1)//folding
@@ -137,6 +137,7 @@ Static Function FindRuptureForcesbyTimebyIndex(n,WLCParms,ForceWave,Sepwave,Stat
 			CurrentSep=SecondSepWaveFolded(CurrentTime)
 			CurrentForce=WLC(CurrentSep-SepOff,-.4e-9,FOldedLC,298)-FOrceOff
 			UnfoldingFree[numpnts(UnfoldingFree)-1]=CurrentForce
+
 		elseif(LocalType[m]==1)//folding
 			Insertpoints numpnts(FoldingFree),1, FoldingFree
 			CurrentTime=pnt2x(Sepwave,LocalPoints[m])
@@ -175,13 +176,16 @@ Static Function FindStatesForForce(Force,State,WLCParms,ForceWave,Sepwave,LocalP
 	variable SepOff=WLCPArms[3]
 	variable EXtension
 	variable TimeOutgoing,TimeIngoing,OutgoingCounts,IncomingCounts
-
+	controlinfo/W=DudkoAnalysis  de_Dudko_setvar1
+	variable foldedhalf=v_value/2
+	variable unfoldedhalf=v_value
 	if(Folded==1)
-		EXtension=	 DE_WLC#ReturnExtentionatForce(Force-FOrceOff,.4e-9,FOldedLC,298)+SepOff
+		
+		EXtension=	 DE_WLC#ReturnExtentionatForce(Force-FOrceOff+unfoldedhalf,.4e-9,FOldedLC,298)+SepOff
 
 		OutgoingCounts=1
 	elseif(Folded==0)
-		Extension=	DE_WLC#ReturnExtentionatForce(Force-FOrceOff,.4e-9,UnFOldedLC,298)+SepOff
+		Extension=	DE_WLC#ReturnExtentionatForce(Force-FOrceOff+foldedhalf,.4e-9,UnFOldedLC,298)+SepOff
 		IncomingCounts=1
 	endif
 	
@@ -556,8 +560,10 @@ Static Function AccumulateAllRuptures(StateWave,ForceWave,AccState,FoldedAcc,Unf
 		duplicate/o UnFoldedResult,Unfoldedacc
 		DeletePoints 0,1, StateHold
 		StateHold[][0]+=AccState[dimsize(AccState,0)-1][0]
+
 		StateHold[][3]+=AccState[dimsize(AccState,0)-1][3]
 		StateHold[][4]+=AccState[dimsize(AccState,0)-1][4]
+
 		Concatenate/NP=0 {AccState, StateHold}, StateResult
 		duplicate/o StateResult,AccState
 		killwaves FoldedResult,UnFoldedResult,StateResult
@@ -649,13 +655,13 @@ Static Function SmartProduceHistograms(Inwave,OutWave,spacing)
 	make/free/n=(dimsize(Inwave,0)) Forces
 	Forces=Inwave[p][3]
 	endif
-	variable Bottom=floor(-1e12*wavemin(Forces))*-1e-12-1e-12-spacing/2
-	variable Top=ceil(-1e12*wavemax(Forces))*-1e-12+1e-12+spacing/2
+	variable Bottom=floor(-1e12*wavemin(Forces))*-1e-12-1e-12//-spacing/2
+	variable Top=ceil(-1e12*wavemax(Forces))*-1e-12+1e-12//+spacing/2
 	variable Number=(Top-Bottom)/spacing
 
 	make/free/n=(number+1) Histhold
 	setscale/P  x Bottom,spacing,"" Histhold
-	Histogram/C/B=2 Forces Histhold
+	Histogram/B=2 Forces Histhold
 	duplicate/o Histhold OutWave
 end
 
@@ -853,7 +859,7 @@ Static Function FittheContour()
 	wave unFoldedsepOut=$stringfromlist(7,listofnames)
 	make/o/n=0 $stringfromlist(8,listofnames)
 	wave OutputResults=$stringfromlist(8,listofnames)
-	WLCFitter(FoldedForceOut,FoldedSepOut,unfoldedForceOut,unFoldedsepOut,OutputResults,0)
+	WLCFitter(FoldedForceOut,FoldedSepOut,unfoldedForceOut,unFoldedsepOut,OutputResults,1)
 	display FoldedForceOut vs FoldedSepOut
 	appendtograph unfoldedForceOut vs unFoldedsepOut
 	wave FFIt=$("fit_"+nameofwave(FoldedForceOut))
@@ -949,8 +955,10 @@ Static Function CreateSlopeWave()
 	//variable/c Slopes=cmplx(18.2e-9,18.2e-9)
 	controlinfo/W=DudkoAnalysis de_Dudko_setvar2
 	variable slopes=V_Value
-	UnfoldedSlope=WLCSlopeAtForce(UnfoldLC,Offset,UnFoldedForces,slopes)
-	FoldedSlope=WLCSlopeAtForce(FoldLC,Offset,FoldedForces,slopes)
+	variable halfspacing=(UnFoldedForces[1]-UnFoldedForces[0])/2
+	UnfoldedSlope=WLCSlopeAtForce(UnfoldLC,Offset,UnFoldedForces+halfspacing,slopes)
+	halfspacing=(FoldedForces[1]-FoldedForces[0])/2
+	FoldedSlope=WLCSlopeAtForce(FoldLC,Offset,FoldedForces+halfspacing,slopes)
 	//UnfoldedSlope*=-1
 	//FoldedSlope*=-1
 end
@@ -1272,7 +1280,10 @@ Static Function ForceStateAccum()
 	if(numpnts(JustForce)==0)
 	first=1	
 	endif
-	
+	if(numpnts(ForceWaveTemp)>StateWave[dimsize(statewave,0)-1][0])
+		deletepoints StateWave[dimsize(statewave,0)-1][0],1e6, ForceWaveTemp,SepWaveTemp
+	endif
+	 
 	variable accum=1
 	if(accum==1)
 		
@@ -1345,12 +1356,12 @@ Static Function NewHistogramButton()
 	wave Sepwave= $stringfromlist(3,listofnames)
 	Wave WLCParms= $stringfromlist(8,listofnames)
 	wave StateWave=$stringfromlist(15,listofnames)
-	make/free/n=0 OGFoldingForce,OGUnfoldingForce
-	//FindRuptureForcesbyTime(WLCParms,ForceWave,Sepwave,StateWave,OGFoldingForce,OGUnfoldingForce)
-	//OGUnfoldingForce*=-1
-	//OGFoldingForce*=-1
+	make/o/n=0 OGFoldingForce,OGUnfoldingForce
+	FindRuptureForcesbyTime(WLCParms,ForceWave,Sepwave,StateWave,OGFoldingForce,OGUnfoldingForce)
+	OGUnfoldingForce*=-1
+	OGFoldingForce*=-1
 
-	SimpleFindRuptureForce(ForceWave,StateWave,OGUnfoldingForce,OGFoldingForce)
+	//SimpleFindRuptureForce(ForceWave,StateWave,OGUnfoldingForce,OGFoldingForce)
 
 //
 	make/o/n=0 $(AccFolder+nameofwave(AccUn)+"_Hist")
@@ -1978,7 +1989,7 @@ Static Function BatchProcess()
 					NumbersCalc()
 					MakeRates()
 					calcErrorBars()
-					//print (stopmstimer(-2)-ms)/1e6
+					print (stopmstimer(-2)-ms)/1e6
 	Makesomeniceplots()
 	//CalculatePullingSpeed()
 		killwaves FolderList,SW
