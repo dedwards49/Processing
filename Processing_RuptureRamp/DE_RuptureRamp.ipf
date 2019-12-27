@@ -10,6 +10,40 @@
 #include ":\Misc_PanelPrograms\Panel Progs"
 #include ":\Misc_PanelPrograms\AsylumNaming"
 //#include ":\Processing_Markov\DE_HMM"
+
+Function MakeANicePlot(Type)
+	String Type
+	string saveDF
+	saveDF = GetDataFolder(1)
+
+	//Here we just grab a long list of all the waves we need	
+	controlinfo/W=RupRampPanel de_RupRamp_popup0
+	SetDataFolder s_value
+
+	StrSwitch (Type)
+	
+		Case "Align":
+			dowindow AlignMent
+			if(v_flag==1)
+				killwindow Alignment
+			endif
+			wave AlignUnfolded,Alignfolded,AlignFitShift,AlignFitNoShift,AlignFitOriginal
+			Display/N=Alignment AlignUnfolded[][0] vs AlignUnfolded[][1]
+			Appendtograph/W=Alignment Alignfolded[][0] vs Alignfolded[][1]
+			Appendtograph/W=Alignment AlignFitShift[][0] vs AlignFitShift[][1]
+			Appendtograph/W=Alignment AlignFitNoShift[][0] vs AlignFitNoShift[][1]
+			Appendtograph/W=Alignment AlignFitOriginal[][0] vs AlignFitOriginal[][1]
+			ModifyGraph/W=Alignment rgb(AlignUnFolded)=(14135,32382,47288),rgb(AlignFolded)=(19789,44975,19018)
+			ModifyGraph/W=Alignment rgb(AlignFitShift)=(29524,1,58982),rgb(AlignFitNoShift)=(58596,6682,7196),rgb(AlignFitOriginal)=(0,0,0)
+		
+			ModifyGraph/W=Alignment lsize(AlignFitShift)=2,lsize(AlignFitNoShift)=2,lsize(AlignFitOriginal)=2
+		break
+	
+	default:
+	endswitch
+	SetDataFolder saveDF
+
+end
 Static Function MakeAPlainRupWave()
 	
 
@@ -475,7 +509,7 @@ Static Function AligntoWLC()
 	AlignFitShift[][0]=FWLCFit[p]
 	AlignFitShift[][1]=SOut[p][0]
 	
-		WLCParmsForFit=WLCParms
+	WLCParmsForFit=WLCParms
 
 	DE_TwoWLCFit#MakeAMultiFit(SOut,WLCParmsForFit,FWLCFit)
 
