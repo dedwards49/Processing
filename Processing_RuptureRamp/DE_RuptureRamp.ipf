@@ -11,7 +11,7 @@
 #include ":\Misc_PanelPrograms\AsylumNaming"
 //#include ":\Processing_Markov\DE_HMM"
 
-Function MakeANicePlot(Type)
+Static Function MakeANicePlot(Type)
 	String Type
 	string saveDF
 	saveDF = GetDataFolder(1)
@@ -85,10 +85,16 @@ Function PlotFromFolder(FolderString,ShiftString,GraphString)
 	wave SepWave=$(FolderString+":"+stringfromlist(0,DE_CountRates#ListWaves(FolderString,"*Sep_Align")))
 
 	variable/c shift=DE_CountRates#CorrectShift(ForceWave,ShiftString)
-	variable 					ForceAdj=real(Shift)
-			variable 		SepAdj=imag(Shift)
+	variable 	ForceAdj=real(Shift)
+	variable 	SepAdj=imag(Shift)
+	if(whichListItem(nameofwave(ForceWave),tracenamelist(graphstring,";",1))>0)
+	do
+		removefromGraph/W=$Graphstring $nameofwave(ForceWave)
+	
+	while(whichListItem(nameofwave(ForceWave),tracenamelist(graphstring,";",1))>0)
+	endif
 	appendtograph/W=$Graphstring ForceWave vs SepWave
-					ModifyGraph/W=$GraphString offset($nameofwave(ForceWave))={SepAdj,-ForceAdj}
+	ModifyGraph/W=$GraphString offset($nameofwave(ForceWave))={SepAdj,ForceAdj}
 
 end
 
@@ -572,7 +578,6 @@ Static Function AlignTwotoWLC(FoldedForce,FoldedSep,UnfoldedForce,UnfoldedSep,WL
 		FuncFit/N/Q/W=2/H=ConStr DE_FitTwo W_coef  Fout /X=SOut /D
 
 	endif
-	print w_coef
 	make/free/n=2 TemporaryResults
 	TemporaryResults={-w_coef[5]+WLCParms[5],w_coef[4]-WLCParms[4]}
 	//make/free/n=0 FWLCFit
@@ -1253,7 +1258,7 @@ Window RuptureRamp_Panel() : Panel
 	PopupMenu de_RupRamp_popup5,pos={20,330},size={129,21},title="StateWave"
 	PopupMenu de_RupRamp_popup5,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*State*\")"
 	PopupMenu de_RupRamp_popup6,pos={20,360},size={129,21},title="Shifted Wave"
-	PopupMenu de_RupRamp_popup6,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*Force*Shift*\")"
+	PopupMenu de_RupRamp_popup6,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*Force*Shift\")"
 	PopupMenu de_RupRamp_popup7,pos={20,560},size={129,21},title="WLC Parms"
 	PopupMenu de_RupRamp_popup7,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*WLCParms*\")"
 	PopupMenu de_RupRamp_popup8,pos={20,600},size={129,21},title="New Up Ruptures"

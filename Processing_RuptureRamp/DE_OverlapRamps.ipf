@@ -277,23 +277,6 @@ Static Function CalculateForceOffsetFromPause(ForceWave,RampNumber)
 	duplicate/free/R=[startpnt+.05*diff,endpnt-.05*diff] ForceWave ForceWaveCut
 
 	wavestats/Q ForceWaveCut
-	print v_avg
-//	
-//	make/free/n=0 F1,F2,S1,S2
-//	ReturnForcesWidestGaps(ForceWave,SepWave,Statewave,index1,index2,F1,S1,F2,S2)
-//	make/o/n=2 W_Coef
-//	W_Coef={0,1}
-//	variable lengthdif=numpnts(F1)-numpnts(F2)
-//	print lengthdif
-//	if(lengthdif==0)
-//	elseif(lengthdif<=2)
-//		deletepoints numpnts(F1)-lengthdif,1e3,F1
-//		else
-//	endif
-//	CurveFit/Q/H="01"/NTHR=0 line  kwCWave=W_Coef F1 /X=F2 
-//	wave W_Coef,w_Sigma
-//
-//	variable returns=W_Coef[0]
-//	killwaves W_Coef,w_Sigma
+
 	return v_avg
 end
