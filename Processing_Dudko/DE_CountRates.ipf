@@ -690,7 +690,7 @@ Static Function PlotThingsNiceWithaNameString(BaseNameString)
 	Label left "\\f01Rate\r (1/s)"
 	Label L1 "\\f01Number"
 	Label L2 "\\f01Hist"
-	•ModifyGraph margin(bottom)=29,margin(top)=14,margin(right)=14,margin(left)=43
+	ModifyGraph margin(bottom)=29,margin(top)=14,margin(right)=14,margin(left)=43
 
 
 

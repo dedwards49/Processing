@@ -2,7 +2,7 @@
 #pragma modulename=DE_RuptureRamp
 #include "DE_Filtering"
 #include "SimpleWLCPrograms"
-#include "C:Users:Perkins Lab:src_prh:IgorUtil:IgorCode:Util:OperatingSystemUtil"
+#include "C:Users:dedwards:src_prh:IgorUtil:IgorCode:Util:OperatingSystemUtil"
 #include "DTE_Dudko"
 #include "DE_OverlapRamps"
 #include "DE_CorrectRupture"
@@ -189,27 +189,72 @@ Function CorrectPauses(ForceWave,SepWave)
 	note/K ForceWave NewNote
 	note/K SepWave NewNote
 end
+
+Static Function/S RemovePauses(ForceIn,SepIn,ForceOut,Sepout)
+	wave ForceIn,SepIn,ForceOut,Sepout
+	string NoteString=note(ForceIn)
+	String PauseLocString=stringbykey("DE_PauseLoc",NoteString,":","\r")
+	variable last=itemsinlist(PauseLocString)
+	variable n,startdelete,enddelete,todelete
+	string DeletedString,DeletedStringNew
+	DeletedString=""
+	duplicate/free ForceIn FreeForce
+	duplicate/free SepIn FreeSep
+
+	for(n=last-2;n>=0;n-=2)
+	
+		startdelete=str2num(stringfromlist(n,PauseLocString))
+		enddelete=str2num(stringfromlist(n+1,PauseLocString))
+		if(n==(last-2))
+			todelete=enddelete-startdelete
+			DeletedString=num2str(todelete)
+
+
+		endif
+		deletepoints startdelete,todelete, FreeForce,FreeSep
+					DeletedStringNew=num2str(startdelete-todelete*n/2)+";"+DeletedString
+		DeletedString=DeletedStringNew
+	endfor
+	duplicate/o FreeForce ForceOut
+	duplicate/o FreeSep Sepout
+	return DeletedString
+end
+
+static Function CorrectforRemovedPause(PointsIn,PauseIndices,deletionString)
+	variable PointsIn
+	String PauseIndices,deletionString
+	variable tot=itemsinlist(deletionString)
+	variable deletesize=str2num(stringfromlist(tot-1,deletionString))
+	variable n,CurrentPnt,TotAdd
+	for(n=0;n<tot;n+=1)
+		CurrentPnt=str2num(stringfromlist(n,deletionString))
+		if(PointsIn<CurrentPnt)
+			return PointsIn+n*deletesize
+		else
+		endif
+	endfor
+	return -1
+end
+
 Static Function PythonFitter( UseWave,Method,Threshold,AMount)//Variables demanded by MarkovFit Code
 	Wave UseWave//Input wave
 	String Method
 	Variable Threshold,AMount
-	String Destination = "C:\Data\StepData\Test1.ibw"
-	String NewHome = "C:\Data\StepData\Shit.txt"
+	String Destination = "D:\Data\StepData\Test1.ibw"
+	String NewHome = "D:\Data\StepData\Shit.txt"
 
 	Save/O/C UseWave as Destination
-	String BasePythonCommand = "cmd.exe /C activate & python C:\Devin\Python\StepAttempt\StepAttempt.py "
+	String BasePythonCommand = "cmd.exe /C activate & python D:\Devin\Python\StepAttempt\StepAttempt.py "
 	String MethodCommand="-method "+ method +" "
 	String InputCom="-inputfile "+ Destination+" "
 	String OutputCom="-outputfile "+ NewHome+" "
 	String SmoothCommand="-smooth "+ num2str(Amount)+" "
 	String ThreshCommand="-threshold "+ num2str(threshold)+" "
 
-//
 	String PythonCommand=BasePythonCommand+MethodCommand+InputCom+OutputCom+SmoothCommand+ThreshCommand
 	print PythonCommand
 	ModOperatingSystemUtil#execute_python(PythonCommand)
 	LoadWave/O/N/G/D NewHome
-	
 
 end
 
@@ -853,10 +898,18 @@ Static Function FitPython()
 	controlinfo de_RupRamp_popup1
 	wave ForceWave=$S_value
 	wave SepWave=$ReplaceString("Force",S_value,"Sep")
+	controlinfo/W=RupRampPanel de_RupRamp_check3
+	variable nodelay=v_value
 	//	make/o/n=0 RupPntU,RupPntD
 	make/o/n=0 ForceWaveS,SepWaveS
 	//DE_Filtering#FilterForceSep(ForceWave,SepWave,ForceWaveS,SepWaveS,"SVG",str2num(parmWave[6][1]))
+	make/free/n=0 ForceOut,Sepout
+	if(nodelay==1)
+	string deletionString=RemovePauses(ForceWave,SepWave,ForceOut,Sepout)
+	DE_Filtering#FilterForceSep(ForceOut,Sepout,ForceWaveS,SepWaveS,"TVD",str2num(parmWave[0][1]))
+	else
 	DE_Filtering#FilterForceSep(ForceWave,SepWave,ForceWaveS,SepWaveS,"TVD",str2num(parmWave[0][1]))
+	endif
 	ForceWaveS*=-1
 	wavestats/q ForceWaveS
 	FOffset=v_min
@@ -879,6 +932,12 @@ Static Function FitPython()
 	RupPntU=x2pnt(ForceWave,pnt2x(ForceWaveS,UpP))
 	duplicate/o DownP RupPntD
 	RupPntD=x2pnt(ForceWave,pnt2x(ForceWaveS,DownP))
+	string PauseIndices=stringbykey("DE_PauseLoc",note(ForceWave),":","\r")//
+	if(nodelay==1)
+	RupPntU=CorrectforRemovedPause(RupPntU,PauseIndices,deletionString)
+	RupPntD=CorrectforRemovedPause(RupPntD,PauseIndices,deletionString)
+	else
+	endif
 
 	killwaves SepWaveS,ForceWaveS,no0,DownP,UpP
 	SetDataFolder saveDF
@@ -1313,6 +1372,7 @@ Window RuptureRamp_Panel() : Panel
 
 	//CheckBox de_RupRamp_check1 title="Fit Folded",pos={550,450},size={150,25},proc=DE_RuptureRamp#CheckProc
 	CheckBox de_RupRamp_check2 title="Fit Folded",pos={500,550},size={150,25},proc=DE_RuptureRamp#CheckProc
+	CheckBox de_RupRamp_check3 title="No Delays",pos={225,80},size={150,20},proc=DE_RuptureRamp#CheckProc
 
 	ControlUpdate/A/W=RupRampPanel
 EndMacro
