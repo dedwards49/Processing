@@ -1413,7 +1413,7 @@ End
 Macro MultiRampViewer() : Panel
 	//
 	PauseUpdate; Silent 1		// building window...
-	NewPanel/N=MRViewer /W=(50,50,1300,750)
+	NewPanel/N=MRViewer /W=(50,50,1100,750)
 	NewDataFolder/o root:DE_Viewer
 	make/T/o/n=0 root:DE_Viewer:ListWave1
 	make/o/n=0 root:DE_Viewer:SelWave1
@@ -1471,6 +1471,7 @@ Macro MultiRampViewer() : Panel
 	appendtograph/W=MRViewer#TimeData root:DE_Viewer:SelUpY vs root:DE_Viewer:SelUpX
 	appendtograph/W=MRViewer#TimeData root:DE_Viewer:SelDownY vs root:DE_Viewer:SelDownX
 	appendtograph/W=MRViewer#TimeData root:DE_Viewer:PauseStartY vs root:DE_Viewer:PauseStartX
+	SetWindow MRViewer, hook(MyHook) = MyWindowHook	// Install window hook
 
 	ModifyGraph mode(SelUpY)=3,marker(SelUpY)=17,mode(SelDownY)=3,marker(SelDownY)=17
 	ModifyGraph msize(SelUpY)=4,rgb(SelUpY)=(14848,32256,47104),msize(SelDownY)=4;DelayUpdate
@@ -1500,17 +1501,17 @@ Macro MultiRampViewer() : Panel
 	
 	Button de_viewer_but0,pos={750,500},size={150,25},proc=DE_MultiRampViewer#ButtonProc,title="Delete This Trace"
 	Button de_viewer_but1,pos={910,540},size={150,25},proc=DE_MultiRampViewer#ButtonProc,title="Modify Selected Unfolding"
-	Button de_viewer_but6,pos={1070,540},size={150,25},proc=DE_MultiRampViewer#ButtonProc,title="Delete Selected Unfolding"
+	Button de_viewer_but6,pos={31,332},size={150,25},proc=DE_MultiRampViewer#ButtonProc,title="Delete Selected Unfolding"
 	Button de_viewer_but8,pos={750,540},size={150,25},proc=DE_MultiRampViewer#ButtonProc,title="Add Unfolding"
 
 	Button de_viewer_but2,pos={910,580},size={150,25},proc=DE_MultiRampViewer#ButtonProc,title="Modify Selected Folding"
-	Button de_viewer_but7,pos={1070,580},size={150,25},proc=DE_MultiRampViewer#ButtonProc,title="Delete Selected Folding"
+	Button de_viewer_but7,pos={31,535},size={150,25},proc=DE_MultiRampViewer#ButtonProc,title="Delete Selected Folding"
 	Button de_viewer_but9,pos={750,580},size={150,25},proc=DE_MultiRampViewer#ButtonProc,title="Add Folding"
 
 	Button de_viewer_but3,pos={750,620},size={150,25},proc=DE_MultiRampViewer#ButtonProc,title="Reset"
 	Button de_viewer_but4,pos={750,660},size={150,25},proc=DE_MultiRampViewer#ButtonProc,title="Save Working"
-	Button de_viewer_but10,pos={10,550},size={150,25},proc=DE_MultiRampViewer#ButtonProc,title="PlotOverlays!"
-	Button de_viewer_but11,pos={10,585},size={150,25},proc=DE_MultiRampViewer#ButtonProc,title="PlotBeginningAndEnd!"
+	Button de_viewer_but10,pos={10,585},size={150,25},proc=DE_MultiRampViewer#ButtonProc,title="PlotOverlays!"
+	Button de_viewer_but11,pos={10,610},size={150,25},proc=DE_MultiRampViewer#ButtonProc,title="PlotBeginningAndEnd!"
 	Button de_viewer_but12,pos={10,645},size={150,25},proc=DE_MultiRampViewer#ButtonProc,title="PlotWLC"
 	
 	Button de_Viewer_but13,pos={700,450},size={50,25},proc=DE_MultiRampViewer#ButtonProc,title="Axis"
@@ -1628,6 +1629,126 @@ Static Function PareResults(Wave1)
 End
 
 
+//				case "de_Viewer_but1":
+
+//
+//					break
+//			
+//				case "de_Viewer_but2":
+
+//					break
+//					
+//					
+
+//case "de_Viewer_but8":
+
+//					break
+//				case "de_Viewer_but9":
+
+//					break
+Function MyWindowHook(s)
+	STRUCT WMWinHookStruct &s
+	GetWindow $s.winName activeSW
+	String activeSubwindow = S_value
+	if (CmpStr(activeSubwindow,"MRViewer#TimeData") != 0)
+		return 0
+	endif
+	string items
+	//print s.eventmod
+	//print s.eventCode
+	variable q=AxisValFromPixel("MRViewer#TimeData", "bottom", s.mouseLoc.h )
+	Variable hookResult = 0	// 0 if we do not handle event, 1 if we handle it.
+	switch(s.eventCode)
+		case 5:					// mouse event
+			switch (s.eventmod)
+			
+						
+				case 2:
+					Print "Shift"
+					items= "Add;\M1-; Move" // 2nd is divider, 3rd is checked
+					Cursor/W=MRViewer#TimeData A YdispSm q
+
+					PopupContextualMenu items
+					switch( V_Flag )
+		
+						case 1:
+							print "A"
+								controlinfo/W=MRViewer de_Viewer_list1
+								AddMarker("Up",v_value)
+								De_MultiRampViewer#UpdateHistograms()
+								//MakeAllLoadingSlopes()
+								DE_MultiRampViewer#SelectRamp()
+								UpdateLocalPoints()
+							break	
+						case 3:
+							print "M"
+							controlinfo/W=MRViewer de_Viewer_list1
+							DE_MultiRampViewer#TweakSelectMarker("Up",v_value)
+							De_MultiRampViewer#UpdateHistograms()
+							//MakeAllLoadingSlopes()
+							DE_MultiRampViewer#SelectRamp()
+							UpdateLocalPoints()
+							break
+
+							break
+					endswitch	
+					
+					
+					hookResult = 1
+					break
+			
+				case 8:
+					Print "Ctrl"
+					Cursor/W=MRViewer#TimeData A YdispSm q
+					items= "Add;\M1-; Move" // 2nd is divider, 3rd is checked
+						PopupContextualMenu items
+					switch( V_Flag )
+		
+						case 1:
+							print "A"
+							controlinfo/W=MRViewer de_Viewer_list2
+							AddMarker("Down",v_value)
+							De_MultiRampViewer#UpdateHistograms()
+							//MakeAllLoadingSlopes()
+							DE_MultiRampViewer#SelectRamp()
+							UpdateLocalPoints()
+							break	
+						case 3:
+							print "M"
+							controlinfo/W=MRViewer de_Viewer_list2
+							DE_MultiRampViewer#TweakSelectMarker("Down",v_value)	
+							De_MultiRampViewer#UpdateHistograms()
+							//MakeAllLoadingSlopes()
+							DE_MultiRampViewer#SelectRamp()
+							UpdateLocalPoints()
+							break
+
+							break
+					endswitch	
+					hookResult = 1
+					break
+					
+				case 10:
+					Print "CtrlShift"
+					Cursor/W=MRViewer#TimeData A YdispSm q
+
+					hookResult = 1
+					break
+		
+			endswitch
+			break
+	endswitch
+	//
+	return hookResult	// If non-zero, we handled event and Igor will ignore it.
+End
+//
+//Function DemoWindowHook()
+//	DoWindow/F DemoGraph				// Does graph exist?
+//	if (V_flag == 0)
+//		Display /N=DemoGraph			// Create graph
+//		SetWindow DemoGraph, hook(MyHook) = MyWindowHook	// Install window hook
+//	endif
+//End
 //
 //Static Function UpdateLengthsandLoading()
 //	wave CUpLength=root:DE_Viewer:CurrUpLength
