@@ -1628,24 +1628,6 @@ Static Function PareResults(Wave1)
 
 End
 
-
-//				case "de_Viewer_but1":
-
-//
-//					break
-//			
-//				case "de_Viewer_but2":
-
-//					break
-//					
-//					
-
-//case "de_Viewer_but8":
-
-//					break
-//				case "de_Viewer_but9":
-
-//					break
 Function MyWindowHook(s)
 	STRUCT WMWinHookStruct &s
 	GetWindow $s.winName activeSW

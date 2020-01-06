@@ -2,11 +2,13 @@
 #pragma modulename=DE_RuptureRamp
 #include "DE_Filtering"
 #include "SimpleWLCPrograms"
-#include "C:Users:dedwards:src_prh:IgorUtil:IgorCode:Util:OperatingSystemUtil"
+#include "C:Users:Perkins Lab:src_prh:IgorUtil:IgorCode:Util:OperatingSystemUtil"
 #include "DTE_Dudko"
 #include "DE_OverlapRamps"
 #include "DE_CorrectRupture"
 #include "DE_TwoWLCFit"
+#include "DE_CountRates"
+
 #include ":\Misc_PanelPrograms\Panel Progs"
 #include ":\Misc_PanelPrograms\AsylumNaming"
 //#include ":\Processing_Markov\DE_HMM"
@@ -240,11 +242,11 @@ Static Function PythonFitter( UseWave,Method,Threshold,AMount)//Variables demand
 	Wave UseWave//Input wave
 	String Method
 	Variable Threshold,AMount
-	String Destination = "D:\Data\StepData\Test1.ibw"
-	String NewHome = "D:\Data\StepData\Shit.txt"
+	String Destination = "C:\Data\StepData\Test1.ibw"
+	String NewHome = "C:\Data\StepData\Shit.txt"
 
 	Save/O/C UseWave as Destination
-	String BasePythonCommand = "cmd.exe /C activate & python D:\Devin\Python\StepAttempt\StepAttempt.py "
+	String BasePythonCommand = "cmd.exe /C activate & python C:\Devin\Python\StepAttempt\StepAttempt.py "
 	String MethodCommand="-method "+ method +" "
 	String InputCom="-inputfile "+ Destination+" "
 	String OutputCom="-outputfile "+ NewHome+" "
