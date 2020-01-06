@@ -1646,7 +1646,6 @@ Function MyWindowHook(s)
 			
 						
 				case 2:
-					Print "Shift"
 					items= "Add;\M1-; Move" // 2nd is divider, 3rd is checked
 					Cursor/W=MRViewer#TimeData A YdispSm q
 
@@ -1654,7 +1653,6 @@ Function MyWindowHook(s)
 					switch( V_Flag )
 		
 						case 1:
-							print "A"
 								controlinfo/W=MRViewer de_Viewer_list1
 								AddMarker("Up",v_value)
 								De_MultiRampViewer#UpdateHistograms()
@@ -1663,7 +1661,6 @@ Function MyWindowHook(s)
 								UpdateLocalPoints()
 							break	
 						case 3:
-							print "M"
 							controlinfo/W=MRViewer de_Viewer_list1
 							DE_MultiRampViewer#TweakSelectMarker("Up",v_value)
 							De_MultiRampViewer#UpdateHistograms()
@@ -1680,14 +1677,12 @@ Function MyWindowHook(s)
 					break
 			
 				case 8:
-					Print "Ctrl"
 					Cursor/W=MRViewer#TimeData A YdispSm q
 					items= "Add;\M1-; Move" // 2nd is divider, 3rd is checked
 						PopupContextualMenu items
 					switch( V_Flag )
 		
 						case 1:
-							print "A"
 							controlinfo/W=MRViewer de_Viewer_list2
 							AddMarker("Down",v_value)
 							De_MultiRampViewer#UpdateHistograms()
@@ -1696,7 +1691,6 @@ Function MyWindowHook(s)
 							UpdateLocalPoints()
 							break	
 						case 3:
-							print "M"
 							controlinfo/W=MRViewer de_Viewer_list2
 							DE_MultiRampViewer#TweakSelectMarker("Down",v_value)	
 							De_MultiRampViewer#UpdateHistograms()
@@ -1711,7 +1705,6 @@ Function MyWindowHook(s)
 					break
 					
 				case 10:
-					Print "CtrlShift"
 					Cursor/W=MRViewer#TimeData A YdispSm q
 
 					hookResult = 1
