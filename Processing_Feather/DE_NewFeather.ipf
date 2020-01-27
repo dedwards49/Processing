@@ -6,6 +6,7 @@
 Static Function OutportForce(ForceWave,SepWave)
 	wave ForceWave,SepWave
 
+	
 	duplicate/o ForceWave $(replaceString("Force",nameofwave(ForceWave),"Time"))
 	wave TimeWave=$(replaceString("Force",nameofwave(ForceWave),"Time"))
 	TimeWave=pnt2x(ForceWave,p)
@@ -20,20 +21,20 @@ end
 
 Static Function RunFeatheronOutput(OptionsWave)
 	wave OptionsWave
-	String Location = "D:\Data\Feather\Hold.pxp"
+	String Location = "C:\Data\Feather\Hold.pxp"
 	
 	///ModMainFEATHER#Main(base="C:/Users/dedwards/src_prh/",Input_file=Location,OptionsWave=OptionsWave)
 
-	ModMainFEATHER#Main(base="D:/Devin/Documents/Software/AppFEATHER/",Input_file=Location,OptionsWave=OptionsWave)
+	ModMainFEATHER#Main(base="C:/Devin/Documents/Software/AppFEATHER/",Input_file=Location,OptionsWave=OptionsWave)
 end
 
 Static Function RunFeatheronOutputFolder(OptionsWave)
 	wave OptionsWave
-	String LocationFolder = "D:\Data\Feather"
+	String LocationFolder = "C:\Data\Feather"
 	
 	///ModMainFEATHER#Main(base="C:/Users/dedwards/src_prh/",Input_file=Location,OptionsWave=OptionsWave)
 
-	RunMultiFeather("D:/Devin/Documents/Software/AppFEATHER/",LocationFolder,OptionsWave)
+	RunMultiFeather("C:/Devin/Documents/Software/AppFEATHER/",LocationFolder,OptionsWave)
 end
 
 Static Function MakeSingleWaves(SearchString)
@@ -64,7 +65,7 @@ end
 Static Function SaveOutAllWaves(SearchString)
 	String SearchString
 	string AllForce= wavelist(SearchString,";","")
-	CleanOutFolder("D:Data:Feather:")
+	CleanOutFolder("C:Data:Feather:")
 
 	variable n,tot=itemsinlist(AllForce)
 	display/N=TMP_D
@@ -84,7 +85,7 @@ Static Function SaveOutAllWaves(SearchString)
 	
 
 
-	String Path="D:\Data\Feather\Hold.pxp"
+	String Path="C:\Data\Feather\Hold.pxp"
 	SaveGraphCopy/o as Path
 	KillWindow TMP_D
 	for(n=0;n<tot;n+=1)
@@ -102,7 +103,7 @@ end
 Static Function LoadTheWaves(SearchString)
 	String SearchString
 	string AllForce= wavelist(SearchString,";","")
-	NewPath/o/Q DataPath "D:Data:Feather:"
+	NewPath/o/Q DataPath "C:Data:Feather:"
 	string AllFiles= IndexedFile(DataPath, -1, ".txt")
 	string CurrentFile,CurrentName
 	variable n,tot=itemsInList(AllFiles)
@@ -206,7 +207,7 @@ Static Function /S Full_path_to_PythonIgor_Feather(options)
 	// Returns:
 	//		string, full path to feather python main
 	Struct FeatherOptions & options
-	return  "D:/Devin/Documents/Software/Library/Python/Feather/"
+	return  "C:/Devin/Documents/Software/Library/Python/Feather/"
 End Function
 
 

@@ -1640,6 +1640,31 @@ Function MyWindowHook(s)
 	//print s.eventCode
 	variable q=AxisValFromPixel("MRViewer#TimeData", "bottom", s.mouseLoc.h )
 	Variable hookResult = 0	// 0 if we do not handle event, 1 if we handle it.
+	if(s.wheelDy!=0)
+
+			switch (s.eventmod)
+			
+						
+				case 2:
+					ChangeListItem("de_Viewer_list1",-1*sign(s.wheelDy))
+					hookResult = 1
+					break
+			
+				case 8:
+					ChangeListItem("de_Viewer_list2",-1*sign(s.wheelDy))
+					hookResult = 1
+					break
+					
+				case 10:
+
+					hookResult = 1
+					break
+		
+			endswitch
+
+	return 0
+	endif
+
 	switch(s.eventCode)
 		case 5:					// mouse event
 			switch (s.eventmod)
@@ -1716,6 +1741,24 @@ Function MyWindowHook(s)
 	//
 	return hookResult	// If non-zero, we handled event and Igor will ignore it.
 End
+
+Static Function ChangeListItem(ListName,Direction)
+	string ListName
+	variable Direction
+	controlinfo/W=MRViewer $ListName
+	variable current=v_value
+	wave ListWave=$(S_DataFolder+S_Value)
+	variable total=numpnts(ListWave)
+	variable new=v_value+Direction
+	if(new>=total)
+		return 0
+	elseif(new<0)
+		return 0
+	else
+		ListBox $ListName selrow= new
+		
+	endif
+end
 //
 //Function DemoWindowHook()
 //	DoWindow/F DemoGraph				// Does graph exist?

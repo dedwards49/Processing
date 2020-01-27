@@ -33,6 +33,16 @@ Function BatchProcess(Threshold,tau,[bottom,top])
 		note/K ForceAll, WaveNote
 		note/K SepAll, WaveNote
 		//
+		string triggerTimeStr=stringbykey("TriggerTime",note(ForceAll),":","\r")
+		if(cmpstr(triggerTimeStr,"")==0)
+			variable triggertime=pnt2x(ForceAll,numpnts(ForceExtWave)-1)
+			triggerTimeStr=num2str(triggertime)
+			string NewNote=Replacestringbykey("TriggerTime",note(ForceAll),triggerTimeStr,":","\r")
+			note/k ForceAll NewNote
+			note/k SepAll NewNote
+		endif
+		
+	
 		duplicate/o ForceAll $(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Force"))
 		wave ForceWave=$(Replacestring("Force_Ret",nameofwave(ForceRetWave),"Force"))
 		duplicate/o SepAll $(Replacestring("force_Ret",nameofwave(ForceRetWave),"Sep"))
@@ -294,6 +304,9 @@ Static Function/D DE_Median(w) // Returns median value of wave w
 	Wave w
 	Variable result
 	Duplicate/o w, tempMedianWave // Make a clone of wave
+	if(numpnts(w)==0)
+	return 0
+	endif
 	Sort tempMedianWave, tempMedianWave // Sort clone
 	SetScale/P x 0,1,tempMedianWave
 	result = tempMedianWave((numpnts(tempMedianWave)-1)/2)
@@ -443,7 +456,13 @@ Static Function ReturnWaveNamesForaNum(number,Trans)
 	print "Offset: "+num2str(offset)
 	FindLevels/P/Q SepRet, -1*offset
 	wave w_FindLevels
-	variable SurfacePnt=DE_MultiFEC#DE_Median(W_FindLevels)
+	variable SurfacePnt
+	if(numpnts(W_findlevels)==0)
+	SurfacePnt=0
+	else
+			 SurfacePnt=DE_MultiFEC#DE_Median(W_FindLevels)
+
+	endif	
 	if(Trans==0)
 		prevpnt=SurfacePnt
 	else
@@ -487,7 +506,11 @@ Static Function CalcCurrLC(ForceWave,SepWave,StartPnt,EndPnt,SepOff,HistOut)
 	
 	make/o/n=(numsteps) TempHist 
 	variable Q=numpnts(TempLC)
-	Histogram/C/B={startLC,stepLC,numsteps} TempLC,TempHist;
+	Histogram/C/B={startLC,stepLC,numsteps} TempLC,TempHist
+	if(numpnts(TempHist)<=2)
+	return mean(TempHist)
+	else
+	endif
 	CurveFit/Q/W=2 gauss TempHist /d
 	wave w_coef,w_sigma
 	variable result=w_coef[2]
@@ -517,6 +540,8 @@ Static Function MakeNicePlot(ForceWave,SepWave,ForceRetSm,SepRetSm,FreeRupPnts)
 	print	zeroforce
 	endif
 	display/W=(50,50,1000,600 )/N=Test ForceWave vs SepWave
+	SetWindow Test, hook(MyHook) = DE_MultiFEC#MyWindowHook	// Install window hook
+
 	Appendtograph/W=Test RupTimes[][1] vs RupTimes[][0]
 	Appendtograph/W=Test ForceRetSm vs SepRetSm
 	ModifyGraph/W=Test rgb($nameofwave(ForceWave))=(65535,49151,49151)
@@ -544,6 +569,80 @@ Static Function MakeNicePlot(ForceWave,SepWave,ForceRetSm,SepRetSm,FreeRupPnts)
 	killwaves RupTimes
 end
 
+
+//
+Static Function MyWindowHook(s)
+	STRUCT WMWinHookStruct &s
+
+	//	string items
+	//	//print s.eventmod
+	//	//print s.eventCode
+	Variable hookResult = 0	// 0 if we do not handle event, 1 if we handle it.
+		if(s.wheelDy!=0)
+				DE_MultiFEC#ChangeListItem(-1*sign(s.wheelDy))
+
+		return 0
+		endif
+	//
+	switch(s.eventCode)
+		case 5:					// mouse event
+
+			string tracename=stringfromlist(0,tracenamelist("Test",";",1))
+			
+			string Result=TraceFromPixel(s.mouseLoc.h , s.mouseLoc.v, "ONLY:"+traceName )
+			VARIABLE PntOnly
+			switch (s.eventmod)
+				case 2://Add
+					if(strlen(Result)==0)
+						return 1
+					endif
+					sscanf stringfromlist(1,Result), "HITPOINT:%f",PntOnly
+					Cursor/P/W=Test A $tracename PntOnly
+
+					AddButton()
+					hookResult = 1
+					break
+				case 8://Move
+					if(strlen(Result)==0)
+						return 1
+					endif
+					sscanf stringfromlist(1,Result), "HITPOINT:%f",PntOnly
+					Cursor/P/W=Test A $tracename PntOnly
+
+					UpdateAPoint()
+					hookResult = 1
+					break
+					
+				case 10://Resize
+					ResizeButton()
+		
+					break
+
+			endswitch
+			break
+	endswitch
+
+	return hookResult	// If non-zero, we handled event and Igor will ignore it.
+End
+
+Static Function ChangeListItem(Direction)
+	variable Direction
+	controlinfo/W=tmp_PauseforCursor pop0// PopupMenu pop0
+	variable current=v_value
+	
+	variable total=itemsinlist(DE_MultiFEC#MakeStringList())
+	variable new=v_value+Direction
+	if(new>total)
+		return 0
+	elseif(new<1)
+		return 0
+	else
+		PopupMenu pop0, win=tmp_PauseforCursor, mode= new
+DE_MUltiFEC#PopUpListChange()
+		
+	endif
+end
+
 Static function CalculateForcesFromPoints(ForceWave,SepWave,PointWave,ForcesBack)
 
 
@@ -553,7 +652,14 @@ Static function CalculateForcesFromPoints(ForceWave,SepWave,PointWave,ForcesBack
 	variable offset=str2num(stringbykey("DE_SchollOffset",note(ForceWave),":","\r"))
 	FindLevels/P/Q SepWave, offset
 	wave w_FindLevels
-	variable SurfacePnt=DE_MultiFEC#DE_Median(W_FindLevels)
+		variable SurfacePnt
+
+	if(numpnts(W_findlevels)==0)
+	SurfacePnt=0
+	else
+			 SurfacePnt=DE_MultiFEC#DE_Median(W_FindLevels)
+
+	endif
 	variable n,prevpnt,CriticalTime
 	
 	variable backdist=4e-9
@@ -691,14 +797,14 @@ Static Function UserCursorAdjust(graphName,autoAbortSecs)
 	PopupMenu pop0,proc=DE_MultiFEC#PopMenuProc,value= DE_MultiFEC#MakeStringList()
 	
 	Button button1,pos={250,88},size={92,20},title="Fix That"
-	Button button1,proc=DE_MultiFEC#UpdateAPoint
+	Button button1,proc=DE_MultiFEC#ButtonControl
 	Button button2,pos={250,110},size={92,20},title="Delete That"
-	Button button2,proc=DE_MultiFEC#DeleteButton
+	Button button2,proc=DE_MultiFEC#ButtonControl
 	Button button3,pos={250,135},size={92,20},title="Add Here"
-	Button button3,proc=DE_MultiFEC#AddButton
+	Button button3,proc=DE_MultiFEC#ButtonControl
 	
 	Button button4,pos={80,135},size={92,20},title="Resize"
-	Button button4,proc=DE_MultiFEC#ResizeButton
+	Button button4,proc=DE_MultiFEC#ButtonControl//DE_MultiFEC#ResizeButton
 	
 	Variable didAbort= 0
 	if( autoAbortSecs == 0 )
@@ -730,8 +836,7 @@ Static Function UserCursorAdjust(graphName,autoAbortSecs)
 	return didAbort
 End
 
-Static Function ResizeButton(ctrlName) : ButtonControl
-	String ctrlName
+Static Function ResizeButton()
 
 	SetAxis/W=Test/A
 
@@ -742,8 +847,7 @@ Static Function UserCursorAdjust_ContButtonProc(ctrlName) : ButtonControl
 	DoWindow/K tmp_PauseforCursor // Kill panel
 End
 
-Static Function UpdateAPoint(ctrlName) : ButtonControl
-	String ctrlName
+Static Function UpdateAPoint()
 		wave FreeRupPnts
 
 	string CursorString= CsrInfo(A,"Test")
@@ -761,8 +865,31 @@ Static Function UpdateAPoint(ctrlName) : ButtonControl
 	endif
 End
 
-Static Function DeleteButton(ctrlName) : ButtonControl
+
+Static Function ButtonControl(ctrlName) : ButtonControl
 	String ctrlName
+
+	strswitch(ctrlname)
+		case "button1":
+			UpdateAPoint()
+			break
+		
+		case "button2":
+			DeleteButton()
+			break
+		
+		case "button3":
+			AddButton()
+			break
+		case "button4":
+			ResizeButton()
+			break
+	
+	endswitch
+end
+
+
+Static Function DeleteButton()
 
 	wave FreeRupPnts
 	controlinfo/W=tmp_PauseforCursor pop0
@@ -770,8 +897,7 @@ Static Function DeleteButton(ctrlName) : ButtonControl
 	ReCalcDependWaves()
 end
 
-Static Function AddButton(ctrlName) : ButtonControl
-	String ctrlName
+Static Function AddButton()
 
 	wave FreeRupPnts
 	String StringCsr=CsrInfo(A,"Test")
@@ -819,8 +945,20 @@ Static Function PopMenuProc(pa) : PopupMenuControl
 
 	switch( pa.eventCode )
 		case 2: // mouse up
-			Variable popNum = pa.popNum-1
-			String popStr = pa.popStr
+			DE_MultiFEC#PopUpListChange()
+
+			break
+		case -1: // control being killed
+			break
+	endswitch
+
+	return 0
+End
+
+Static Function PopUpListChange()
+Controlinfo/W=tmp_PauseforCursor pop0
+			Variable popNum = V_Value-1
+			String popStr = S_Value
 			wave FreeRupPnts
 			wave ForceWave=$stringfromlist(0,TraceNameList("Test",";",1))
 			Wave SepWave=$replacestring("Force",nameofwave(ForceWave),"Sep")
@@ -832,14 +970,7 @@ Static Function PopMenuProc(pa) : PopupMenuControl
 			SetAxis/A=2/W=Test left ForceMin,ForceMax
 
 			MakeSingleContoursAndDisplay(Forcewave,SepWave,FreeRupPnts,popNum)
-			break
-		case -1: // control being killed
-			break
-	endswitch
-
-	return 0
-End
-
+			end
 
 Static Function ReCalcDependWaves()
 	wave FreeRupPnts
@@ -1520,7 +1651,13 @@ Static Function PlotOne(ForceWaveNumber,[Trans])
 	
 	FindLevels/P/Q SepRetWave, -1*offset
 	wave w_FindLevels
-	variable SurfacePnt=DE_MultiFEC#DE_Median(W_FindLevels)
+	variable SurfacePnt
+	if(numpnts(W_findlevels)==0)
+	SurfacePnt=0
+	else
+			 SurfacePnt=DE_MultiFEC#DE_Median(W_FindLevels)
+
+	endif	
 	for(n=0;n<numpnts(AdjPoints);n+=1)
 		if(n==0)
 			prevpnt=max(AdjPoints[n]-backcalc,SurfacePnt)

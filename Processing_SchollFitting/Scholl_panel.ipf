@@ -510,7 +510,6 @@ Static Function SequenceManyFromOne([starttrace,endtrace,FitType])
 
 
 end
-
 Static Function UserCursorAdjust(graphName,autoAbortSecs)
 	String graphName
 	Variable autoAbortSecs
@@ -846,7 +845,7 @@ Menu "Scholl"
 	//SubMenu "Processing"
 	"Open Scholl", SchollPanel()
 	"Runn All", DE_SchollPanel#PopUpForMany()
-
+	"MultiGlide",DE_Schollpanel#SequenceManyGlide()
 	//end
 	
 end
@@ -863,5 +862,194 @@ Static Function PopUpForMany()
 		return 0									// user canceled
 	endif
 	DE_Schollpanel#SequenceManyFromOne(starttrace=starting,endtrace=ending,FitType=FitType)
+
+end
+
+Function SchollGlidePair(DeflExtWave,startpnt,endpnt,[FitType])
+	wave DeflExtWave
+	variable startpnt,endpnt
+	String FitType
+	
+	if(ParamisDefault(FitType))
+		FitType="LinSin"
+	
+	endif
+	
+	wave ZExtWave=$replacestring("Defl",nameofwave(DeflExtWave),"ZSnsr")
+	wave DeflRetWave=$Replacestring("Ext",CorrespondingWave(DeflExtWave),"ret")
+	wave ZRetWave=$replacestring("Defl",nameofwave(DeflRetWave),"ZSnsr")
+	string NewName=ReplaceString("Defl",nameofwave(DeflRetWave),"DeflCor")
+	string ForceName=ReplaceString("Defl",nameofwave(DeflRetWave),"Force")
+	string SepName=ReplaceString("Defl",nameofwave(DeflRetWave),"Sep")
+	DE_FECWiggle#CorrFEC(DeflExtWave,ZExtWave,DeflRetWave,ZRetWave,startpnt,endpnt,NewName=NewName,ForceName=ForceName,SepName=SepName,FitType=FitType,ResName="Garbage")
+	wave G=Garbage
+	killwaves G
+	wave w5=$ForceName
+	wave w6=$SepName
+	wave w7=Resids
+	wave NEwDeflWave=$NEwName
+
+	variable OffSetGuess= -ZExtWave[endpnt]+nEwDeflWave[endpnt]-5e-9
+	print nameofwave(ZExtWave)+":"+num2str(OffSetGuess)
+	string CurrentNote=note(w5)
+	CurrentNote=ReplaceStringbyKey("DE_SchollOffset",CurrentNote,num2str(Offsetguess),":","\r")
+	note/K NEwDeflWave, CurrentNote
+	note/K w5, CurrentNote
+	note/K w6, CurrentNote
+
+	String SecondNewName=ReplaceString("Ret",NewName,"Ext")
+	String SecondForceName=ReplaceString("Ret",ForceName,"Ext")
+	String SecondSepName=ReplaceString("Ret",SepName,"Ext")
+	DE_FECWiggle#CorrFEC(DeflExtWave,ZExtWave,DeflExtWave,ZExtWave,startpnt,endpnt,NewName=SecondNewName,ForceName=SecondForceName,SepName=SecondSepName,FitType=FitType,ResName="Garbage")
+	wave G=Garbage
+	killwaves G
+	wave w5=$SecondForceName
+	wave w6=$SecondSepName
+	wave w7=Resids
+	wave NEwDeflWave=$SecondNewName
+
+
+	note/K NEwDeflWave, CurrentNote
+	note/K w5, CurrentNote
+	note/K w6, CurrentNote
+
+
+
+
+
+//		
+
+//		
+//		if(abs(dimdelta(DeflRetWave,0)-firstdimdelta)>1e-5)
+//		print "------"
+//		print "BAD Points at "+num2str(n)
+//		print/D firstdimdelta
+//		print/D dimdelta(DeflRetWave,0)
+//		print/D dimdelta(DeflRetWave,0)-firstdimdelta
+//		print nameofwave(DeflRetWave)
+//				print "------"
+//
+//		return 0
+//		endif
+
+
+
+
+end
+
+
+
+Function/S CorrespondingWave(WaveIn)
+	Wave WaveIn
+	
+	string wavenote=note(WaveIn)
+	string Type= stringbykey("Pull Speed (Pair)",wavenote,":","\r")
+	string BaseNumString
+	sprintf BaseNumString, "%04.0f",  str2num(stringbykey("BaseSuffix",wavenote,":","\r"))
+	string PairNumString
+	if(cmpstr(Type,"Fast")==0)
+		PairNumString=Stringbykey("Corresponding Slow Pull",wavenote,":","\r")
+
+	elseif(cmpstr(Type,"Slow")==0)
+		PairNumString=stringbykey("Corresponding Fast Pull",wavenote,":","\r")
+
+	else
+	endif
+//	print nameofwave(WaveIn)
+	return ReplaceString(BaseNumString,nameofwave(WaveIn),PairNumString)
+
+end
+
+Function/S PullType(WaveIn)
+	Wave WaveIn
+	
+	string wavenote=note(WaveIn)
+	string Type= stringbykey("Pull Speed (Pair)",wavenote,":","\r")
+	string BaseNumString
+	sprintf BaseNumString, "%04.0f",  str2num(stringbykey("BaseSuffix",wavenote,":","\r"))
+	string PairNumString
+	if(cmpstr(Type,"Fast")==0)
+		PairNumString=Stringbykey("Corresponding Slow Pull",wavenote,":","\r")
+
+	elseif(cmpstr(Type,"Slow")==0)
+		PairNumString=stringbykey("Corresponding Fast Pull",wavenote,":","\r")
+
+	else
+	endif
+//	print nameofwave(WaveIn)
+	return Type
+
+end
+
+
+
+
+Static Function SequenceManyGlide([starttrace,endtrace,FitType])
+
+	variable starttrace,endtrace
+	String FitType
+	string AllDeflEXtList= wavelist("*Defl_ext",";","")
+
+	variable starting
+	if(Paramisdefault(starttrace))
+		starttrace=0
+	else 
+	endif
+	if(Paramisdefault(endtrace))
+		endtrace=itemsinlist(AllDeflEXtList)
+	else 
+	endif
+	if(endtrace>itemsinlist(AllDeflEXtList))
+		endtrace=itemsinlist(AllDeflEXtList)
+	endif
+	if(Paramisdefault(FitType))
+		FitType="LinSin"
+	else 
+	endif
+	
+	variable PntsFound=0,n
+	
+	wave DeflExtWave=$stringfromlist(starttrace,AllDeflEXtList)
+	wave DeflRetWave=$replacestring("Ext",nameofwave(DeflExtWave),"Ret")
+	wave ZExtWave=$replacestring("Defl",nameofwave(DeflExtWave),"ZSnsr")
+	wave ZRetWave=$replacestring("Defl",nameofwave(DeflRetWave),"ZSnsr")
+	variable firstdimdelta=dimdelta(DeflRetWave,0)
+	
+	//variable 	timerRefNum = StartMSTimer
+	
+		
+	for(n=starttrace;n<endtrace;n+=1)
+		
+		wave DeflExtWave=$stringfromlist(n,AllDeflEXtList)
+		if(cmpstr(PullType(DeflExtWave),"Fast")==0)
+			if(PntsFound==0)
+				dowindow SChollPlot
+				if(V_Flag==1)
+					killwindow SchollPlot
+				endif
+				display/N=SchollPlot DeflExtWave vs ZExtWave
+				if (DE_Schollpanel#UserCursorAdjust("SchollPlot",0) != 0)
+					return -1
+				endif
+				variable startpnt=pcsr(A,"SchollPlot")
+				variable endpnt=pcsr(B,"SchollPlot")
+				PntsFound=1
+				killwindow SchollPlot
+			else
+
+				
+			endif
+				SchollGlidePair(DeflExtWave,startpnt,endpnt,FitType=FitType)
+			
+		else
+			
+		endif
+
+	endfor
+	
+	//variable microSeconds = StopMSTimer(timerRefNum)
+	//Print microSeconds/1e6, "seconds Total Run"
+	//Print microSeconds/1e6/top, "seconds per iteration"
+
 
 end

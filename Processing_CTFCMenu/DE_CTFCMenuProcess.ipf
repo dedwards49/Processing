@@ -188,14 +188,14 @@ Static Function ProcessVoltWaves(Type,DefV,ZVolt,BaseString,WaveNumber)
 	variable AppVel=str2num(stringbykey("ApproachVelocity",note(DefV),":","\r"))
 	variable RetVel=str2num(stringbykey("RetractVelocity",note(DefV),":","\r"))
 	variable cutpoint
+
 	strSwitch(Type)
-	
 		case "Multi":
 		if(Retvel>400)
-			GenTracesinnm(DefV,ZVolt,IDefl,IZSen,Garbage1,Garbage2,rate=1e3)//,rate=1e2)
+			GenTracesinnm(DefV,ZVolt,IDefl,IZSen,Garbage1,Garbage2,rate=.5e3)//,rate=1e2)
 			else
-						GenTracesinnm(DefV,ZVolt,IDefl,IZSen,Garbage1,Garbage2)//,rate=1e2)
-endif
+			GenTracesinnm(DefV,ZVolt,IDefl,IZSen,Garbage1,Garbage2)//,rate=1e2)
+		endif
 			make/free/n=0 Mbreaks
 			FindMultiBreaks(IDefl,IZSen,Mbreaks)
 			AddSectionNotes(IDefl,MBreaks)
@@ -350,7 +350,7 @@ Static Function FindMultiBreaks(DEFV,ZSensor,OutWave,[smoothing])
 			duplicate/free/R=[Times[n-1][2],Times[n-1][2]+1.1*RepeatUnit] ZSensor zcUT
 		endif
 		//	Interpolate2/S=.1E-10/T=3/N=(NUMPNTS(zcUT))/F=1/Y=ZSetSM zcUT;DelayUpdate
-		duplicate/free zcUT ZSetDif
+		duplicate/o zcUT ZSetDif
 		Differentiate zcUT/D=ZSetDif
 		
 
@@ -490,7 +490,6 @@ Static Function AddSectionNotes(DeflVWave,WaveofLocations)
 	String PauseLoc=""
 	String PauseState=""
 
-
 	for(n=0;n<(dimsize(WaveofLocations,0)-0);n+=1)
 		
 		Locs+=num2istr(WaveofLocations[n][0])+";"
@@ -505,7 +504,6 @@ Static Function AddSectionNotes(DeflVWave,WaveofLocations)
 
 
 	String NoteString=note(DeflVWave)
-
 	NoteString=ReplaceStringbyKey("DE_Dir",NoteString,Dirs,":","\r")
 	NoteString=ReplaceStringbyKey("DE_Ind",NoteString,Locs,":","\r")
 	NoteString=ReplaceStringbyKey("DE_PauseLoc",NoteString,PauseLoc,":","\r")

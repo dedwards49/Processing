@@ -661,6 +661,26 @@ function TestMakeParmspXYMonster(last,ddFln1,ddFln2,LAstep,LaStep2)
 
 
 end
+function TestMakeParmspXYGBMonster(last,LAstep,LaStep2,GB1)
+	variable last,LAstep,LaStep2,GB1
+	make/o/n=(6,4) WLCParms
+	WLCParms[][0]=.4e-9
+	WLCParms[][1]=298
+	WLCParms[4][2]=last
+	WLCParms[3][2]=last-GB1
+	WLCParms[2][2]=last-2*GB1
+	WLCParms[1][2]=last-2*GB1-LAstep
+	WLCParms[0][2]=last-2*GB1-LAstep-LaStep2
+
+
+	WLC_Arb(WLCParms)
+	wave WLC_Force,WLC_Ext
+	duplicate/o WLC_Force GBMonster_WLC_Force
+	duplicate/o WLC_Ext GBMonster_WLC_Ext
+	killwaves WLC_Force WLC_Ext
+
+
+end
 
 function TestMakeParmspXYRevMonster(last,ddFln1,ddFln2,Half,FullLenRev)
 	variable last,ddFln1,ddFln2,FullLenRev,Half
