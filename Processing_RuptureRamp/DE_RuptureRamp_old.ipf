@@ -12,29 +12,8 @@
 #include ":\Misc_PanelPrograms\Panel Progs"
 #include ":\Misc_PanelPrograms\AsylumNaming"
 //#include ":\Processing_Markov\DE_HMM"
-//	SetDataFolder ReturnPanelString("Folder")
-//	wave AlignedForceWave=$ReturnPanelString("AlignedForceWave")
-//	wave AlignedSepWave=$ReplaceString("Force",nameofwave(AlignedForceWave),"Sep")
-//	string SmType=ReturnPanelString("AlignSmType")
-//	variable SmAmount=ReturnPanelVal("AlignSmval")
-//	string saveDF
-//	saveDF = GetDataFolder(1)
-//	
-//	
-//	controlinfo/W=RupRampPanel de_RupRamp_popup0
-//	SetDataFolder s_value
-//	controlinfo/W=RupRampPanel de_RupRamp_popup1
-//	wave ForceWave=$S_value
-//	wave SepWave=$ReplaceString("Force",S_value,"Sep")
-//	controlinfo/W=RupRampPanel de_RupRamp_popup2
-//	wave UpPoints=$S_value
-//	wave DownPoints=$ReplaceString("PntU",S_value,"PntD")
-//	controlinfo/W=RupRampPanel de_RupRamp_popup3
-//	wave ForceWaveSm=$S_value
-//	wave SepWaveSm=$ReplaceString("Force",S_value,"Sep")
-//	ControlInfo/W=RupRampPanel  de_RupRamp_popup5
-//	wave StateWave=$S_Value
-//	
+
+
 Static Function CutStatebySep(ForceIn,SepIn,ForceOut,SepOut,SepMax,SepMin)
 
 	wave ForceIn,SepIn,ForceOut,SepOut
@@ -263,6 +242,76 @@ Function CorrectPauses(ForceWave,SepWave)
 	note/K SepWave NewNote
 end
 
+Static Function/S RemovePauses(ForceIn,SepIn,ForceOut,Sepout)
+	wave ForceIn,SepIn,ForceOut,Sepout
+	string NoteString=note(ForceIn)
+	String PauseLocString=stringbykey("DE_PauseLoc",NoteString,":","\r")
+	variable last=itemsinlist(PauseLocString)
+	variable n,startdelete,enddelete,todelete
+	string DeletedString,DeletedStringNew
+	DeletedString=""
+	duplicate/free ForceIn FreeForce
+	duplicate/free SepIn FreeSep
+
+	for(n=last-2;n>=0;n-=2)
+	
+		startdelete=str2num(stringfromlist(n,PauseLocString))
+		enddelete=str2num(stringfromlist(n+1,PauseLocString))
+		if(n==(last-2))
+			todelete=enddelete-startdelete
+			DeletedString=num2str(todelete)
+
+
+		endif
+		deletepoints startdelete,todelete, FreeForce,FreeSep
+					DeletedStringNew=num2str(startdelete-todelete*n/2)+";"+DeletedString
+		DeletedString=DeletedStringNew
+	endfor
+	duplicate/o FreeForce ForceOut
+	duplicate/o FreeSep Sepout
+	return DeletedString
+end
+
+static Function CorrectforRemovedPause(PointsIn,PauseIndices,deletionString)
+	variable PointsIn
+	String PauseIndices,deletionString
+	variable tot=itemsinlist(deletionString)
+	variable deletesize=str2num(stringfromlist(tot-1,deletionString))
+	variable n,CurrentPnt,TotAdd
+	for(n=0;n<tot;n+=1)
+		CurrentPnt=str2num(stringfromlist(n,deletionString))
+		if(PointsIn<CurrentPnt)
+			return PointsIn+n*deletesize
+		else
+		endif
+	endfor
+	return -1
+end
+
+Static Function PythonFitter( UseWave,Method,Threshold,AMount)//Variables demanded by MarkovFit Code
+	Wave UseWave//Input wave
+	String Method
+	Variable Threshold,AMount
+	String Destination = "C:\Data\StepData\Test1.ibw"
+	String NewHome = "C:\Data\StepData\Shit.txt"
+
+	Save/O/C UseWave as Destination
+	String BasePythonCommand = "cmd.exe /C activate & python C:\Devin\Python\StepAttempt\StepAttempt.py "
+	String MethodCommand="-method "+ method +" "
+	String InputCom="-inputfile "+ Destination+" "
+	String OutputCom="-outputfile "+ NewHome+" "
+	String SmoothCommand="-smooth "+ num2str(Amount)+" "
+	String ThreshCommand="-threshold "+ num2str(threshold)+" "
+
+	String PythonCommand=BasePythonCommand+MethodCommand+InputCom+OutputCom+SmoothCommand+ThreshCommand
+	print PythonCommand
+	ModOperatingSystemUtil#execute_python(PythonCommand)
+	LoadWave/O/N/G/D NewHome
+
+end
+
+
+
 Static Function PopMenuProc(pa) : PopupMenuControl
 	STRUCT WMPopupAction &pa
 	switch( pa.eventCode )
@@ -283,64 +332,51 @@ Static Function ButtonProc(ba) : ButtonControl
 		case 2: // mouse up
 			strswitch( ba.ctrlName)
 				case "de_RupRamp_button0":
-					MakeSmoothedWave()
+					//FitHMMButt()
 					break
 				case  "de_RupRamp_button1":
-					MakeStateWave()
+
+					FitPython()
 					break
 				case  "de_RupRamp_button2":
-					MakeOffsetForceWave()
+					MakeStateWave()
 					break
 				case  "de_RupRamp_button3":
-					MakeSmoothedShWave()
+					MakeOffsetForceWave()
 					break
 				case  "de_RupRamp_button4":
-					DisplayAPlot("Shifted")
-					break
-				case  "de_RupRamp_button5":
-					CrunchAbove()
-					break
-				case  "de_RupRamp_button6":
-					AligntoWLC()
-					break
-				case  "de_RupRamp_button7":
-					MakeSmoothedAlignedWave()
-					break
-				case  "de_RupRamp_button8":
-					DisplayAPlot("Overlap")
-					break
-				case  "de_RupRamp_button9":
-					PullShifts()
-					break
-				case  "de_RupRamp_button10":
-					ApplyShifts()
-					break
-				
-				case  "de_RupRamp_button11":
-					MakeSmoothedFinalWave()
-					break
-				case  "de_RupRamp_button12":
-					CrunchMiddle()
-					break
-				case "de_RupRamp_button13":
 					DetermineWLCParms()
 					break
-				case "de_RupRamp_button14":
+				case  "de_RupRamp_button5":
 					CorrectRuptures()
 					break
-				case "de_RupRamp_button15":
+				case  "de_RupRamp_button6":
 					MakeSecondStateWave()
 					break
-				case "de_RupRamp_button16":
-					CrunchBottom()
+				case  "de_RupRamp_button7":
+					
+					MakeSmoothedWave()
 					break
-				case "de_RupRamp_button17":
-					CrunchAll()
+				case  "de_RupRamp_button8":
+					MakeSmoothedShWave()
 					break
-				case "de_RupRamp_button18":
+				case  "de_RupRamp_button9":
+					AutoProcess()
+					break
+				case  "de_RupRamp_button10":
+					AligntoWLC()
+					break
+				case  "de_RupRamp_button11":
+					MakeSmoothedAlignedWave()
+					break
+					case  "de_RupRamp_button12":
 					RunASingle()
 					break
-		
+					case "de_RupRamp_button13":
+						DisplayAPlot("Shifted")
+					break
+					
+					
 			endswitch
 			break
 		case -1: // control being killed
@@ -350,64 +386,20 @@ Static Function ButtonProc(ba) : ButtonControl
 	return 0
 End
 
-Static Function PullShifts()
-
-	DoWindow Overlap
-	if(V_flag==0)
-		return -1
-	endif
-
-	String WaveNameString=ReturnPanelString("SmoothedAlignedForce")
-	String TracesString=TraceNameList("Overlap", ";",1)
-	if(WhichListItem(WaveNameString,TracesString)==-1)
-		return 0
-	endif
-	String Offsets= (StringByKey("offset(x)",TraceInfo("Overlap", WaveNameString, 0 ),"=",";"	))
-	variable FOff,SOff
-	sscanf Offsets, "{%f,%f}",Soff,FOff
-	SetVariable de_RupRamp_setvar6,value=_num:FOff
-	SetVariable de_RupRamp_setvar7,value=_num:Soff
-
-end
-
-Static Function ApplyShifts()
-	
-	string saveDF
-	saveDF = GetDataFolder(1)
-	SetDataFolder ReturnPanelString("Folder")
-	
-	Wave AlignedForceWave=$ReturnPanelString("AlignedForceWave")
-	Wave AlignedSepWave=$replacestring("Force",nameofwave(AlignedForceWave),"Sep")
-	duplicate/free  AlignedForceWave FreeForce
-	duplicate/free  AlignedSepWave FreeSep
-	variable Foff=ReturnPanelval("Fshift")
-	variable Soff=ReturnPanelval("Sshift")
-	FreeForce+=Foff
-	FreeSep+=Soff
-	duplicate/o FreeForce $replaceString("Align",nameofwave(AlignedForceWave),"Final")
-	duplicate/o FreeSep $replaceString("Align",nameofwave(AlignedSepWave),"Final")
-
-	SetDataFolder saveDF
-
-end
-
-
 Static Function DisplayAPLot(StringCon)
 
 	string StringCon
-	string saveDF
-	saveDF = GetDataFolder(1)
-	
-	SetDataFolder ReturnPanelString("Folder")
-//	wave AlignedSepWave=$ReplaceString("Force",nameofwave(AlignedForceWave),"Sep")
-//	string SmType=ReturnPanelString("AlignSmType")
-//	variable SmAmount=ReturnPanelVal("AlignSmval")
 
 	strswitch(StringCon)
 	
 		case "Shifted":
+		
+			string saveDF
 
-			controlinfo/W=RupRampPanel de_RupRamp_popup7
+			saveDF = GetDataFolder(1)
+			controlinfo/W=RupRampPanel de_RupRamp_popup0
+			SetDataFolder s_value
+			controlinfo/W=RupRampPanel de_RupRamp_popup10
 			wave SmoothShiftedForce=$S_value
 			wave SmoothShiftedSep=$ReplaceString("Force",S_value,"Sep")
 			DoWindow $StringCon
@@ -415,232 +407,64 @@ Static Function DisplayAPLot(StringCon)
 				killwindow $StringCon
 				
 			endif
-			display/N=$StringCon/W=(550,25,850,200) SmoothShiftedForce vs SmoothShiftedSep
+			display/N=StringCon SmoothShiftedForce vs SmoothShiftedSep
 
 			SetDataFolder saveDF
 		
+		
 			break 
 			
-		case "Overlap":
-			wave SmoothedAlignedForce=$ReturnPanelString("SmoothedAlignedForce")
-			wave SmoothedAlignedSep=$ReplaceString("Force",nameofwave(SmoothedAlignedForce),"Sep")
-
-			DoWindow/F $StringCon
-			if(V_flag==1)
-				
-				if(whichlistitem(nameofwave(SmoothedAlignedForce),tracenamelist(StringCon,";",1))!=-1)
-				return 0
-				
-				endif
-				appendtograph/W=$StringCon SmoothedAlignedForce vs SmoothedAlignedSep
-				
-			else
-				if(cmpstr("X",ReturnPanelString("OverlapForce"))==0)
-					display/N=$StringCon/W=(550,25,850,200) SmoothedAlignedForce vs SmoothedAlignedSep
-				else
-					String AlignParm=ReturnPanelString("AlignFolder")
-					wave OverlapForce=$(AlignParm+ReturnPanelString("OverlapForce"))
-					wave OverlapSep=$ (GetWavesDataFolder(OverlapForce, 0 )+":"+ReplaceString("FSm",nameofwave(OverlapForce),"SSm"))
-					display/N=$StringCon/W=(550,25,850,200) OverlapForce vs OverlapSep
-					ModifyGraph/W=$StringCon rgb($nameofwave(OVerlapforce))=(0,0,0)
-					Appendtograph/W=$StringCon SmoothedAlignedForce vs SmoothedAlignedSep
-
-				endif
-				
-			endif
-
-			break 
+	
+	
 	
 	endswitch
-	SetDataFolder saveDF
-
 end
 
 Static Function RunASingle()
+string saveDF
 
-	string saveDF
 	saveDF = GetDataFolder(1)
-	SetDataFolder ReturnPanelString("Folder")
-	wave UpPoints=$ReturnPanelString("RupPnts")
-	wave DownPoints=$ReplaceString("PntU",nameofwave(UpPoints),"PntD")
-	String Direc=ReturnPanelString("SingleDirec")
-	String Type=ReturnPanelString("SingleType")
-
+	controlinfo/W=RupRampPanel de_RupRamp_popup0
+	SetDataFolder s_value
+	controlinfo/W=RupRampPanel de_RupRamp_popup3
+	wave UpPoints=$S_value
+	wave DownPoints=$ReplaceString("PntU",S_value,"PntD")
+	controlinfo/W=RupRampPanel de_RupRamp_popup18
+	String Direc=S_Value
+	controlinfo/W=RupRampPanel de_RupRamp_popup19
+	String Type=S_Value
 	if(cmpstr("Up",Direc)==0)
 		wave PntWave=UpPoints
 	elseif(cmpstr("Down",Direc)==0)
 		wave PntWave=DownPoints
 
 	endif	
-	variable index=ReturnPanelVal("SingleNum")
+	controlinfo/W=RupRampPanel de_RupRamp_setvar4
+	variable index=v_value
 	DE_CorrRup#FixPicksSingle(PntWave,index,101,Type)
-	SetDataFolder saveDF
+		SetDataFolder saveDF
 
-end
-
-
-
-
-
-Static Function/S ReturnPanelString(NameString)
-	String NameString
-	
-	String PanelName="RupRampPanel"
-	String ControlName
-	StrSwitch(NameString)
-		case "Folder":
-			ControlName="de_RupRamp_popup0"
-			break
-		case "ForceWave":
-			ControlName="de_RupRamp_popup1"
-			break
-		case "RupPnts":
-			ControlName="de_RupRamp_popup2"
-			break
-		case "SmoothedForce":
-			ControlName="de_RupRamp_popup3"
-			break
-		case "ForceSmType":
-			ControlName="de_RupRamp_popup4"
-			break
-		case "StateWave":
-			ControlName="de_RupRamp_popup5"
-			break
-		case "ShiftedForce":
-			ControlName="de_RupRamp_popup6"
-			break
-		case "SmoothedShiftedForce":
-			ControlName="de_RupRamp_popup7"
-			break
-		case "ShiftSmType":
-			ControlName="de_RupRamp_popup8"
-			break
-		case "AlignFolder":
-			ControlName="de_RupRamp_popup9"
-			break
-		case "AlignParms":
-			ControlName="de_RupRamp_popup10"
-			break
-		case "AlignType":
-			ControlName="de_RupRamp_popup11"
-			break		
-		case "AlignedForceWave":
-			ControlName="de_RupRamp_popup12"
-			break
-		case "AlignSmtype":
-			ControlName="de_RupRamp_popup13"
-			break
-		case "SmoothedAlignedForce":
-			ControlName="de_RupRamp_popup14"
-			break
-		case "OverlapForce":
-			ControlName="de_RupRamp_popup15"
-			break
-		case "FinalForceWave":
-			ControlName="de_RupRamp_popup16"
-			break
-		case "SmoothedFinalForce":
-			ControlName="de_RupRamp_popup17"
-			break
-		case "FinalSmType":
-			ControlName="de_RupRamp_popup18"
-			break
-		case "WLCParms":
-			ControlName="de_RupRamp_popup19"
-			break
-		case "NewRupPnts":
-			ControlName="de_RupRamp_popup20"
-			break
-		case "SingleDirec":
-			ControlName="de_RupRamp_popup21"
-			break
-		case "SingleType":
-			ControlName="de_RupRamp_popup22"
-			break
-		default:
-			return ""
-	endswitch
-
-
-
-	Controlinfo/W=$PanelName $ControlName
-	return S_Value
-end
-
-Static Function ReturnPanelVal(ValString)
-	String ValString
-
-	String PanelName="RupRampPanel"
-	String ControlName
-	StrSwitch(ValString)
-		case "ForceSmVal":
-			ControlName="de_RupRamp_setvar0"
-			break
-		case "ShiftSmVal":
-			ControlName="de_RupRamp_setvar1"
-			break
-		case "IgnoreDist":
-			ControlName="de_RupRamp_setvar2"
-			break	
-		case "SepMin":
-			ControlName="de_RupRamp_setvar3"
-			break
-		case "StaticOffset":
-			ControlName="de_RupRamp_setvar4"
-			break
-		case "AlignSmval":
-			ControlName="de_RupRamp_setvar5"
-			break
-		case "Fshift":
-			ControlName="de_RupRamp_setvar6"
-			break
-		case "SShift":
-			ControlName="de_RupRamp_setvar7"
-			break
-		case "FinalSmval":
-			ControlName="de_RupRamp_setvar8"
-			break
-		case "SingleNum":
-			ControlName="de_RupRamp_setvar9"
-			break	
-
-		default:
-			return -1
-	endswitch
-	
-	Controlinfo/W=$PanelName $ControlName
-	return v_Value
-end
-
-Static Function MakeSmoothedFinalWave()
-	
-	string saveDF
-	saveDF = GetDataFolder(1)
-
-	SetDataFolder ReturnPanelString("Folder")
-	wave FinalForceWave=$ReturnPanelString("FinalForceWave")
-	wave FinalSepWave=$ReplaceString("Force",nameofwave(FinalForceWave),"Sep")
-	string SmType=ReturnPanelString("FinalSmType")
-	variable SmAmount=ReturnPanelVal("FinalSmval")
-	duplicate/free FinalForceWave ForceWaveSm
-	duplicate/free FinalSepWave SepWaveSm
-	DE_Filtering#FilterForceSep(FinalForceWave,FinalSepWave,ForceWaveSm,SepWaveSm,SmType,SmAmount)
-	duplicate/o ForceWaveSm $(nameofwave(FinalForceWave)+"_Sm")
-	duplicate/o SepWaveSm $(nameofwave(FinalSepWave)+"_Sm")
-
-	SetDataFolder saveDF
 end
 
 Static Function MakeSmoothedAlignedWave()
 	
 	string saveDF
-	saveDF = GetDataFolder(1)
 
-	SetDataFolder ReturnPanelString("Folder")
-	wave AlignedForceWave=$ReturnPanelString("AlignedForceWave")
-	wave AlignedSepWave=$ReplaceString("Force",nameofwave(AlignedForceWave),"Sep")
-	string SmType=ReturnPanelString("AlignSmType")
-	variable SmAmount=ReturnPanelVal("AlignSmval")
+	saveDF = GetDataFolder(1)
+	controlinfo/W=RupRampPanel de_RupRamp_popup0
+	SetDataFolder s_value
+	controlinfo/W=RupRampPanel de_RupRamp_popup14
+	wave AlignedForceWave=$S_value
+	wave AlignedSepWave=$ReplaceString("Force",S_value,"Sep")
+	//controlinfo/W=RupRampPanel de_RupRamp_popup4
+	//wave ForceWave=$S_value
+
+	//wave SepWave=$ReplaceString("Force",S_value,"Sep")
+	
+	controlinfo/w=RupRampPanel de_RupRamp_popup15
+	string SmType=S_Value
+	controlinfo/w=RupRampPanel de_RupRamp_setvar2
+	variable SmAmount=v_value
 
 	duplicate/free AlignedForceWave ForceWaveSm
 	duplicate/free AlignedSepWave SepWaveSm
@@ -659,40 +483,35 @@ Static Function AligntoWLC()
 	//Here we just grab a long list of all the waves we need	
 	controlinfo/W=RupRampPanel de_RupRamp_popup0
 	SetDataFolder s_value
-	controlinfo/W=RupRampPanel de_RupRamp_popup1
+	controlinfo/W=RupRampPanel de_RupRamp_popup4
 	wave ForceWave=$S_value
+	controlinfo/W=RupRampPanel de_RupRamp_popup4
 	wave SepWave=$ReplaceString("Force",S_value,"Sep")
-	controlinfo/W=RupRampPanel de_RupRamp_popup6
-	wave ShiftedForceWave=$S_value
 	controlinfo/W=RupRampPanel de_RupRamp_popup5
 	wave StateWave=$S_value
-
-	controlinfo/W=RupRampPanel de_RupRamp_popup3
+	controlinfo/W=RupRampPanel de_RupRamp_popup6
+	wave ShiftedForceWave=$S_value
+	controlinfo/W=RupRampPanel de_RupRamp_popup9
 	wave ForceWaveSM=$S_value
 	wave SepWaveSm=$ReplaceString("Force",S_value,"Sep")
-	controlinfo/W=RupRampPanel de_RupRamp_popup7
-	wave ForceWaveSH_SM=$S_value
-	controlinfo/W=RupRampPanel de_RupRamp_popup9
-	string WLCWaveFolder=S_value
 	controlinfo/W=RupRampPanel de_RupRamp_popup10
+	wave ForceWaveSH_SM=$S_value
+	controlinfo/W=RupRampPanel de_RupRamp_popup13
 	string WLCWaveName=S_value
+	controlinfo/W=RupRampPanel de_RupRamp_popup20
+	string WLCWaveFolder=S_value
 	wave WLCParms=$(WLCWaveFolder+WLCWaveName)
-	controlinfo/W=RupRampPanel de_RupRamp_popup11
-	String KindofFit=S_Value
-	
-	Controlinfo/W=RupRampPanel de_RupRamp_setvar2
+	Controlinfo/W=RupRampPanel de_RupRamp_setvar3
 	variable distancetoignore=v_value
-	controlinfo/W=RupRampPanel de_RupRamp_setvar3
-	variable SepMin=v_value 
-	controlinfo/W=RupRampPanel de_RupRamp_setvar4
-	variable fixedshift=v_value
+	controlinfo/W=RupRampPanel de_RupRamp_popup17
+	String KindofFit=S_Value
+	variable foldedfit
 	controlinfo/W=RupRampPanel de_RupRamp_check0
 	variable allowsepshift=v_value
-
 	//Here we make all the waves we need
 	make/free/n=0 AlignFoldedForce,AlignFoldedSep,AlignUnFoldedForce,AlignUnFoldedSep //Final aligned waves
 	make/free/n=0 ResultsShift,ResultsNoShift
-	variable forceshiftused,sepshiftused,forceshiftalt,sepshiftalt,foldedfit
+	variable forceshiftused,sepshiftused,forceshiftalt,sepshiftalt
 	string shiftString
 	
 	//This gives us a rough estimate of the pulling speed from the separation waves. 
@@ -705,19 +524,22 @@ Static Function AligntoWLC()
 	variable timers=stopmstimer(-2)
 
 	DE_NewDudko#ReturnFoldandUnfold(ForceWaveSH_SM,SepWaveSm,StateWave,pointstoignore,AlignFoldedForce,AlignFoldedSep,AlignUnFoldedForce,AlignUnFoldedSep)
+//
 	//For processing we make all the forces positive
 	AlignFoldedForce*=-1
 	AlignUnFoldedForce*=-1
 
-
+	controlinfo/W=RupRampPanel de_RupRamp_setvar5
+	variable SepMin=v_value 
 	if(SepMin==0)
 	else
 	 	CutStatebySep(AlignFoldedForce,AlignFoldedSep,AlignFoldedForce,AlignFoldedSep,0,SepMin)
 	endif
-
+	
+	//This fits the curves in one of several ways.
+	variable fixedshift=0//-20e-9//-30e-9
 	AlignFoldedSep+=fixedshift
 	AlignUnFoldedSep+=fixedshift
-	//This fits the curves in one of several ways.
 
 	strswitch(KindofFit)
 	
@@ -995,124 +817,6 @@ Static Function CheckProc(cba) : CheckBoxControl
 	return 0
 End
 
-Static Function CrunchAbove()
-	
-	string saveDF
-	saveDF = GetDataFolder(1)
-	SetDataFolder ReturnPanelString("Folder")
-
-	wave ForceWave=$ReturnPanelString("ForceWave")
-	if(cmpstr(nameofwave(ForceWave),"")==0)
-		print "No Force Wave"
-		return 0
-	endif
-	wave UpPoints=$ReturnPanelString("RupPnts")
-	if(cmpstr(nameofwave(UpPoints),"")==0)
-		print "No Pnts Wave"
-		return 0
-	endif
-	
-	MakeSmoothedWave()
-	popupmenu de_RupRamp_popup3 win=RupRampPanel,popmatch=nameofwave(ForceWave)+"_Sm"
-
-	MakeStateWave()
-	popupmenu de_RupRamp_popup5 win=RupRampPanel,popmatch=replacestring("Force",nameofwave(ForceWave),"_States")
-
-	MakeOffsetForceWave()
-	ControlUpdate/w=RupRampPanel de_RupRamp_popup6
-	popupmenu de_RupRamp_popup6 win=RupRampPanel,popmatch=ReplaceString("Force",nameofwave(ForceWave),"Force_Shift")
-	
-	
-	MakeSmoothedShWave()
-	ControlUpdate/w=RupRampPanel de_RupRamp_popup7
-	popupmenu de_RupRamp_popup7 win=RupRampPanel,popmatch=ReplaceString("Force",nameofwave(ForceWave),"Force_Shift")+"_Sm"
-	
-	
-	DisplayAPLot("Shifted")
-
-	SetDataFolder saveDF
-
-
-end
-
-Static Function CrunchMiddle()
-
-	string saveDF
-	saveDF = GetDataFolder(1)
-	SetDataFolder ReturnPanelString("Folder")
-	String AlignFolder=ReturnPanelString("AlignFolder")
-
-	wave AlignParms=$(AlignFolder+ReturnPanelString("AlignParms"))
-	if(cmpstr(nameofwave(AlignParms),"")==0)
-		print "No Align Parms"
-		return 0
-	endif
-	wave ForceWave=$ReturnPanelString("ForceWave")
-	if(cmpstr(nameofwave(ForceWave),"")==0)
-		print "No Force Wave"
-		return 0
-	endif
-
-	AligntoWLC()
-	ControlUpdate/w=RupRampPanel de_RupRamp_popup12
-	popupmenu de_RupRamp_popup12 win=RupRampPanel,popmatch=ReplaceString("Force_Adj",nameofwave(ForceWave),"Force_Align")
-	
-	MakeSmoothedAlignedWave()
-	ControlUpdate/w=RupRampPanel de_RupRamp_popup14
-	popupmenu de_RupRamp_popup14 win=RupRampPanel,popmatch=ReplaceString("Force_Adj",nameofwave(ForceWave),"Force_Align")+"_Sm"
-	
-	DisplayAPlot("Overlap")
-
-	SetDataFolder saveDF
-end
-
-Static Function CrunchBottom()
-
-	string saveDF
-	saveDF = GetDataFolder(1)
-	SetDataFolder ReturnPanelString("Folder")
-	wave ForceWave=$ReturnPanelString("ForceWave")
-	if(cmpstr(nameofwave(ForceWave),"")==0)
-		print "No Force Wave"
-		return 0
-	endif
-	wave UpPoints=$ReturnPanelString("RupPnts")
-	if(cmpstr(nameofwave(UpPoints),"")==0)
-		print "No Pnts Wave"
-		return 0
-	endif
-	
-	ApplyShifts()
-	ControlUpdate/w=RupRampPanel de_RupRamp_popup16
-	popupmenu de_RupRamp_popup16 win=RupRampPanel,popmatch=ReplaceString("Force",nameofwave(ForceWave),"Force_Final")
-
-	MakeSmoothedFinalWave()
-	ControlUpdate/w=RupRampPanel de_RupRamp_popup17
-	popupmenu de_RupRamp_popup17 win=RupRampPanel,popmatch=ReplaceString("Force",nameofwave(ForceWave),"Force_Final_Sm")
-
-	DetermineWLCParms()
-	ControlUpdate/w=RupRampPanel de_RupRamp_popup19
-	popupmenu de_RupRamp_popup19 win=RupRampPanel,popmatch=ReplaceString("Force",nameofwave(ForceWave),"_WLCParms")
-	
-	CorrectRuptures()
-	ControlUpdate/w=RupRampPanel de_RupRamp_popup20
-	controlinfo/W=RupRampPanel de_RupRamp_popup3
-	popupmenu de_RupRamp_popup20 win=RupRampPanel,popmatch=nameofwave(UpPoints)+"_Mod"
-
-	MakeSecondStateWave()
-
-
-
-	SetDataFolder saveDF
-end
-
-
-Static Function CrunchAll()
-
-	CrunchAbove()
-	CrunchMiddle()
-	CrunchBottom()
-end
 
 Static Function AutoProcess()
 
@@ -1127,7 +831,7 @@ Static Function AutoProcess()
 		return 0
 	endif
 	
-	controlinfo/W=RupRampPanel de_RupRamp_popup3
+		controlinfo/W=RupRampPanel de_RupRamp_popup3
 	if(cmpstr(S_Value,"")==0)
 		print "No Points Wave"
 		return 0
@@ -1150,11 +854,10 @@ Static Function AutoProcess()
 	popupmenu de_RupRamp_popup10 win=RupRampPanel,popmatch=ReplaceString("Force",S_value,"Force_Shift")+"_Sm"
 	//	ControlUpdate/w=RupRampPanel de_RupRamp_popup13
 	//popupmenu de_RupRamp_popup13 win=RupRampPanel,popmatch="WLCAlign"
-//////
+
 	AligntoWLC()
 	ControlUpdate/w=RupRampPanel de_RupRamp_popup14
 	popupmenu de_RupRamp_popup14 win=RupRampPanel,popmatch=ReplaceString("Force_Adj",S_value,"Force_Align")
-	
 	MakeSmoothedAlignedWave()
 	ControlUpdate/w=RupRampPanel de_RupRamp_popup16
 	popupmenu de_RupRamp_popup16 win=RupRampPanel,popmatch=ReplaceString("Force_Adj",S_value,"Force_Align")+"_Sm"
@@ -1182,11 +885,11 @@ Static Function MakeSmoothedWave()
 	saveDF = GetDataFolder(1)
 	controlinfo/W=RupRampPanel de_RupRamp_popup0
 	SetDataFolder s_value
-	controlinfo/W=RupRampPanel de_RupRamp_popup1
+	controlinfo/W=RupRampPanel de_RupRamp_popup4
 	wave ForceWave=$S_value
 	wave SepWave=$ReplaceString("Force",S_value,"Sep")
 	CorrectPauses(ForceWave,SepWave)
-	controlinfo/w=RupRampPanel de_RupRamp_popup4
+	controlinfo/w=RupRampPanel de_RupRamp_popup11
 	string SmType=s_value
 	controlinfo/w=RupRampPanel de_RupRamp_setvar0
 	variable SmAmount=v_value
@@ -1199,49 +902,54 @@ Static Function MakeSmoothedWave()
 	SetDataFolder saveDF
 
 end
-
 Static Function MakeSmoothedShWave()
 
-
 	string saveDF
+
 	saveDF = GetDataFolder(1)
 	controlinfo/W=RupRampPanel de_RupRamp_popup0
 	SetDataFolder s_value
-
 	controlinfo/W=RupRampPanel de_RupRamp_popup6
 	wave SHForceWave=$S_value
-	wave SHSepWave=$ReplaceString("Force",nameofwave(SHForceWave),"Sep")
+	controlinfo/W=RupRampPanel de_RupRamp_popup4
+	wave ForceWave=$S_value
 
-	controlinfo/w=RupRampPanel de_RupRamp_popup8
+	wave SepWave=$ReplaceString("Force",S_value,"Sep")
+	
+	controlinfo/w=RupRampPanel de_RupRamp_popup12
 	string SmType=S_Value
 	controlinfo/w=RupRampPanel de_RupRamp_setvar1
 	variable SmAmount=v_value
 	
-	duplicate/free SHForceWave ForceWaveSm
-	duplicate/free SHSepWave SepWaveSm
+	duplicate/free ForceWave ForceWaveSm
+	duplicate/free SepWave SepWaveSm
 	
-	DE_Filtering#FilterForceSep(SHForceWave,SHSepWave,ForceWaveSm,SepWaveSm,SmType,SmAmount)
+	DE_Filtering#FilterForceSep(SHForceWave,SepWave,ForceWaveSm,SepWaveSm,SmType,SmAmount)
 
 	duplicate/o ForceWaveSm $(nameofwave(SHForceWave)+"_Sm")
 	duplicate/o SepWaveSm $(ReplaceString("Force",nameofwave(SHForceWave),"Sep")+"_Sm")
 	SetDataFolder saveDF
 
 end
-
 Static Function MakeSecondStateWave()
 
+
 	string saveDF
+
 	saveDF = GetDataFolder(1)
-	SetDataFolder ReturnPanelString("Folder")
-
-	wave ForceWave=$ReturnPanelString("ForceWave")
-	wave SepWave=$ReplaceString("Force",nameofwave(ForceWave),"Sep")
-	wave UpPoints=$ReturnPanelString("RupPnts")
-	wave DownPoints=$ReplaceString("PntU",nameofwave(UpPoints),"PntD")
-	wave StateWave=$ReturnPanelString("StateWave")
-	wave FinalForceWave=$ReturnPanelString("FinalForceWave")
-	wave WLCParms=$ReturnPanelString("WLCParms")
-
+	controlinfo/W=RupRampPanel de_RupRamp_popup0
+	SetDataFolder s_value
+	controlinfo/W=RupRampPanel de_RupRamp_popup4
+	wave ForceWave=$S_value
+	wave SepWave=$ReplaceString("Force",S_value,"Sep")
+	controlinfo/W=RupRampPanel de_RupRamp_popup8
+	wave UpPoints=$S_value
+	wave DownPoints=$ReplaceString("PntU",S_value,"PntD")
+	controlinfo/W=RupRampPanel de_RupRamp_popup6
+	wave ShForceWave=$S_value
+	controlinfo/W=RupRampPanel de_RupRamp_popup14
+	wave AlignedForceWave=$S_value
+	wave AlignedsepWave=$ReplaceString("Force",S_value,"Sep")	
 //	duplicate/free ShForceWave ForceWaveSm
 //	duplicate/free SepWave SepWaveSm
 
@@ -1250,7 +958,7 @@ Static Function MakeSecondStateWave()
 	//make the state key
 	make/o/n=0 $ReplaceString("Force",nameofwave(ForceWave),"_2States")
 	wave states=$ReplaceString("Force",nameofwave(ForceWave),"_2States")
-	DE_DUDKO#MakeSingleStateKey(FinalForceWave,UpPoints,DownPoints,States)
+	DE_DUDKO#MakeSingleStateKey(AlignedForceWave,UpPoints,DownPoints,States)
 
 	SetDataFolder saveDF
 
@@ -1261,37 +969,30 @@ Static Function CorrectRuptures()
 
 	string saveDF
 	saveDF = GetDataFolder(1)
-	SetDataFolder ReturnPanelString("Folder")
-
-	wave ForceWave=$ReturnPanelString("ForceWave")
-	wave SepWave=$ReplaceString("Force",nameofwave(ForceWave),"Sep")
-	wave UpPoints=$ReturnPanelString("RupPnts")
-	wave DownPoints=$ReplaceString("PntU",nameofwave(UpPoints),"PntD")
-	wave StateWave=$ReturnPanelString("StateWave")
-	wave FinalForceWave=$ReturnPanelString("FinalForceWave")
-	wave FinalSepWave=$ReplaceString("Force",nameofwave(FinalForceWave),"Sep")
-	wave WLCParms=$ReturnPanelString("WLCParms")
-	//string SmType=ReturnPanelString("FinalSmType")
-	//variable SmAmount=ReturnPanelVal("FinalSmval")
-	
-
-
-
-
-	
-//	controlinfo/W=RupRampPanel de_RupRamp_popup14
-//	wave AlignedForceWave=$S_value
-//	wave AlignedsepWave=$ReplaceString("Force",S_value,"Sep")
-	
-	duplicate/free FinalForceWave FWSm,SepWaveSm,FWIN
+	controlinfo/W=RupRampPanel de_RupRamp_popup0
+	SetDataFolder s_value
+	controlinfo/W=RupRampPanel de_RupRamp_popup4
+	wave ForceWave=$S_value
+	wave SepWave=$ReplaceString("Force",S_value,"Sep")
+	controlinfo/W=RupRampPanel de_RupRamp_popup3
+	wave UpPoints=$S_value
+	wave DownPoints=$ReplaceString("PntU",S_value,"PntD")
+	controlinfo/W=RupRampPanel de_RupRamp_popup5
+	wave StateWave=$S_value
+	controlinfo/W=RupRampPanel de_RupRamp_popup14
+	wave AlignedForceWave=$S_value
+	wave AlignedsepWave=$ReplaceString("Force",S_value,"Sep")
+	controlinfo/W=RupRampPanel de_RupRamp_popup7
+	wave WLCParms=$S_value
+	duplicate/free AlignedForceWave FWSm,SepWaveSm,FWIN
 //	duplicate/free ForceWave SepWaveSm
 //	controlinfo/W=RupRampPanel de_RupRamp_popup9
 //	wave ForceWaveSM=$S_value
 //	wave SepWaveSm=$ReplaceString("Force",S_value,"Sep")
 		
-//	controlinfo/W=RupRampPanel de_RupRamp_popup10
-//	wave ForceWaveSH_SM=$S_value
-	DE_Filtering#FilterForceSep(FinalForceWave,FinalSepWave,FWSm,SepWaveSm,"TVD",10e-9)
+	controlinfo/W=RupRampPanel de_RupRamp_popup10
+	wave ForceWaveSH_SM=$S_value
+	DE_Filtering#FilterForceSep(AlignedForceWave,AlignedsepWave,FWSm,SepWaveSm,"TVD",10e-9)
 	FWIN*=-1
 	FWSm*=-1
 
@@ -1345,6 +1046,62 @@ Static Function PlotAlignFit()
 
 end
 
+Static Function FitPython()
+	string saveDF
+	variable FOffset, Soffset
+
+	saveDF = GetDataFolder(1)
+	wave/T parmWave=root:DE_RupRamp:MenuStuff:PyParmWave
+
+	controlinfo de_RupRamp_popup0
+	SetDataFolder s_value
+	controlinfo de_RupRamp_popup1
+	wave ForceWave=$S_value
+	wave SepWave=$ReplaceString("Force",S_value,"Sep")
+	controlinfo/W=RupRampPanel de_RupRamp_check3
+	variable nodelay=v_value
+	//	make/o/n=0 RupPntU,RupPntD
+	make/o/n=0 ForceWaveS,SepWaveS
+	//DE_Filtering#FilterForceSep(ForceWave,SepWave,ForceWaveS,SepWaveS,"SVG",str2num(parmWave[6][1]))
+	make/free/n=0 ForceOut,Sepout
+	if(nodelay==1)
+	string deletionString=RemovePauses(ForceWave,SepWave,ForceOut,Sepout)
+	DE_Filtering#FilterForceSep(ForceOut,Sepout,ForceWaveS,SepWaveS,"TVD",str2num(parmWave[0][1]))
+	else
+	DE_Filtering#FilterForceSep(ForceWave,SepWave,ForceWaveS,SepWaveS,"TVD",str2num(parmWave[0][1]))
+	endif
+	ForceWaveS*=-1
+	wavestats/q ForceWaveS
+	FOffset=v_min
+	FOffset-=0e-12
+	ForceWaveS-=FOffset
+	Soffset= SepWaveS[0]-0e-9
+	SepWaveS-=Soffset
+	//duplicate/o ForceWaveS LC
+	//LC=DE_WLC#ContourTransform(ForceWaveS,SepWaveS,.4e-9,298)		
+	//LC*=1e9	
+	//setscale/P x dimoffset(ForceWave,0), dimdelta(ForceWave,0), "s", LC//ensuring scaling of input and output wave are the same
+	//Resample/DOWN=(str2num(parmWave[7][1]))/N=1/WINF=None LC
+	Resample/DOWN=(str2num(parmWave[1][1]))/N=1/WINF=None ForceWaveS
+	controlinfo de_RupRamp_popup2
+	PythonFitter( ForceWaveS,S_Value,str2num(parmWave[3][1]),str2num(parmWave[2][1]))
+	wave no0=wave0
+	make/o/n=0 UpP,DownP;DE_RuptureRamp#SortSteps(ForceWaveS,no0,UpP,DownP,20)
+	DE_RuptureRamp#RefineSteps(ForceWaveS,UpP,DownP)
+	duplicate/o UpP RupPntU
+	RupPntU=x2pnt(ForceWave,pnt2x(ForceWaveS,UpP))
+	duplicate/o DownP RupPntD
+	RupPntD=x2pnt(ForceWave,pnt2x(ForceWaveS,DownP))
+	string PauseIndices=stringbykey("DE_PauseLoc",note(ForceWave),":","\r")//
+	if(nodelay==1)
+	RupPntU=CorrectforRemovedPause(RupPntU,PauseIndices,deletionString)
+	RupPntD=CorrectforRemovedPause(RupPntD,PauseIndices,deletionString)
+	else
+	endif
+
+	killwaves SepWaveS,ForceWaveS,no0,DownP,UpP
+	SetDataFolder saveDF
+end
 
 Static Function IdentifyAvgForceDuringPauses(ForceWave,ForceAvg)
 	wave ForceWave,ForceAvg
@@ -1483,58 +1240,54 @@ Static Function/S ReplaceListItem(ListString,NewString,separator,location)
 end
 
 Static Function DetermineWLCParms()
-	SetDataFolder ReturnPanelString("Folder")
-	wave StateWave=$ReturnPanelString("StateWave")
+	string saveDF
+	saveDF = GetDataFolder(1)
+	controlinfo/W=RupRampPanel de_RupRamp_popup0
+	SetDataFolder s_value
+	controlinfo/W=RupRampPanel de_RupRamp_popup4
+	wave ForceWave=$S_value
 
-	wave FinalForceWave=$ReturnPanelString("FinalForceWave")
-	wave FinalSepWave=$ReplaceString("Force",nameofwave(FinalForceWave),"Sep")
-	wave ForceWave=$ReturnPanelString("ForceWave")
+	controlinfo/W=RupRampPanel de_RupRamp_popup5
+	wave StateWave=$S_value
+
+
 	controlinfo/W=RupRampPanel de_RupRamp_popup16
-	wave ForceWaveFinalSM=$ReturnPanelString("SmoothedFinalForce")
-	wave SepWaveFinalSm=$ReplaceString("Force",nameofwave(ForceWaveFinalSM),"Sep")
+	wave ForceWaveAlignSM=$S_value
+	wave SepWaveAlignSm=$ReplaceString("Force",S_value,"Sep")
 
 	controlinfo/W=RupRampPanel de_RupRamp_popup10
 	wave ForceWaveSH_SM=$S_value
-	
-	
-	variable IgnoreDist=ReturnPanelVal("IgnoreDist")
-	//Controlinfo/W=RupRampPanel de_RupRamp_setvar3
-	variable/C slopes=DE_Dudko#ReturnSeparationSlopes(SepWaveFinalSm,StateWave,500)
-	variable pointstoignore=floor(IgnoreDist/real(slopes)/dimdelta(ForceWaveFinalSM,0))
-	ForceWaveFinalSM*=-1
+	Controlinfo/W=RupRampPanel de_RupRamp_setvar3
+	variable/C slopes=DE_Dudko#ReturnSeparationSlopes(SepWaveAlignSm,StateWave,500)
+	variable pointstoignore=floor(v_value/real(slopes)/dimdelta(ForceWaveAlignSM,0))
+	ForceWaveAlignSM*=-1
 	make/o/n=0 $ReplaceString("Force",nameofwave(ForceWave),"_WLCParms")
 	wave Results=$ReplaceString("Force",nameofwave(ForceWave),"_WLCParms")
-	controlinfo/W=RupRampPanel de_RupRamp_check1
-   DE_DUDKO#ContourLengthDetermineCombined(ForceWaveFinalSM,SepWaveFinalSm,StateWave,pointstoignore,Results,v_value,CopyWavesOUt=1)
+	controlinfo/W=RupRampPanel de_RupRamp_check2
+   DE_DUDKO#ContourLengthDetermineCombined(ForceWaveAlignSM,SepWaveAlignSm,StateWave,pointstoignore,Results,v_value,CopyWavesOUt=1)
 
-	ForceWaveFinalSM*=-1
+	ForceWaveAlignSM*=-1
 	make/o/n=0 WLCFitFolded,WLCFitUnfolded
-	DE_DUDKO#MakeWLCs(SepWaveFinalSm,Results,WLCFitFolded,WLCFitUnfolded)
+	DE_DUDKO#MakeWLCs(SepWaveAlignSm,Results,WLCFitFolded,WLCFitUnfolded)
 end
 
 Static Function MakeOffsetForceWave()
 	//handle offsetting both the smoothed wave and the unsmoothed wave, also corrects our estimates of the rupture forces
-	
-	
 	string saveDF
 	saveDF = GetDataFolder(1)
-	
-	
 	controlinfo/W=RupRampPanel de_RupRamp_popup0
 	SetDataFolder s_value
-	controlinfo/W=RupRampPanel de_RupRamp_popup1
+	controlinfo/W=RupRampPanel de_RupRamp_popup4
 	wave ForceWave=$S_value
 	wave SepWave=$ReplaceString("Force",S_value,"Sep")
-	controlinfo/W=RupRampPanel de_RupRamp_popup2
+	controlinfo/W=RupRampPanel de_RupRamp_popup3
 	wave UpPoints=$S_value
 	wave DownPoints=$ReplaceString("PntU",S_value,"PntD")
-	controlinfo/W=RupRampPanel de_RupRamp_popup3
+	controlinfo/W=RupRampPanel de_RupRamp_popup9
 	wave ForceWaveSm=$S_value
 	wave SepWaveSm=$ReplaceString("Force",S_value,"Sep")
 	ControlInfo/W=RupRampPanel  de_RupRamp_popup5
 	wave StateWave=$S_Value
-
-
 	//duplicate/free ForceWave ForceWaveSm
 	//duplicate/free ForceWave SepWaveSm
 	//DE_Filtering#FilterForceSep(ForceWave,SepWave,ForceWaveSm,SepWaveSm,"TVD",20e-9)
@@ -1556,15 +1309,16 @@ Static Function MakeStateWave()
 	string saveDF
 
 	saveDF = GetDataFolder(1)
+	wave/T parmWave=root:DE_RupRamp:MenuStuff:PyParmWave
 
 	controlinfo/W=RupRampPanel de_RupRamp_popup0
 	SetDataFolder s_value
-	controlinfo/W=RupRampPanel de_RupRamp_popup3
+	controlinfo/W=RupRampPanel de_RupRamp_popup9
 	wave ForceWaveSm=$S_value
-	controlinfo/W=RupRampPanel de_RupRamp_popup1
+	controlinfo/W=RupRampPanel de_RupRamp_popup4
 	wave ForceWave=$S_value
 //	wave SepWave=$ReplaceString("Force",S_value,"Sep")
-	controlinfo/W=RupRampPanel de_RupRamp_popup2
+	controlinfo/W=RupRampPanel de_RupRamp_popup3
 	wave UpPoints=$S_value
 	wave DownPoints=$ReplaceString("PntU",S_value,"PntD")
 //
@@ -1579,7 +1333,50 @@ Static Function MakeStateWave()
 	DE_DUDKO#MakeSingleStateKey(ForceWaveSm,UpPoints,DownPoints,States)
 
 end
+Static Function RefineSteps(ForceWave,UpPnts,DownPnts)
+	wave ForceWave,UpPnts,DownPnts
+	variable n
 
+	for (n=0;n<numpnts(UpPnts);n+=1)
+//for (n=0;n<1;n+=1)
+		duplicate/free/r=[UpPnts[n]-0.01/dimdelta(ForceWave,0),UpPnts[n]+.001/dimdelta(ForceWave,0)] ForceWave New
+		FindLevels/Q New wavemax(New)
+		wave w_findlevels
+		UpPnts[n]=x2pnt(ForceWave,W_FindLevels[numpnts(W_FindLevels)-1])
+	endfor	
+//
+//	UpPos=pnt2x(ForceIn, floor(up-1) )
+//	UpForce=ForceIn(UpPos)
+//	UpSep=SepIn(UpPos)
+//	UpPnt=x2pnt(ForceOrig,UpPos)
+//
+////	
+//	FindLevels/Q/EDGE=2 HMMStates .5
+//	duplicate/free w_findlevels Down,DownPos,DownForce,DownSep,DownPnt
+//	
+	for (n=0;n<numpnts(DownPnts);n+=1)
+	//for (n=0;n<1;n+=1)
+		duplicate/free/r=[DownPnts[n]-.001/dimdelta(ForceWave,0),DownPnts[n]+.01/dimdelta(ForceWave,0)] ForceWave New
+		FindLevels/Q New wavemin(New)
+		wave w_findlevels
+		DownPnts[n]=x2pnt(ForceWave,W_FindLevels[numpnts(W_FindLevels)-1])
+	endfor	
+//
+//	DownPos=pnt2x(ForceIn,floor(down-1))
+//	downForce=ForceIn(downPos)
+//	DownSep=SepIn(DownPos)
+//	DownPnt=x2pnt(ForceOrig,DownPos)
+//
+//	duplicate/o UpPnt RupPntU
+//	duplicate/o DownPnt RupPntD
+//	duplicate/o UpForce RupForcesU
+//	duplicate/o UpPos RupTimesU
+//	duplicate/o DownForce RupForcesD
+//	duplicate/o DownPos RupTimesD
+	wave W_Findlevels
+	killwaves W_FindLevels
+
+end
 Static Function SortSteps(ForceWave,Locations,UpPnts,DownPnts,windowsize)
 	wave ForceWave,Locations,UpPnts,DownPnts
 	variable windowsize
@@ -1607,7 +1404,19 @@ Static Function SortSteps(ForceWave,Locations,UpPnts,DownPnts,windowsize)
 	duplicate/o Down UpPnts
 end
 
+Static Function ListBoxProc(ctrlName,row,col,event) : ListBoxControl
+	String ctrlName
+	Variable row
+	Variable col
+	Variable event	//1=mouse down, 2=up, 3=dbl click, 4=cell select with mouse or keys
+					//5=cell select with shift key, 6=begin edit, 7=end
 
+	switch(event)
+
+	endswitch				
+	
+	return 0
+End //ListBoxProc
 
 
 Static Function SetVarProc(sva) : SetVariableControl
@@ -1625,120 +1434,148 @@ Static Function SetVarProc(sva) : SetVariableControl
 
 	return 0
 End
-
-
 Window RuptureRamp_Panel() : Panel
 
 	PauseUpdate; Silent 1		// building window...
-	NewPanel/N=RupRampPanel /W=(0,0,750,775)
+	NewPanel/N=RupRampPanel /W=(0,0,600,700)
 	NewDataFolder/o root:DE_RupRamp
 	NewDataFolder/o root:DE_RupRamp:MenuStuff
-	Button de_RupRamp_button0,pos={10,30},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Smooth"
-	Button de_RupRamp_button1,pos={10,90},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Make State Wave"
-	Button de_RupRamp_button2,pos={10,120},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="OffSet Waves"
-	Button de_RupRamp_button3,pos={10,150},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Smooth Shifted"
-	Button de_RupRamp_button4,pos={550,150},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Plot Smoothed"
-	Button de_RupRamp_button5,pos={250,200},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Crunch Above"
 
-	SetDrawEnv linethick= 2.00;DrawLine 0,230,750,230;SetDrawEnv linethick= 2.00;	DrawLine 0,235,750,235 
+	DE_RuptureRamp#UpdateParmWave()
+	//Button de_RupRamp_button0,pos={75,80},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="GO!"
+	Button de_RupRamp_button1,pos={75,80},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Pythong!"
+	Button de_RupRamp_button2,pos={165,300},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Make State Wave"
+	Button de_RupRamp_button3,pos={320,330},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="OffSet Waves"
+	Button de_RupRamp_button4,pos={320,520},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="MakeWLCFits"
+	Button de_RupRamp_button5,pos={320,560},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Correct Ruptures"
+	Button de_RupRamp_button6,pos={320,600},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Remake StateWave"
+	Button de_RupRamp_button7,pos={320,240},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Smooth"
+	Button de_RupRamp_button8,pos={320,360},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Smooth Shifted"
+	Button de_RupRamp_button9,pos={165,620},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="DoThisALL"
+	Button de_RupRamp_button10,pos={320,420},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Align To WLC"
+	Button de_RupRamp_button11,pos={320,480},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Smooth Aligned"
+	Button de_RupRamp_button12,pos={450,660},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Single"
+	Button de_RupRamp_button13,pos={357,27},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="PlotSmoothed"
 
-	Button de_RupRamp_button6,pos={10,285},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Align To WLC"
-	Button de_RupRamp_button7,pos={10,365},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Smooth Aligned"
-	Button de_RupRamp_button8,pos={600,365},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Plot Aligned"
-	
-	SetDrawEnv linethick= 2.00;DrawLine 0,445,750,445;SetDrawEnv linethick= 2.00;	DrawLine 0,450,750,450 
-	
-	Button de_RupRamp_button9,pos={10,460},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Pull Shifts"
-	Button de_RupRamp_button10,pos={10,500},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Apply Additional"
-	Button de_RupRamp_button11,pos={10,530},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Smooth Final"
-	Button de_RupRamp_button12,pos={250,400},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Crunch Middle"
-	Button de_RupRamp_button13,pos={10,590},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="MakeWLCFits"
-	Button de_RupRamp_button14,pos={10,640},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Correct Ruptures"
-	Button de_RupRamp_button15,pos={10,670},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Remake StateWave"
-	Button de_RupRamp_button16,pos={250,670},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Crunch Bottom"
-	Button de_RupRamp_button17,pos={500,620},size={150,50},proc=DE_RuptureRamp#ButtonProc,title="Crunch All"
+	//Button de_RupRamp_button11,pos={100,420},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Align To Previous"
 
-	SetDrawEnv linethick= 5.00;DrawLine 0,700,750,700;SetDrawEnv linethick= 5.00;	DrawLine 0,710,750,710 
-
-	Button de_RupRamp_button18,pos={450,740},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Single"
-
-	PopupMenu de_RupRamp_popup0,pos={10,2},size={129,21},title="Folder",mode=1
+	PopupMenu de_RupRamp_popup0,pos={75,2},size={129,21},title="Folder",mode=1
 	PopupMenu de_RupRamp_popup0,mode=1,popvalue="X",value= #"DE_PanelProgs#ListFolders()"
-	PopupMenu de_RupRamp_popup1,pos={200,2},size={129,21},title="Force Wave",mode=0
-	PopupMenu de_RupRamp_popup1,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*Force*Adj\")"
-	PopupMenu de_RupRamp_popup2,pos={450,2},size={129,21},title="RuptureUp"
-	PopupMenu de_RupRamp_popup2,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*RupPntU*Adj\")"
-	PopupMenu de_RupRamp_popup3,pos={200,30},size={129,21},title="Smoothed Wave"
-	PopupMenu de_RupRamp_popup3,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*Force*Sm\")"
-	PopupMenu de_RupRamp_popup4,pos={10,55},size={129,21},title="Type",proc=DE_RuptureRamp#PopMenuProc
-	PopupMenu de_RupRamp_popup4,mode=1,value= "TVD;SVG"
-	PopupMenu de_RupRamp_popup5,pos={200,90},size={129,21},title="StateWave"
+	PopupMenu de_RupRamp_popup1,pos={75,40},size={129,21},title="Force Wave"
+	PopupMenu de_RupRamp_popup1,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*Force\")"
+	PopupMenu de_RupRamp_popup4,pos={20,240},size={129,21},title="Force Wave",mode=0
+	PopupMenu de_RupRamp_popup4,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*Force*Adj\")"
+	PopupMenu de_RupRamp_popup2,pos={75,110},size={129,21},title="Method"
+	PopupMenu de_RupRamp_popup2,mode=1,popvalue="X",value= "gauss;ms;"
+
+	//ListBox DE_RupRamp_list0,pos={50,110},size={175,150},proc=DE_RuptureRamp#ListBoxProc,listWave=root:DE_RupRamp:MenuStuff:ParmWave
+	//ListBox DE_RupRamp_list0,selWave=root:DE_RupRamp:MenuStuff:SelWave,editStyle= 2,userColumnResize= 1,widths={70,40,70,40}
+	ListBox DE_RupRamp_list1,pos={50,140},size={175,75},proc=DE_RuptureRamp#ListBoxProc,listWave=root:DE_RupRamp:MenuStuff:PyParmWave
+	ListBox DE_RupRamp_list1,selWave=root:DE_RupRamp:MenuStuff:PySelWave,editStyle= 2,userColumnResize= 1,widths={70,40,70,40}
+	DrawLine 11,234,292,234
+	DrawLine 336,18,336,240
+
+	PopupMenu de_RupRamp_popup3,pos={310,270},size={129,21},title="RuptureUp"
+	PopupMenu de_RupRamp_popup3,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*RupPntU*Adj\")"
+	PopupMenu de_RupRamp_popup5,pos={20,330},size={129,21},title="StateWave"
 	PopupMenu de_RupRamp_popup5,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*State*\")"
-	PopupMenu de_RupRamp_popup6,pos={200,120},size={129,21},title="Shifted Wave"
+	PopupMenu de_RupRamp_popup6,pos={20,360},size={129,21},title="Shifted Wave"
 	PopupMenu de_RupRamp_popup6,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*Force*Shift\")"
-	PopupMenu de_RupRamp_popup7,pos={200,150},size={129,21},title="Smoothed Shifted Wave"
-	PopupMenu de_RupRamp_popup7,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*Force*Shift*Sm\")"
-	PopupMenu de_RupRamp_popup8,pos={10,175},size={129,21},title="Type",proc=DE_RuptureRamp#PopMenuProc
-	PopupMenu de_RupRamp_popup8,value= "TVD;SVG",mode=1
-	PopupMenu de_RupRamp_popup9,pos={10,250},size={129,21},title="Alignment Folder"
-	PopupMenu de_RupRamp_popup9,mode=1,popvalue="X",value= #"DE_PanelProgs#ListFolders()"
-	PopupMenu de_RupRamp_popup10,pos={300,250},size={129,21},title="Alignment Parms"
-	PopupMenu de_RupRamp_popup10,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup9\",\"*WLCAlign*\")"
-	PopupMenu de_RupRamp_popup11,pos={10,315},size={129,21},title="Alignment Type"
-	PopupMenu de_RupRamp_popup11,mode=1,value="Both;Unfolded;Folded"
-	PopupMenu de_RupRamp_popup12,pos={200,285},size={129,21},title="Aligned Wave"
-	PopupMenu de_RupRamp_popup12,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*Force*Align\")"
-	PopupMenu de_RupRamp_popup13,pos={10,390},size={129,21},title="Type",proc=DE_RuptureRamp#PopMenuProc
-	PopupMenu de_RupRamp_popup13,value= "TVD;SVG",mode=1
-	PopupMenu de_RupRamp_popup14,pos={200,365},size={129,21},title="Aligned Smoothed Wave"
-	PopupMenu de_RupRamp_popup14,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*Force*Align*Sm\")"
-	PopupMenu de_RupRamp_popup15,pos={450,390},size={129,21},title="Overlapped Curve"
-	PopupMenu de_RupRamp_popup15,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup9\",\"*FSM*\")"
-	PopupMenu de_RupRamp_popup16,pos={200,500},size={129,21},title="Final Wave"
-	PopupMenu de_RupRamp_popup16,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*Force*Final\")"
-	PopupMenu de_RupRamp_popup17,pos={200,530},size={129,21},title="Final Smoothed Wave"
-	PopupMenu de_RupRamp_popup17,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*Force*Final*Sm\")"
-	PopupMenu de_RupRamp_popup18,pos={10,555},size={129,21},title="Type",proc=DE_RuptureRamp#PopMenuProc
-	PopupMenu de_RupRamp_popup18,value= "TVD;SVG",mode=1
-	PopupMenu de_RupRamp_popup19,pos={200,590},size={129,21},title="WLC Parms"
-	PopupMenu de_RupRamp_popup19,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*WLCParms*\")"
-	PopupMenu de_RupRamp_popup20,pos={200,640},size={129,21},title="New Up Ruptures"
-	PopupMenu de_RupRamp_popup20,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*RupPntU*\")"
+	PopupMenu de_RupRamp_popup7,pos={20,560},size={129,21},title="WLC Parms"
+	PopupMenu de_RupRamp_popup7,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*WLCParms*\")"
+	PopupMenu de_RupRamp_popup8,pos={20,600},size={129,21},title="New Up Ruptures"
+	PopupMenu de_RupRamp_popup8,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*RupPntU*\")"
+	PopupMenu de_RupRamp_popup9,pos={20,270},size={129,21},title="Smoothed Wave"
+	PopupMenu de_RupRamp_popup9,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*Force*Sm\")"
+	PopupMenu de_RupRamp_popup10,pos={20,420},size={129,21},title="Smoothed Shifted Wave"
+	PopupMenu de_RupRamp_popup10,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*Force*Shift*Sm\")"
+	PopupMenu de_RupRamp_popup11,pos={480,240},size={129,21},title="Type",proc=DE_RuptureRamp#PopMenuProc
+	PopupMenu de_RupRamp_popup11,mode=1,popvalue="X",value= "TVD;SVG"
+	PopupMenu de_RupRamp_popup12,pos={480,360},size={129,21},title="Type",proc=DE_RuptureRamp#PopMenuProc
+	PopupMenu de_RupRamp_popup12,popvalue="X",value= "TVD;SVG",mode=1
+	PopupMenu de_RupRamp_popup15,pos={480,480},size={129,21},title="Type",proc=DE_RuptureRamp#PopMenuProc
+	PopupMenu de_RupRamp_popup15,popvalue="X",value= "TVD;SVG",mode=1
 
-
-	PopupMenu de_RupRamp_popup21,pos={10,740},size={150,20},title="Up or Down"
-	PopupMenu de_RupRamp_popup21,mode=1,popvalue="X",value="Up;Down"
-	PopupMenu de_RupRamp_popup22,pos={200,740},size={150,20},title="WLC or Line"
-	PopupMenu de_RupRamp_popup22,mode=1,popvalue="root:",value="WLC;Line"
 	
-	SetVariable de_RupRamp_setvar0,pos={105,55},size={50.00,18.00},proc=DE_RuptureRamp#SetVarProc,value=_num:10e-9
+	PopupMenu de_RupRamp_popup17,pos={320,450},size={129,21},title="Alignment Type"
+	PopupMenu de_RupRamp_popup17,mode=1,popvalue="X",value="Both;Unfolded;Folded"
+	
+	PopupMenu de_RupRamp_popup14,pos={50,480},size={129,21},title="Aligned Wave"
+	PopupMenu de_RupRamp_popup14,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*Force*Align\")"
+	PopupMenu de_RupRamp_popup16,pos={20,520},size={129,21},title="Aligned Smoothed Wave"
+	PopupMenu de_RupRamp_popup16,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*Force*Align*Sm\")"
+	//PopupMenu de_RupRamp_popup14,pos={100,450},size={129,21},title="Alignmentto:"
+	//PopupMenu de_RupRamp_popup14,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup20\",\"*Force*Align*\")"
+	
+	PopupMenu de_RupRamp_popup18,pos={50,660},size={150,20},title="Up or Down"
+	PopupMenu de_RupRamp_popup18,mode=1,popvalue="X",value="Up;Down"
+	PopupMenu de_RupRamp_popup19,pos={50,690},size={150,20},title="WLC or Line"
+	PopupMenu de_RupRamp_popup19,mode=1,popvalue="root:",value="WLC;Line"
+	
+	PopupMenu de_RupRamp_popup20,pos={0,450},size={150,20},title="Alignment Folder"
+	PopupMenu de_RupRamp_popup20,mode=1,popvalue="X",value= #"DE_PanelProgs#ListFolders()"
+		PopupMenu de_RupRamp_popup13,pos={125,450},size={129,21},title="Alignment Parms"
+	PopupMenu de_RupRamp_popup13,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup20\",\"*WLCAlign*\")"
+	SetVariable de_RupRamp_setvar4,pos={350,660},size={50.00,18.00},proc=DE_RuptureRamp#SetVarProc,value=_num:0
+	SetVariable de_RupRamp_setvar4,limits={0,inf,0}
+	
+	SetVariable de_RupRamp_setvar0,pos={547.00,240.00},size={50.00,18.00},proc=DE_RuptureRamp#SetVarProc,value=_num:10e-9
 	SetVariable de_RupRamp_setvar0,limits={0,inf,0}
-	SetVariable de_RupRamp_setvar1,pos={105,175},size={50.00,18.00},proc=DE_RuptureRamp#SetVarProc,value=_num:10e-9
+
+	SetVariable de_RupRamp_setvar1,pos={547.00,360.00},size={50.00,18.00},proc=DE_RuptureRamp#SetVarProc,value=_num:10e-9
 	SetVariable de_RupRamp_setvar1,limits={0,inf,0}
-	SetVariable de_RupRamp_setvar2,pos={175,315},size={99.00,18.00},proc=DE_RuptureRamp#SetVarProc,value=_num:3e-9
-	SetVariable de_RupRamp_setvar2,limits={0,inf,0},title="Ignore\rDistance"
-	SetVariable de_RupRamp_setvar3,pos={395,315},size={150,18.00},proc=DE_RuptureRamp#SetVarProc,value=_num:0
-	SetVariable de_RupRamp_setvar3,limits={0,inf,0},title="SepMin"
-	SetVariable de_RupRamp_setvar4,pos={560,315},size={125,18.00},proc=DE_RuptureRamp#SetVarProc,value=_num:0
-	SetVariable de_RupRamp_setvar4,limits={0,inf,0},title="Static\rOffset"
-	SetVariable de_RupRamp_setvar5,pos={105,390},size={50.00,18.00},proc=DE_RuptureRamp#SetVarProc,value=_num:10e-9
-	Setvariable de_RupRamp_setvar5,limits={0,inf,0}
-	SetVariable de_RupRamp_setvar6,pos={200,460},size={150.00,18.00},proc=DE_RuptureRamp#SetVarProc,value=_num:0
-	SetVariable de_RupRamp_setvar6,limits={0,inf,0},title="Custom\rForce Shift"
-	SetVariable de_RupRamp_setvar7,pos={400,460},size={150.00,18.00},proc=DE_RuptureRamp#SetVarProc,value=_num:0
-	SetVariable de_RupRamp_setvar7,limits={0,inf,0},title="Custom\rSepShift"
-	SetVariable de_RupRamp_setvar8,pos={105,555},size={50.00,18.00},proc=DE_RuptureRamp#SetVarProc,value=_num:10e-9
-	Setvariable de_RupRamp_setvar8,limits={0,inf,0}
-	SetVariable de_RupRamp_setvar9,pos={350,740},size={50.00,18.00},proc=DE_RuptureRamp#SetVarProc,value=_num:0
-	SetVariable de_RupRamp_setvar9,limits={0,inf,0}
 
-	CheckBox de_RupRamp_check0 title="All Sep Shift",pos={295,315},size={150,25},proc=DE_RuptureRamp#CheckProc
-//	//CheckBox de_RupRamp_check1 title="Fit Folded",pos={550,450},size={150,25},proc=DE_RuptureRamp#CheckProc
-	CheckBox de_RupRamp_check1 title="Fit Folded",pos={10,610},size={150,25},proc=DE_RuptureRamp#CheckProc
+	SetVariable de_RupRamp_setvar2,pos={547.00,480.00},size={50.00,18.00},proc=DE_RuptureRamp#SetVarProc,value=_num:10e-9
+	SetVariable de_RupRamp_setvar2,limits={0,inf,0}
+	
+	SetVariable de_RupRamp_setvar3,pos={470.00,520.00},size={99.00,18.00},proc=DE_RuptureRamp#SetVarProc,value=_num:3e-9
+	SetVariable de_RupRamp_setvar3,limits={0,inf,0},title="Distance"
 
+	SetVariable de_RupRamp_setvar5,pos={470.00,420},size={150,18.00},proc=DE_RuptureRamp#SetVarProc,value=_num:0
+	SetVariable de_RupRamp_setvar5,limits={0,inf,0},title="SepMin"
+	
+	CheckBox de_RupRamp_check0 title="All Sep Shift",pos={450,450},size={150,25},proc=DE_RuptureRamp#CheckProc
+
+	//CheckBox de_RupRamp_check1 title="Fit Folded",pos={550,450},size={150,25},proc=DE_RuptureRamp#CheckProc
+	CheckBox de_RupRamp_check2 title="Fit Folded",pos={500,550},size={150,25},proc=DE_RuptureRamp#CheckProc
+	CheckBox de_RupRamp_check3 title="No Delays",pos={225,80},size={150,20},proc=DE_RuptureRamp#CheckProc
+
+	ControlUpdate/A/W=RupRampPanel
 EndMacro
 
+Static Function UpdateParmWave()
+	//	if(exists("root:DE_RupRamp:MenuStuff:ParmWave")==1)
+	//		wave/t/z Par=root:DE_RupRamp:MenuStuff:ParmWave
+	//		wave/z Sel=root:DE_RupRamp:MenuStuff:SelWave
+	//	Else
+	//		make/t/n=(8,2) root:DE_RupRamp:MenuStuff:ParmWave
+	//		wave/t/z Par=root:DE_RupRamp:MenuStuff:ParmWave
+	//		make/n=(8,2) root:DE_RupRamp:MenuStuff:SelWave
+	//		wave/z Sel=root:DE_RupRamp:MenuStuff:SelWave
+	//		
+	//		Par[0][0]={"Number of States","Number of Modes","Drift Bound (nm)","Sd. Deviation (nm)","Transition Bound","Iterations","Smoothing","Decimating"}
+	//		Par[0][1]={"2","4",".5",".2",".5","3","50e-9","10"}
+	//		Sel[][0]=0
+	//		Sel[][1]=2
+	//	endif
+	
+	if(exists("root:DE_RupRamp:MenuStuff:PyParmWave")==1)
+		wave/t/z Par=root:DE_RupRamp:MenuStuff:ParmWave
+		wave/z Sel=root:DE_RupRamp:MenuStuff:SelWave
+	Else
+		make/t/n=(4,2) root:DE_RupRamp:MenuStuff:PyParmWave
+		wave/t/z Par=root:DE_RupRamp:MenuStuff:PyParmWave
+		make/n=(4,2) root:DE_RupRamp:MenuStuff:PySelWave
+		wave/z Sel=root:DE_RupRamp:MenuStuff:PySelWave
+		
+		Par[0][0]={"Smoothing","Decimating","GaussParm","Threshhold"}
+		Par[0][1]={"50e-9","1","5","0.1"}
+		Sel[][0]=0
+		Sel[][1]=2
+	endif
 
+
+end
 
 Static Function/S ListWaves(ControlStr,SearchString)
 	string ControlStr,SearchString
@@ -1788,6 +1625,7 @@ Static Function CheckPointWave()
 	endfor
 	for(n=0;n<numpnts(DownPoints);n+=1)
 	endfor
+
 
 end
 
@@ -1933,3 +1771,53 @@ end
 //	
 //end
 
+Static Function FitHMMButt()
+
+				//					saveDF = GetDataFolder(1)
+					//					wave/T parmWave=root:DE_RupRamp:MenuStuff:ParmWave
+					//
+					//					controlinfo de_RupRamp_popup0
+					//					SetDataFolder s_value
+					//					controlinfo de_RupRamp_popup1
+					//					wave ForceWave=$S_value
+					//					wave SepWave=$ReplaceString("Force",S_value,"Sep")
+					//					//			variable FOffset
+					//
+					//					make/o/n=0 RupPntU,RupPntD
+					//		
+					//					make/o/n=0 ForceWaveS,SepWaveS
+					//					//DE_Filtering#FilterForceSep(ForceWave,SepWave,ForceWaveS,SepWaveS,"SVG",str2num(parmWave[6][1]))
+					//					DE_Filtering#FilterForceSep(ForceWave,SepWave,ForceWaveS,SepWaveS,"TVD",str2num(parmWave[6][1]))
+					//					ForceWaveS*=-1
+					//					wavestats/q ForceWaveS
+					//					FOffset=v_min
+					//					FOffset-=0e-12
+					//					ForceWaveS-=FOffset
+					//					Soffset= SepWaveS[0]-0e-9
+					//					SepWaveS-=Soffset
+					//					duplicate/o ForceWaveS LC
+					//					LC=DE_WLC#ContourTransform(ForceWaveS,SepWaveS,.4e-9,298)		
+					//					LC*=1e9	
+					//					setscale/P x dimoffset(ForceWave,0), dimdelta(ForceWave,0), "s", LC//ensuring scaling of input and output wave are the same
+					//					Resample/DOWN=(str2num(parmWave[7][1]))/N=1/WINF=None LC
+					//
+					//					DriftMarkovFitter(LC, str2num(parmWave[0][1]), str2num(parmWave[1][1]), dimdelta(LC,0),str2num(parmWave[2][1]),str2num(parmWave[3][1]), str2num(parmWave[4][1]), str2num(parmWave[5][1]))
+					//
+					//					wave HidMar0,HidMar1,HidMar2,HidMar3,HidMar4
+					//					setscale/P x dimoffset(LC,0), dimdelta(LC,0), "s", HidMar2//ensuring scaling of input and output wave are the same
+					//
+					//					make/o/n=0 RupForcesU,RupTimesU,RupForcesD,RupTimesD,RupPntU,RupPntD
+					//					FindStateChangesSimple(HidMar2,ForceWave,ForceWaveS,SepWaveS,RupPntU,RupPntD)
+					//					RupForcesU+=FOffset
+					//					RupForcesD+=FOffset
+					//					ForceWaveS+=FOffset
+					//
+					//					duplicate/o hidmar0 Data
+					//					duplicate/o hidmar1 Fit
+					//					Killwaves HidMar0,HidMar1,HidMar2,HidMar3,HidMar4
+					//					killwaves SepWaveS,ForceWaveS,LC
+					//					//killwaves Data,Fit
+					//					SetDataFolder saveDF
+					
+					
+					end

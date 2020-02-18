@@ -615,10 +615,10 @@ Function RunOnCombinedData(BaseString,ForceShifting,WLCShifting,[AltWLC])
 	endif
 	string UFHIstString=(BaseString+"_Count_UFHIst")
 	string FHIstString=(BaseString+"_Count_FHIst")
-	make/o/n=16 $UFHIstString/Wave=UFHIst
-	make/o/n=22 $FHIstString/Wave=FHIst
-	SetScale/P x 6e-12,.5e-12,"", FHist;SetScale/P x 6e-12,1e-12,"", UFhist
-
+	make/o/n=28 $UFHIstString/Wave=UFHIst
+	make/o/n=24 $FHIstString/Wave=FHIst
+	SetScale/P x -1e-12,.5e-12,"", FHist;SetScale/P x 0e-12,1e-12,"", UFhist
+	
 	PushThrough(ForceWave,SepWave,0,StateWave,FHist,UFhist,WLCOut,ForceShifting)
 	string NameString=stringfromlist(0,nameofwave(ForceWave),"_")+"_"+stringfromlist(1,nameofwave(ForceWave),"_")
 	wave FAddHist,FaddTime,Frate,URate,UAddHist,UAddTime,FSm,SSm,ResultstoHold,ReturnTimesFoldedMassive,ReturnTimesUnfoldedMassive
@@ -710,6 +710,7 @@ end
 Static Function CompileTransitionWaves(FolderString,BaseNameString)
 	String FolderString,BaseNameString
 	Wave InputWave=$(folderstring+":"+BaseNameString+"_AllTrans")
+	print (folderstring+":"+BaseNameString+"_AllTrans")
 	wave OrigFoldHist=$(folderstring+":"+BaseNameString+"_FoldHist")
 	wave OrigUnFoldHist=$(folderstring+":"+BaseNameString+"_UnFoldHist")
 	wave FoldedTimes=$(folderstring+":"+BaseNameString+"_FoldTimes")

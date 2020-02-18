@@ -164,19 +164,24 @@ end
 
 
 
-Function PlotaBlock(Start,EndNum)
-	variable start,endnum
+Function PlotaBlock(Start,EndNum,[Filtering])
+	variable start,endnum,Filtering
 	variable n
 	for(n=start;n<endnum;n+=1)
+	if(ParamisDefault(Filtering))
 	
 	TweakRupturesandAssignValue(n)
+	else
+		TweakRupturesandAssignValue(n,filternumber=Filtering)
+
+	endif
 	print n
 	endfor
 
 end
 
-Function TweakRupturesandAssignValue(Number)
-	variable Number
+Function TweakRupturesandAssignValue(Number,[filternumber])
+	variable Number,filternumber
 	string AllForceRet= wavelist("*Force_Ret",";","")
 	String ForceWaveList="",SepWaveList=""
 	variable n
@@ -198,7 +203,22 @@ Function TweakRupturesandAssignValue(Number)
 		make/o/n=0 $replacestring("Force_Ret",nameofwave(ForceRetWave),"FSm"),$replacestring("Force_Ret",nameofwave(ForceRetWave),"SSm")
 		wave FRetSm=$replacestring("Force_Ret",nameofwave(ForceRetWave),"FSm")
 		wave SRetSm=$replacestring("Force_Ret",nameofwave(ForceRetWave),"SSm")
-		DE_Filtering#FilterForceSep(ForceRetWave,SepRetWave,FRetSm,SRetSm,"SVG",51)
+		if(paramisdefault(filternumber))
+			filternumber=51
+		else
+		endif
+		
+		if(filternumber>5)
+				DE_Filtering#FilterForceSep(ForceRetWave,SepRetWave,FRetSm,SRetSm,"SVG",filternumber)
+
+		elseif(filternumber<1)
+				DE_Filtering#FilterForceSep(ForceRetWave,SepRetWave,FRetSm,SRetSm,"TVD",filternumber)
+
+		else
+			DE_Filtering#FilterForceSep(ForceRetWave,SepRetWave,FRetSm,SRetSm,"SVG",51)
+
+		endif
+
 		duplicate/o ThisEvent FreeRupPnts
 		FreeRupPnts-=NUMPNTS(SepExtWave)
 		MakeNicePlot(ForceRetWave,sEPRetWave,FRetSm,SRetSm,FreeRupPnts)

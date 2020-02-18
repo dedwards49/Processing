@@ -1006,7 +1006,6 @@ Static Function SequenceManyGlide([starttrace,endtrace,FitType])
 		FitType="LinSin"
 	else 
 	endif
-	
 	variable PntsFound=0,n
 	
 	wave DeflExtWave=$stringfromlist(starttrace,AllDeflEXtList)
@@ -1042,7 +1041,7 @@ Static Function SequenceManyGlide([starttrace,endtrace,FitType])
 				SchollGlidePair(DeflExtWave,startpnt,endpnt,FitType=FitType)
 			
 		else
-			
+			print n
 		endif
 
 	endfor

@@ -199,48 +199,72 @@ Static Function LBP1(ctrlName,row,col,event) : ListBoxControl
 			break			
 		case 4:
 			
-			wave ForceStart=root:DE_Viewer:FullForceSm
 
 			strswitch(CtrlName)
 				case "de_Viewer_list1":
-					wave Wave1=root:DE_Viewer:CurrUpF
-					if(numpnts(Wave1)==0)
-					else
-						wave Wave2=root:DE_Viewer:CurrUpP
-						make/o/n=1 root:DE_Viewer:SelUpY, root:DE_Viewer:SelUpX
-						wave wave3=root:DE_Viewer:SelUpY
-						wave wave4=root:DE_Viewer:SelUpX
-						wave3=Wave1[row]
-						wave4=pnt2x(ForceStart,Wave2[row])
-						start=pnt2x(ForceStart,Wave2[row])-20e-3
-						stop=pnt2x(ForceStart,Wave2[row])+50e-3
-					endif
+					UpdateCurrList(row,"Up")
+					
 					break
 			
 				case "de_Viewer_list2":
-					wave Wave1=root:DE_Viewer:CurrDownF
-					if(numpnts(Wave1)==0)
-					else
-						wave Wave2=root:DE_Viewer:CurrDownP
-						make/o/n=1 root:DE_Viewer:SelDownY, root:DE_Viewer:SelDownX
-						wave wave3=root:DE_Viewer:SelDownY
-						wave wave4=root:DE_Viewer:SelDownX
-						wave3=Wave1[row]
-						wave4 =pnt2x(ForceStart,Wave2[row])
-						start=pnt2x(ForceStart,Wave2[row])-20e-3
-						stop=pnt2x(ForceStart,Wave2[row])+50e-3
-					endif
+					UpdateCurrList(row,"Down")
 
 
 					break
 			
-					break
 			endswitch
-			UpdateAxis(start,stop)
+			break
 	endswitch
 	
 	return 0
 End
+
+Static Function UpdateCurrList(number,Type)
+	variable number
+	String Type
+	wave ForceStart=root:DE_Viewer:FullForceSm
+	variable start,stop
+	StrSwitch(Type)
+
+		case "Up":
+			wave Wave1=root:DE_Viewer:CurrUpF
+			if(numpnts(Wave1)==0)
+			else
+				wave Wave2=root:DE_Viewer:CurrUpP
+				make/o/n=1 root:DE_Viewer:SelUpY, root:DE_Viewer:SelUpX
+				wave wave3=root:DE_Viewer:SelUpY
+				wave wave4=root:DE_Viewer:SelUpX
+				wave3=Wave1[number]
+				wave4=pnt2x(ForceStart,Wave2[number])
+				start=pnt2x(ForceStart,Wave2[number])-20e-3
+				stop=pnt2x(ForceStart,Wave2[number])+50e-3
+			endif
+			break
+
+		case "Down":
+			wave Wave1=root:DE_Viewer:CurrDownF
+			if(numpnts(Wave1)==0)
+			else
+				wave Wave2=root:DE_Viewer:CurrDownP
+				make/o/n=1 root:DE_Viewer:SelDownY, root:DE_Viewer:SelDownX
+				wave wave3=root:DE_Viewer:SelDownY
+				wave wave4=root:DE_Viewer:SelDownX
+				wave3=Wave1[number]
+				wave4 =pnt2x(ForceStart,Wave2[number])
+				start=pnt2x(ForceStart,Wave2[number])-20e-3
+				stop=pnt2x(ForceStart,Wave2[number])+50e-3
+			endif
+			break
+
+		default:
+
+
+
+	endswitch
+	UpdateAxis(start,stop)
+
+
+end
 
 Static Function LBP2(ctrlName,row,col,event) : ListBoxControl
 
@@ -1758,6 +1782,19 @@ Static Function ChangeListItem(ListName,Direction)
 		ListBox $ListName selrow= new
 		
 	endif
+	strswitch(ListName)
+		case "de_Viewer_list1":
+			UpdateCurrList(new,"Up")
+					
+			break
+			
+		case "de_Viewer_list2":
+			UpdateCurrList(new,"Down")
+
+
+			break
+			
+	endswitch
 end
 //
 //Function DemoWindowHook()

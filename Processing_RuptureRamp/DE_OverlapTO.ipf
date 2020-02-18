@@ -13,10 +13,80 @@
 //	duplicate/o FreeSep,SepOut
 //	duplicate/o FreeForce ForceOut
 //end
+Static Function RunThroughTextWave(FolderString,TextWave,TimeOut,DeflShiftOut,ZSnsrShiftOut)
+	string FolderString
+	wave/T TextWave,TimeOut
+	wave DeflShiftOut,ZSnsrShiftOut
+	variable n=0
+	variable items=dimsize(Textwave,0)
+	make/free/n=(items)/T FreeTimeOut
 
-Function/C ReturnShifts(CtrlDef,CtrlZSnsr,CompDef,CompZSnsr)
+	make/free/n=(items) FreeDeflShiftOut,FreeZSnsrShiftOut
+	wave BaseDWave=$(FolderString+TextWave[0])
+	wave BaseZWave=$(FolderString+replacestring("D",TextWave[0],"Z"))
+	FreeTimeOut[0]=stringbykey("Time",note(BaseDWave),":","\r")
+	FreeDeflShiftOut[0]=0
+	FreeZSnsrShiftOut[0]=0
+	
+	String WindowName="GetBase"
+	dowindow $WindowName
+	if(v_flag==1)
+		killwindow $WindowName
+
+	endif
+	display/N=$WindowName BaseDWave vs BaseZWave
+
+	ModifyGraph/W=$WindowName rgb($nameofwave(BaseDWave))=(0,0,0)
+
+	ShowInfo
+	
+	Variable rval= UserCursorAdjust(WindowName)
+	if (rval == -1)							// Graph name error?
+		return -1;
+	endif
+
+	if (rval == 1)								// User canceled?
+		DoAlert 0,"Canceled"
+		return -1;
+	endif
+	variable startpnt=pcsr(A)
+	variable endpnt=pcsr(B)
+	killwindow $windowname
+
+	variable Invols,ZLVDTsens
+	variable/c Result
+	for(n=1;n<items;n+=1)
+		
+		wave w1=$(FolderString+TextWave[n])
+		wave w2=$(FolderString+replacestring("D",TextWave[n],"Z"))		
+		FreeTimeOut[n]=stringbykey("Time",note(w1),":","\r")
+		Result=ReturnShifts(BaseDWave,BaseZWave,w1,w2,startpnt=startpnt,endpnt=endpnt)
+		DoUpdate/W=ShiftGraph
+		Invols=str2num(stringbykey("Invols",note(w1),":","\r"))
+		ZLVDTsens=str2num(stringbykey("ZLVDTSens",note(w1),":","\r"))
+		FreeDeflShiftOut[n]=imag(Result)*Invols
+		FreeZSnsrShiftOut[n]=real(Result)*ZLVDTsens
+		Sleep 00:00:02
+		KillWindow/Z ShiftGraph
+
+	endfor
+	duplicate/o/t FreeTimeOut Timeout
+	duplicate/o FreeDeflShiftOut DeflShiftOut
+	duplicate/o FreeZSnsrShiftOut ZSnsrShiftOut
+
+end
+
+Function/C ReturnShifts(CtrlDef,CtrlZSnsr,CompDef,CompZSnsr,[startpnt,endpnt])
 	wave CtrlDef,CtrlZSnsr,CompDef,CompZSnsr
-	variable/C FitParms=LineFit(CtrlDef,CtrlZSnsr)
+	variable startpnt,endpnt
+	variable/C FitParms
+	if(ParamisDefault(startpnt)||ParamisDefault(endpnt))
+		FitParms=LineFit(CtrlDef,CtrlZSnsr)
+
+	else
+		FitParms=LineFit(CtrlDef,CtrlZSnsr,startpnt=startpnt,endpnt=endpnt)
+
+	endif
 	make/free/n=2 LineParms
 	LineParms[0]=real(FitParms)
 	LineParms[1]=imag(FitParms)
@@ -45,6 +115,8 @@ Function/C ReturnShifts(CtrlDef,CtrlZSnsr,CompDef,CompZSnsr)
 	ModifyGraph offset($nameofwave(CompDef))={real(shifts)+adaptx,shifty-imag(shifts)}
 	return cmplx(real(shifts)+adaptx,shifty-imag(shifts))
 end
+
+
 Function DE_ShiftLine(w,x) : FitFunc
 	Wave w
 	Variable x
@@ -65,21 +137,26 @@ Function DE_ShiftLine(w,x) : FitFunc
 	return w[0]*(x+w[2])+w[1]+w[3]
 End
 
- Function/C LineFit(Yin,XIn)
+ Function/C LineFit(Yin,XIn,[startpnt,endpnt])
 	wave Yin,XIn
+	variable startpnt,endpnt
 		String WindowName="LineFitWin"
 
-	dowindow $WindowName
+
+	
+	
+	if(ParamisDefault(startpnt)||ParamisDefault(endpnt))
+		dowindow $WindowName
 	if(v_flag==1)
-	
-	killwindow $WindowName
+		killwindow $WindowName
+
 	endif
-	
-	display/N=$WindowName Yin vs XIn
+		display/N=$WindowName Yin vs XIn
+
 	ModifyGraph/W=$WindowName rgb($nameofwave(YIn))=(0,0,0)
 
 	ShowInfo
-
+	
 	Variable rval= UserCursorAdjust(WindowName)
 	if (rval == -1)							// Graph name error?
 		return -1;
@@ -89,13 +166,21 @@ End
 		DoAlert 0,"Canceled"
 		return -1;
 	endif
+	startpnt=pcsr(A)
+	endpnt=pcsr(B)
+		killwindow $windowname
 
-	CurveFit/Q/W=2 line YIn[pcsr(A),pcsr(B)] /X=XIn /D 
+	else
+	
+	
+	endif
+	
+
+	CurveFit/Q/W=2 line YIn[startpnt,endpnt] /X=XIn /D 
 	wave w_coef
 	variable/c Result= cmplx(w_coef[0],w_coef[1])
 
 	killwaves w_coef
-		killwindow $windowname
 
 	return Result
 end
@@ -135,7 +220,7 @@ Function/C ShiftLineFit(YIn,XIn,Lineparms)
 end
 
 
-Function UserCursorAdjust(graphName)
+Static Function UserCursorAdjust(graphName)
 	String graphName
 
 	DoWindow/F $graphName			// Bring graph to front
@@ -167,7 +252,7 @@ Function UserCursorAdjust(graphName)
 	return canceled
 End
 
-Function UserCursorAdjust_ContButtonProc(ctrlName) : ButtonControl
+Static Function UserCursorAdjust_ContButtonProc(ctrlName) : ButtonControl
 	String ctrlName
 	DoWindow/K tmp_PauseforCursor			// Kill self
 End

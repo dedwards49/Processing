@@ -345,138 +345,6 @@ Static Function FindStatesbyTimebyIndex(Force,n,State,WLCParms,ForceWave,Sepwave
 end
 
 
-//
-//Static Function/C FindStatesbyTimebyIndex(Force,n,WLCParms,ForceWave,Sepwave,StateWave,[Diagnostic])
-//	variable n,Force,Diagnostic
-//	wave WLCParms,StateWave,Sepwave,ForceWave
-//	variable FOldedLC=WLCPArms[0]
-//	variable UnfoldedLC=WLCPArms[1]
-//	Variable FOrceOff=WLCPArms[2]
-//	variable SepOff=WLCPArms[3]
-//	variable FoldedExt= DE_WLC#ReturnExtentionatForce(Force+FOrceOff,.4e-9,FOldedLC,298)+SepOff
-//	variable UnFoldedExt= DE_WLC#ReturnExtentionatForce(Force+FOrceOff,.4e-9,UnFOldedLC,298)+SepOff
-//	variable FoldedTime1,FoldedTime2,UnfoldedTime1,UnfoldedTime2,foldedcounts1,unfoldedcounts1,foldedcounts2,unfoldedcounts2
-//	foldedcounts1=1
-//	unfoldedcounts2=1
-//
-//	//print FoldedExt;print UnFoldedExt
-//	make/free/n=(dimsize(Statewave,0)) Points,RupForce,Type,Trace
-//	Points=Statewave[p][0]
-//	RupForce=-Statewave[p][1]
-//	Type=Statewave[p][2]
-//	Trace=Statewave[p][3]
-//	
-//	Extract/INDX/Free Points, LocalIndex, Trace==n
-//	make/free/n=(numpnts(LocalIndex)+1) LocalPoints,LocalType,LocalTrace
-//	LocalPoints[]=Points[LocalIndex[0]+p][0]
-//	LocalType[]=Type[LocalIndex[0]+p][2]
-//	LocalTrace[]=Trace[LocalIndex[0]+p][2]
-//	FindValue/V=-2/T=.1 LocalType
-//	variable turnaround=v_value
-//	
-//	duplicate/o/R=[LocalPoints[0],LocalPoints[turnaround]] SepWave, FirstSepWave,FirstSepWaveFolded,FirstSepWaveUnfolded
-//	duplicate/o/R=[LocalPoints[turnaround],LocalPoints[numpnts(localpoints)-2]] SepWave, SecondSepWave,SecondSepWaveFolded,SecondSepWaveUnfolded
-//	duplicate/o/R=[LocalPoints[0],LocalPoints[turnaround]] ForceWave, FirstForceWave
-//	duplicate/o/R=[LocalPoints[turnaround],LocalPoints[numpnts(localpoints)-1]] ForceWave, SecondForceWave
-//
-//	GenerateSepLine(ForceWave,SepWave,StateWave,n,0,0,FirstSepWaveUnfolded)
-//	GenerateSepLine(ForceWave,SepWave,StateWave,n,0,1,FirstSepWaveFolded)
-//	GenerateSepLine(ForceWave,SepWave,StateWave,n,1,0,SecondSepWaveUnfolded)
-//	GenerateSepLine(ForceWave,SepWave,StateWave,n,1,1,SecondSepWaveFolded)
-//
-//
-////	CurveFit/Q line FirstSepWave[0,LocalPoints[1]-LocalPoints[0]] 
-////	wave W_coef
-////	FirstSepWaveFolded=W_coef[0]+W_coef[1]*x
-////	CurveFit/Q line FirstSepWave[LocalPoints[turnaround-1]-LocalPoints[0],LocalPoints[turnaround]-LocalPoints[0]] 
-////	FirstSepWaveUnFolded=W_coef[0]+W_coef[1]*x
-////	CurveFit/Q line SecondSepWave[0,LocalPoints[turnaround+1]-LocalPoints[turnaround]] 
-////	SecondSepWaveFolded=W_coef[0]+W_coef[1]*x
-////	CurveFit/Q line SecondSepWave[LocalPoints[numpnts(LocalPoints)-3]-LocalPoints[turnaround],LocalPoints[numpnts(LocalPoints)-2]-LocalPoints[turnaround]] 
-////	SecondSepWaveUnFolded=W_coef[0]+W_coef[1]*x
-//
-//	if(wavemin(FirstSepWaveFolded)>FoldedExt)
-//		FoldedTime1=pnt2x(Sepwave,LocalPoints[0])
-//	elseif(wavemax(FirstSepWaveFolded)<FoldedExt)
-//		FoldedTime1=pnt2x(Sepwave,LocalPoints[turnaround])
-//	else
-//		FindLevels/Q FirstSepWaveFolded FoldedExt
-//		wave W_FindLevels
-//		FoldedTime1 = mean(W_FindLevels)//-pnt2x(FirstSepWave,0)
-//	endif
-//	
-//	if(wavemax(SecondSepWaveFolded)<FoldedExt)
-//		FoldedTime2=pnt2x(Sepwave,LocalPoints[turnaround])
-//	elseif(wavemin(SecondSepWaveFolded)>FoldedExt)
-//			FoldedTime2=pnt2x(Sepwave,LocalPoints[numpnts(LocalPoints)-2])
-//	else
-//		FindLevels/Q SecondSepWaveFolded FoldedExt
-//		FoldedTime2= mean(W_FindLevels)//-pnt2x(FirstSepWave,0)
-//	endif
-//	
-//	if(wavemin(FirstSepWaveUnFolded)>unFoldedExt)
-//			unFoldedTime1=pnt2x(Sepwave,LocalPoints[0])
-//	elseif(wavemax(FirstSepWaveUnFolded)<unFoldedExt)
-//			unFoldedTime1=pnt2x(Sepwave,LocalPoints[turnaround])
-//	else
-//		FindLevels/Q FirstSepWaveUnFolded unFoldedExt
-//		wave W_FindLevels
-//		UnfoldedTime1= mean(W_FindLevels)//-pnt2x(FirstSepWave,0)
-//	endif
-//	
-//	if(wavemax(SecondSepWaveUnFolded)<unFoldedExt)
-//				unFoldedTime2=pnt2x(Sepwave,LocalPoints[turnaround])
-//	elseif(wavemin(SecondSepWaveUnFolded)>unFoldedExt)
-//				unFoldedTime2=pnt2x(Sepwave,LocalPoints[numpnts(LocalPoints)-2])
-//	else
-//		FindLevels/Q SecondSepWaveUnFolded unFoldedExt
-//		UnfoldedTime2= mean(W_FindLevels)//-pnt2x(FirstSepWave,0)
-//	endif
-//
-//	variable m
-//	for(m=1;m<turnaround;m+=1)
-//
-//		if(pnt2x(Sepwave,LocalPoints[m])<FoldedTime1)
-//			foldedcounts1+= LocalType[m] 
-//
-//		endif
-//		if(pnt2x(Sepwave,LocalPoints[m])<unFoldedTime1)
-//			unfoldedcounts1-= LocalType[m] 
-//
-//		endif
-//	endfor
-//	
-//	for(m=turnaround+1;m<numpnts(LocalPoints)-2;m+=1)
-//
-//		if(pnt2x(Sepwave,LocalPoints[m])<FoldedTime2)
-//			foldedcounts2+= LocalType[m] 
-//
-//
-//		endif
-//		if(pnt2x(Sepwave,LocalPoints[m])<unFoldedTime2)
-//			unfoldedcounts2-= LocalType[m] 
-//
-//		endif
-//	endfor
-//	wave W_Sigma
-//	killwaves/Z w_coef, W_FindLevels,w_sigma
-//	if(!ParamisDefault(Diagnostic))
-//		make/o/n=(100) WFoldedExt,WUnfoldedExt
-//		WFoldedExt=FoldedExt
-//		WUnfoldedExt=UnFoldedExt
-//		duplicate/o/r=[LocalPoints[0],LocalPoints[numpnts(localpoints)-1]] ForceWave ForceOut
-//		duplicate/o/r=[LocalPoints[0],LocalPoints[numpnts(localpoints)-1]] SepWave sepOut
-//		SetScale/I x pnt2x(FirstSepWave,0),pnt2x(SecondSepWave,numpnts(SecondSepWave)-1),"", WUnfoldedExt,WFoldedExt
-//		duplicate/free/R=[LocalPoints[0],LocalPoints[numpnts(localpoints)-1]] SepWave, TotalSep
-//		duplicate/o LocalPoints LocalPointsOut,LocalSepsOut
-//		variable UG=LocalPointsOut[0]
-//		LocalPointsOut-=UG
-//		LocalPointsOut=pnt2x(TotalSep,(LocalPointsOut))
-//		LocalSepsOut=TotalSep(LocalPointsOut)
-//	endif
-//	return cmplx(foldedcounts1+foldedcounts2,unfoldedcounts1+unfoldedcounts2)
-//	
-//end
 
 //This function generates AccState,FoldedAcc,UnfoldedAcc which are accumulated from the StateWave.
 //It concatenates the Statewave onto the AccState. As usual the State wave includes all the exciting
@@ -718,7 +586,7 @@ Static Function ButtonProc(ba) : ButtonControl
 					//HistogramButton()
 					CreateSlopeWave()
 					NumbersCalc()
-					MakeRates()
+					makeRates()
 					CalcErrorBars()
 					//print (stopmstimer(-2)-ms)/1e6
 					break
@@ -846,6 +714,57 @@ Static Function MakeSomeNicePlots()
 
 end
 
+
+
+Static Function CutStatebySep(ForceIn,SepIn,ForceOut,SepOut,SepMax,SepMin)
+
+	wave ForceIn,SepIn,ForceOut,SepOut
+	variable SepMax,SepMin
+	duplicate/free ForceIn FreeForce
+	duplicate/free SepIn FreeSep
+	variable n
+	string NewNote
+	if(SepMax!=0&&SepMax!=0)
+		for(n=0;n<numpnts(FreeSep);n+=1)
+			if(FreeSep[n]<SepMin||FreeSep[n]>SepMax)
+				FreeSep[n]=NaN
+				FreeForce[n]=NaN
+			
+			endif
+			NewNote=Replacestringbykey("DE_SepMax",note(ForceIn),num2str(SepMax),":","\r")
+			NewNote=Replacestringbykey("DE_SepMin",NewNote,num2str(SepMin),":","\r")
+
+		endfor
+	
+	elseif(SepMax!=0)
+		for(n=0;n<numpnts(FreeSep);n+=1)
+			if(FreeSep[n]>SepMax)
+				FreeSep[n]=NaN
+				FreeForce[n]=NaN
+
+			endif
+
+		endfor
+		NewNote=Replacestringbykey("DE_SepMax",note(ForceIn),num2str(SepMax),":","\r")
+
+	
+	elseif(SepMin!=0)
+		for(n=0;n<numpnts(FreeSep);n+=1)
+			if(FreeSep[n]<SepMin)
+				FreeSep[n]=NaN
+				FreeForce[n]=NaN
+
+			endif
+		
+		endfor
+		NewNote=Replacestringbykey("DE_SepMin",note(ForceIn),num2str(SepMin),":","\r")
+
+	endif
+	duplicate/o FreeSep SepOut
+	duplicate/o FreeForce ForceOut
+
+end
+
 //This will be used to get the WLC parameters for this sucker. The waves have already been accumulated
 Static Function FittheContour()
 	string saveDF = GetDataFolder(1)
@@ -853,19 +772,46 @@ Static Function FittheContour()
 	string AccFolder=S_Value
 	controlinfo/W=DudkoAnalysis de_Dudko_popup1
 	string listofNames=StringListofAccnames(s_value,AccFolder)
+	wave JustForce=$stringfromlist(2,listofnames)
 	wave FoldedForceOut=$stringfromlist(4,listofnames)
 	wave FoldedSepOut=$stringfromlist(5,listofnames)
 	wave unfoldedForceOut=$stringfromlist(6,listofnames)
 	wave unFoldedsepOut=$stringfromlist(7,listofnames)
 	make/o/n=0 $stringfromlist(8,listofnames)
 	wave OutputResults=$stringfromlist(8,listofnames)
+	variable DE_MinSep=str2num(stringbykey("DE_SepMin",note(JustForce),":","\r"))
+	print DE_MinSep
+	if(DE_MinSep==0)
+	
+	else
+		make/o/n=0 $(nameofwave(FoldedForceOut)+"_Cut"),$(nameofwave(FoldedSepOut)+"_Cut")
+		wave CutForce=$(nameofwave(FoldedForceOut)+"_Cut")
+		wave CutSep=$(nameofwave(FoldedSepOut)+"_Cut")
+		CutStatebySep(FoldedForceOut,FoldedSepOut,CutForce,CutSep,DE_MinSep,0)
+
+		CutStatebySep(FoldedForceOut,FoldedSepOut,FoldedForceOut,FoldedSepOut,0,DE_MinSep)
+
+	endif
 	WLCFitter(FoldedForceOut,FoldedSepOut,unfoldedForceOut,unFoldedsepOut,OutputResults,1)
 	display FoldedForceOut vs FoldedSepOut
 	appendtograph unfoldedForceOut vs unFoldedsepOut
+	ModifyGraph rgb($nameofwave(FoldedForceOut))=(0,26214,39321)//
+	ModifyGraph rgb($nameofwave(UnFoldedForceOut))=(19789,44975,19018)
+	if(DE_MinSep==0)
+	
+	else
+		appendtograph CutForce vs CutSep
+		ModifyGraph rgb($nameofwave(CutForce))=(58596,6682,7196)
+
+	endif
 	wave FFIt=$("fit_"+nameofwave(FoldedForceOut))
 	wave UFIt=$("fit_"+nameofwave(unfoldedForceOut))
 	appendtograph FFit
 	appendtograph UFIt
+	ModifyGraph rgb($nameofwave(FFit))=(0,0,0)
+	ModifyGraph rgb($nameofwave(UFIt ))=(0,0,0)
+
+	//ModifyGraph //,,rgb(pH6p2M1_20_5_FoldedForce_Cut)=(58596,6682,7196),rgb(fit_pH6p2M1_20_5_FoldedForce)=(0,0,0),rgb(fit_pH6p2M1_20_5_UnFoldedForce)=(0,0,0)
 
 end 
 
@@ -1475,12 +1421,12 @@ Static Function WLCFitter(FoldedForceWave,FoldedSepWave,UnFoldedForceWave,UnFold
 	Wave FoldedForceWave,FoldedSepWave,UnFoldedForceWave,UnFoldedSepWave,OutputResults
 	variable fitfoldedfirst
 	make/free/n=0 W_coef
-	variable fitstart=FoldedSepWave[0]-10e-9,FoldedContour,ForceOffset,UnfoldedContour
+	variable fitstart=wavemin(FoldedSepWave)-10e-9,FoldedContour,ForceOffset,UnfoldedContour
 
 	W_coef[0] = {-.4e-9,100e-9,298,0,fitstart}
 	Make/free/T/N=2 T_Constraints
 	//T_Constraints[0] = {"K4<"+num2str(fitstart+3e-9),"K4>"+num2str(fitstart-30e-9),"K3<"+num2str(1e-12),"K3>"+num2str(-1e-12)}
-	T_Constraints[0] = {"K3<"+num2str(3e-12),"K3>"+num2str(-3e-12),"K4<"+num2str(fitstart+10e-9),"K4>"+num2str(fitstart-30e-9)}
+	T_Constraints[0] = {"K3<"+num2str(3e-12),"K3>"+num2str(-3e-12),"K4<"+num2str(fitstart+5e-9),"K4>"+num2str(fitstart-20e-9)}
 	if(FitFOldedFirst==1)
 		FuncFit/Q/H="10100"/NTHR=0 WLC_FIT W_coef  FoldedForceWave /X=FoldedSepWave/C=T_Constraints/D
 
@@ -1896,7 +1842,7 @@ Static Function PopMenuProc1(pa) : PopupMenuControl
 			String popStr = pa.popStr
 			//variable target1= WhichListItem(stringfromlist(0,DE_NewDudko#ListWaves("de_Dudko_popup2","*Force_Align")),DE_NewDudko#ListWaves("de_Dudko_popup2","*Force*"))
 			ControlUpdate/w=RupRampPanel de_Dudko_popup3
-			popupmenu de_Dudko_popup3 win=DudkoAnalysis,popmatch="*Force_Align"
+			popupmenu de_Dudko_popup3 win=DudkoAnalysis,popmatch="*Force_Final"
 			ControlUpdate/w=RupRampPanel de_Dudko_popup4
 			popupmenu de_Dudko_popup4 win=DudkoAnalysis,popmatch="*2States*"
 			break
@@ -1966,7 +1912,7 @@ Static Function BatchProcess()
 			ControlUpdate/w=DudkoAnalysis de_Dudko_popup4
 			ControlUpdate/w=DudkoAnalysis de_Dudko_popup2
 			ControlUpdate/w=RupRampPanel de_Dudko_popup3
-			popupmenu de_Dudko_popup3 win=DudkoAnalysis,popmatch="*Force_Align"
+			popupmenu de_Dudko_popup3 win=DudkoAnalysis,popmatch="*Force_Final"
 			ControlUpdate/w=RupRampPanel de_Dudko_popup4
 			popupmenu de_Dudko_popup4 win=DudkoAnalysis,popmatch="*2States*"
 			AccumulateButton()
@@ -2063,3 +2009,137 @@ Static Function BatchSelect_ContButtonProc(ctrlName) : ButtonControl
 	DoWindow/K tmp_Select // Kill panel
 
 End
+
+
+//
+//Static Function/C FindStatesbyTimebyIndex(Force,n,WLCParms,ForceWave,Sepwave,StateWave,[Diagnostic])
+//	variable n,Force,Diagnostic
+//	wave WLCParms,StateWave,Sepwave,ForceWave
+//	variable FOldedLC=WLCPArms[0]
+//	variable UnfoldedLC=WLCPArms[1]
+//	Variable FOrceOff=WLCPArms[2]
+//	variable SepOff=WLCPArms[3]
+//	variable FoldedExt= DE_WLC#ReturnExtentionatForce(Force+FOrceOff,.4e-9,FOldedLC,298)+SepOff
+//	variable UnFoldedExt= DE_WLC#ReturnExtentionatForce(Force+FOrceOff,.4e-9,UnFOldedLC,298)+SepOff
+//	variable FoldedTime1,FoldedTime2,UnfoldedTime1,UnfoldedTime2,foldedcounts1,unfoldedcounts1,foldedcounts2,unfoldedcounts2
+//	foldedcounts1=1
+//	unfoldedcounts2=1
+//
+//	//print FoldedExt;print UnFoldedExt
+//	make/free/n=(dimsize(Statewave,0)) Points,RupForce,Type,Trace
+//	Points=Statewave[p][0]
+//	RupForce=-Statewave[p][1]
+//	Type=Statewave[p][2]
+//	Trace=Statewave[p][3]
+//	
+//	Extract/INDX/Free Points, LocalIndex, Trace==n
+//	make/free/n=(numpnts(LocalIndex)+1) LocalPoints,LocalType,LocalTrace
+//	LocalPoints[]=Points[LocalIndex[0]+p][0]
+//	LocalType[]=Type[LocalIndex[0]+p][2]
+//	LocalTrace[]=Trace[LocalIndex[0]+p][2]
+//	FindValue/V=-2/T=.1 LocalType
+//	variable turnaround=v_value
+//	
+//	duplicate/o/R=[LocalPoints[0],LocalPoints[turnaround]] SepWave, FirstSepWave,FirstSepWaveFolded,FirstSepWaveUnfolded
+//	duplicate/o/R=[LocalPoints[turnaround],LocalPoints[numpnts(localpoints)-2]] SepWave, SecondSepWave,SecondSepWaveFolded,SecondSepWaveUnfolded
+//	duplicate/o/R=[LocalPoints[0],LocalPoints[turnaround]] ForceWave, FirstForceWave
+//	duplicate/o/R=[LocalPoints[turnaround],LocalPoints[numpnts(localpoints)-1]] ForceWave, SecondForceWave
+//
+//	GenerateSepLine(ForceWave,SepWave,StateWave,n,0,0,FirstSepWaveUnfolded)
+//	GenerateSepLine(ForceWave,SepWave,StateWave,n,0,1,FirstSepWaveFolded)
+//	GenerateSepLine(ForceWave,SepWave,StateWave,n,1,0,SecondSepWaveUnfolded)
+//	GenerateSepLine(ForceWave,SepWave,StateWave,n,1,1,SecondSepWaveFolded)
+//
+//
+////	CurveFit/Q line FirstSepWave[0,LocalPoints[1]-LocalPoints[0]] 
+////	wave W_coef
+////	FirstSepWaveFolded=W_coef[0]+W_coef[1]*x
+////	CurveFit/Q line FirstSepWave[LocalPoints[turnaround-1]-LocalPoints[0],LocalPoints[turnaround]-LocalPoints[0]] 
+////	FirstSepWaveUnFolded=W_coef[0]+W_coef[1]*x
+////	CurveFit/Q line SecondSepWave[0,LocalPoints[turnaround+1]-LocalPoints[turnaround]] 
+////	SecondSepWaveFolded=W_coef[0]+W_coef[1]*x
+////	CurveFit/Q line SecondSepWave[LocalPoints[numpnts(LocalPoints)-3]-LocalPoints[turnaround],LocalPoints[numpnts(LocalPoints)-2]-LocalPoints[turnaround]] 
+////	SecondSepWaveUnFolded=W_coef[0]+W_coef[1]*x
+//
+//	if(wavemin(FirstSepWaveFolded)>FoldedExt)
+//		FoldedTime1=pnt2x(Sepwave,LocalPoints[0])
+//	elseif(wavemax(FirstSepWaveFolded)<FoldedExt)
+//		FoldedTime1=pnt2x(Sepwave,LocalPoints[turnaround])
+//	else
+//		FindLevels/Q FirstSepWaveFolded FoldedExt
+//		wave W_FindLevels
+//		FoldedTime1 = mean(W_FindLevels)//-pnt2x(FirstSepWave,0)
+//	endif
+//	
+//	if(wavemax(SecondSepWaveFolded)<FoldedExt)
+//		FoldedTime2=pnt2x(Sepwave,LocalPoints[turnaround])
+//	elseif(wavemin(SecondSepWaveFolded)>FoldedExt)
+//			FoldedTime2=pnt2x(Sepwave,LocalPoints[numpnts(LocalPoints)-2])
+//	else
+//		FindLevels/Q SecondSepWaveFolded FoldedExt
+//		FoldedTime2= mean(W_FindLevels)//-pnt2x(FirstSepWave,0)
+//	endif
+//	
+//	if(wavemin(FirstSepWaveUnFolded)>unFoldedExt)
+//			unFoldedTime1=pnt2x(Sepwave,LocalPoints[0])
+//	elseif(wavemax(FirstSepWaveUnFolded)<unFoldedExt)
+//			unFoldedTime1=pnt2x(Sepwave,LocalPoints[turnaround])
+//	else
+//		FindLevels/Q FirstSepWaveUnFolded unFoldedExt
+//		wave W_FindLevels
+//		UnfoldedTime1= mean(W_FindLevels)//-pnt2x(FirstSepWave,0)
+//	endif
+//	
+//	if(wavemax(SecondSepWaveUnFolded)<unFoldedExt)
+//				unFoldedTime2=pnt2x(Sepwave,LocalPoints[turnaround])
+//	elseif(wavemin(SecondSepWaveUnFolded)>unFoldedExt)
+//				unFoldedTime2=pnt2x(Sepwave,LocalPoints[numpnts(LocalPoints)-2])
+//	else
+//		FindLevels/Q SecondSepWaveUnFolded unFoldedExt
+//		UnfoldedTime2= mean(W_FindLevels)//-pnt2x(FirstSepWave,0)
+//	endif
+//
+//	variable m
+//	for(m=1;m<turnaround;m+=1)
+//
+//		if(pnt2x(Sepwave,LocalPoints[m])<FoldedTime1)
+//			foldedcounts1+= LocalType[m] 
+//
+//		endif
+//		if(pnt2x(Sepwave,LocalPoints[m])<unFoldedTime1)
+//			unfoldedcounts1-= LocalType[m] 
+//
+//		endif
+//	endfor
+//	
+//	for(m=turnaround+1;m<numpnts(LocalPoints)-2;m+=1)
+//
+//		if(pnt2x(Sepwave,LocalPoints[m])<FoldedTime2)
+//			foldedcounts2+= LocalType[m] 
+//
+//
+//		endif
+//		if(pnt2x(Sepwave,LocalPoints[m])<unFoldedTime2)
+//			unfoldedcounts2-= LocalType[m] 
+//
+//		endif
+//	endfor
+//	wave W_Sigma
+//	killwaves/Z w_coef, W_FindLevels,w_sigma
+//	if(!ParamisDefault(Diagnostic))
+//		make/o/n=(100) WFoldedExt,WUnfoldedExt
+//		WFoldedExt=FoldedExt
+//		WUnfoldedExt=UnFoldedExt
+//		duplicate/o/r=[LocalPoints[0],LocalPoints[numpnts(localpoints)-1]] ForceWave ForceOut
+//		duplicate/o/r=[LocalPoints[0],LocalPoints[numpnts(localpoints)-1]] SepWave sepOut
+//		SetScale/I x pnt2x(FirstSepWave,0),pnt2x(SecondSepWave,numpnts(SecondSepWave)-1),"", WUnfoldedExt,WFoldedExt
+//		duplicate/free/R=[LocalPoints[0],LocalPoints[numpnts(localpoints)-1]] SepWave, TotalSep
+//		duplicate/o LocalPoints LocalPointsOut,LocalSepsOut
+//		variable UG=LocalPointsOut[0]
+//		LocalPointsOut-=UG
+//		LocalPointsOut=pnt2x(TotalSep,(LocalPointsOut))
+//		LocalSepsOut=TotalSep(LocalPointsOut)
+//	endif
+//	return cmplx(foldedcounts1+foldedcounts2,unfoldedcounts1+unfoldedcounts2)
+//	
+//end

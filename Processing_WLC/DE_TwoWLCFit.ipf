@@ -22,10 +22,27 @@ concatenate/o/np=0 {Force1,Force2}, FTemp
 
 end
 
-Static Function MakeAMultiFit(SepIn,WLCParms,ForceOut)
+Static Function MakeAMultiFit(SepIn,WLCParms,ForceOut,Type)
 	wave SepIn,WLCParms,ForceOut
-	make/free/n=(dimsize(Sepin,0)) TForce
-	TForce=DE_FitTwo(WLCParms,SepIn[p][0],SepIn[p][1])
+	String Type
+		make/free/n=(dimsize(Sepin,0)) TForce
+
+	strswitch(Type)
+		case "Delta":
+					TForce=DE_FitTwoDeltaLC(WLCParms,SepIn[p][0],SepIn[p][1])
+
+		break
+
+		case "Simple":
+			TForce=DE_FitTwo(WLCParms,SepIn[p][0],SepIn[p][1])
+
+		break
+			TForce=DE_FitTwo(WLCParms,SepIn[p][0],SepIn[p][1])
+
+		default:
+	
+	
+	endswitch
 	duplicate/o TForce ForceOut
 end
 
@@ -38,13 +55,14 @@ Static Function FitForcePair(FoldedForce,FoldedSep,UnFoldedForce,UnFoldedSep,Par
 	endif
 
 	//note that WLCGuess should have the format: Lp,Lc1,Lc2,T,Xoff,Foff
-	make/free/n=0 Fout,Sout
+	//OR Lp,Lc1,DeltaLC,T,Xoff,Foff
+	make/o/n=0 Fout,Sout
 	CombineCurves(FoldedForce,FoldedSep,UnFoldedForce,UnFoldedSep,Fout,SOut)
-	make/free/n=5 w_coef
-	variable  fitstart=wavemin(Foldedsep)-50e-9
+	make/D/free/n=5 w_coef
+	variable  fitstart=wavemin(Foldedsep)-15e-9//Constrained[4]-3e-9//wavemin(Foldedsep)-5e-9
 	variable n
-	w_coef={-.4e-9,150e-9,175e-9,298,fitstart,0}
-	string ConStr="100100"
+	w_coef={-.4e-9,80e-9,23e-9,298,fitstart,0}
+	string ConStr="000000"
 	for(n=0;n<numpnts(W_coef);n+=1)
 		if(Constrained[n]==0)
 		
@@ -53,10 +71,16 @@ Static Function FitForcePair(FoldedForce,FoldedSep,UnFoldedForce,UnFoldedSep,Par
 			ConStr[n,n]="1"
 		endif
 	endfor
-	
-	FuncFit/N/Q/W=2/H=ConStr/NTHR=0 DE_FitTwo W_coef  Fout /X=SOut 
+//	Make/O/T/N=5 T_Constraints
+//	T_Constraints[0] = {"K2 > 20e-9","K2 < 25e-9","K4 < "+num2str(Constrained[4]),"K5 < "+num2str(abs(Constrained[5])),"K5 > "+num2str(-1*abs(Constrained[5]))}
+//
+	Make/O/T/N=2 T_Constraints
+	T_Constraints[0] = {"K2 > 20e-9","K2 < 25e-9"}//,"K4<"+num2str(wavemin(Foldedsep))}
+	print T_Constraints
+
+	FuncFit/N/Q/W=2/H=ConStr/NTHR=0 DE_FitTwoDeltaLC W_coef  Fout /X=SOut /C=T_Constraints
 	make/free/n=0 FWLCFit
-	MakeAMultiFit(SOut,w_coef,FWLCFit)
+	MakeAMultiFit(SOut,w_coef,FWLCFit,"Delta")
 	make/free/n=(Numpnts(FWLCFit),2) FitTest
 	FitTest[][1]=FWLCFit[p]
 	FitTest[][0]=SOut[p][0]
@@ -269,6 +293,30 @@ function DE_FitTwo(w,x1,x2) : FitFunc
 	return y
 
 end
+
+function DE_FitTwoDeltaLC(w,x1,x2) : FitFunc
+	wave w
+	variable x1,x2
+	
+
+	variable y
+	variable lc
+	if(x2==0)
+		LC=w[1]
+	elseif(x2==1)
+		LC=w[1]+w[2]
+	endif
+	//w[0] Lp
+	//w[1] Lc1
+	//w[2] Lc2
+	//w[3] Temp
+	//w[4] xoff
+	//w[5] Foff
+	y=WLC(x1-w[4],w[0],LC,w[3])+w[5]
+	return y
+
+end
+
 
 Function TestMacro(startnum,endnum)
 	variable startnum,endnum

@@ -345,11 +345,12 @@ Static Function/C CalculateCrossingLinear(ForceWave,SepWave,WLCParms,FilterPoint
 
 	duplicate/free/r=(startline1fit,endline1fit) CutForceSuperSm Line1FitRegion
 	duplicate/free/r=(startline1out,endline1out) CutForceSm Line1
-
 	variable startline2fit=currenttime+.0002
 	variable endline2fit=currenttime+min(0.003,(nexttime-currenttime)*.8)
 	variable startline2out=currenttime-2e-4//.0005
 	variable endline2out=currenttime+min(1e-3,(nexttime-currenttime)*.6) //In the second WLC look ahead EITHER 2 ms, or 60% to the next transition
+
+
 	duplicate/free/r=(startline2fit,endline2fit) CutForceSuperSm Line2FitRegion
 	duplicate/free/r=(startline2out,endline2out) CutForceSm Line2
 	
@@ -374,18 +375,18 @@ Static Function/C CalculateCrossingLinear(ForceWave,SepWave,WLCParms,FilterPoint
 			print "Filtering under 5"
 			if(ParamisDefault(CopyWavesOUt)||CopyWavesOUt==0)
 	
-	else
-		NewDataFolder/O root:CorrectRupture:Linear
-		duplicate/o Line1 root:CorrectRupture:Linear:CR_Line1
-		duplicate/o Line2 root:CorrectRupture:Linear:CR_Line2
-		duplicate/o CutForceSm root:CorrectRupture:Linear:CR_CutForceSm
-		duplicate/o Line1FitRegion root:CorrectRupture:Linear:CR_Line1FiTregion
-		duplicate/o Line2FitRegion root:CorrectRupture:Linear:CR_Line2FitRegion
-		duplicate/o CutForceWave root:CorrectRupture:Linear:CR_CutForceWave
-		make/o/n=(1,2) root:CorrectRupture:Linear:Final
-		wave w1= root:CorrectRupture:Linear:Final
-		w1={NaN,NaN,NaN}
-	endif
+			else
+				NewDataFolder/O root:CorrectRupture:Linear
+				duplicate/o Line1 root:CorrectRupture:Linear:CR_Line1
+				duplicate/o Line2 root:CorrectRupture:Linear:CR_Line2
+				duplicate/o CutForceSm root:CorrectRupture:Linear:CR_CutForceSm
+				duplicate/o Line1FitRegion root:CorrectRupture:Linear:CR_Line1FiTregion
+				duplicate/o Line2FitRegion root:CorrectRupture:Linear:CR_Line2FitRegion
+				duplicate/o CutForceWave root:CorrectRupture:Linear:CR_CutForceWave
+				make/o/n=(1,2) root:CorrectRupture:Linear:Final
+				wave w1= root:CorrectRupture:Linear:Final
+				w1={NaN,NaN,NaN}
+			endif
 			return -1
 		endif
 	endif
@@ -414,20 +415,20 @@ Static Function/C CalculateCrossingLinear(ForceWave,SepWave,WLCParms,FilterPoint
 			print "Filtering under 5"
 			if(ParamisDefault(CopyWavesOUt)||CopyWavesOUt==0)
 	
-	else
-		NewDataFolder/O root:CorrectRupture:Linear
-		duplicate/o Line1 root:CorrectRupture:Linear:CR_Line1
-		duplicate/o Line2 root:CorrectRupture:Linear:CR_Line2
-		Duplicate/o Line2Crossings root:CorrectRupture:Linear:CR_Line2Crossings
-		Duplicate/o Line2Force root:CorrectRupture:Linear:CR_Line2Force
-		duplicate/o CutForceSm root:CorrectRupture:Linear:CR_CutForceSm
-		duplicate/o Line1FitRegion root:CorrectRupture:Linear:CR_Line1FiTregion
-		duplicate/o Line2FitRegion root:CorrectRupture:Linear:CR_Line2FitRegion
-		duplicate/o CutForceWave root:CorrectRupture:Linear:CR_CutForceWave
-		make/o/n=(1,2) root:CorrectRupture:Linear:Final
-		wave w1= root:CorrectRupture:Linear:Final
-		w1={NaN,NaN,NaN}
-	endif
+			else
+				NewDataFolder/O root:CorrectRupture:Linear
+				duplicate/o Line1 root:CorrectRupture:Linear:CR_Line1
+				duplicate/o Line2 root:CorrectRupture:Linear:CR_Line2
+				Duplicate/o Line2Crossings root:CorrectRupture:Linear:CR_Line2Crossings
+				Duplicate/o Line2Force root:CorrectRupture:Linear:CR_Line2Force
+				duplicate/o CutForceSm root:CorrectRupture:Linear:CR_CutForceSm
+				duplicate/o Line1FitRegion root:CorrectRupture:Linear:CR_Line1FiTregion
+				duplicate/o Line2FitRegion root:CorrectRupture:Linear:CR_Line2FitRegion
+				duplicate/o CutForceWave root:CorrectRupture:Linear:CR_CutForceWave
+				make/o/n=(1,2) root:CorrectRupture:Linear:Final
+				wave w1= root:CorrectRupture:Linear:Final
+				w1={NaN,NaN,NaN}
+			endif
 			return -1
 		endif
 	endif
@@ -440,7 +441,7 @@ Static Function/C CalculateCrossingLinear(ForceWave,SepWave,WLCParms,FilterPoint
 	endif
 	
 	EliminatePreCrossings(Line1Crossings,Line2Crossings)//Eliminate crossings in 2 that occur before
-																		// any of the crossing in 1
+	// any of the crossing in 1
 																		
 																		
 																		
@@ -451,26 +452,26 @@ Static Function/C CalculateCrossingLinear(ForceWave,SepWave,WLCParms,FilterPoint
 
 			return Result
 		else
-		print "Filtering under 5"
-		if(ParamisDefault(CopyWavesOUt)||CopyWavesOUt==0)
+			print "Filtering under 5"
+			if(ParamisDefault(CopyWavesOUt)||CopyWavesOUt==0)
 	
-	else
-		NewDataFolder/O root:CorrectRupture:Linear
-		duplicate/o Line1 root:CorrectRupture:Linear:CR_Line1
-		duplicate/o Line2 root:CorrectRupture:Linear:CR_Line2
-		Duplicate/o Line1Crossings root:CorrectRupture:Linear:CR_Line1Crossings
-		Duplicate/o Line2Crossings root:CorrectRupture:Linear:CR_Line2Crossings
-		Duplicate/o Line1Force root:CorrectRupture:Linear:CR_Line1Force
-		Duplicate/o Line2Force root:CorrectRupture:Linear:CR_Line2Force
-		duplicate/o CutForceSm root:CorrectRupture:Linear:CR_CutForceSm
-		duplicate/o Line1FitRegion root:CorrectRupture:Linear:CR_Line1FiTregion
-		duplicate/o Line2FitRegion root:CorrectRupture:Linear:CR_Line2FitRegion
-		duplicate/o CutForceWave root:CorrectRupture:Linear:CR_CutForceWave
-		make/o/n=(1,2) root:CorrectRupture:Linear:Final
-		wave w1= root:CorrectRupture:Linear:Final
-		w1={NaN,NaN,NaN}
-	endif
-		return -1
+			else
+				NewDataFolder/O root:CorrectRupture:Linear
+				duplicate/o Line1 root:CorrectRupture:Linear:CR_Line1
+				duplicate/o Line2 root:CorrectRupture:Linear:CR_Line2
+				Duplicate/o Line1Crossings root:CorrectRupture:Linear:CR_Line1Crossings
+				Duplicate/o Line2Crossings root:CorrectRupture:Linear:CR_Line2Crossings
+				Duplicate/o Line1Force root:CorrectRupture:Linear:CR_Line1Force
+				Duplicate/o Line2Force root:CorrectRupture:Linear:CR_Line2Force
+				duplicate/o CutForceSm root:CorrectRupture:Linear:CR_CutForceSm
+				duplicate/o Line1FitRegion root:CorrectRupture:Linear:CR_Line1FiTregion
+				duplicate/o Line2FitRegion root:CorrectRupture:Linear:CR_Line2FitRegion
+				duplicate/o CutForceWave root:CorrectRupture:Linear:CR_CutForceWave
+				make/o/n=(1,2) root:CorrectRupture:Linear:Final
+				wave w1= root:CorrectRupture:Linear:Final
+				w1={NaN,NaN,NaN}
+			endif
+			return -1
 		endif
 	
 	endif
@@ -537,23 +538,23 @@ Static Function/C CalculateCrossingLinear(ForceWave,SepWave,WLCParms,FilterPoint
 			print "Final Line Failed"
 			if(ParamisDefault(CopyWavesOUt)||CopyWavesOUt==0)
 	
-	else
-		NewDataFolder/O root:CorrectRupture:Linear
-		duplicate/o Line1 root:CorrectRupture:Linear:CR_Line1
-		duplicate/o Line2 root:CorrectRupture:Linear:CR_Line2
-		Duplicate/o Line1Crossings root:CorrectRupture:Linear:CR_Line1Crossings
-		Duplicate/o Line2Crossings root:CorrectRupture:Linear:CR_Line2Crossings
-		Duplicate/o Line1Force root:CorrectRupture:Linear:CR_Line1Force
-		Duplicate/o Line2Force root:CorrectRupture:Linear:CR_Line2Force
-		Duplicate/o RawShiftLine root:CorrectRupture:Linear:CR_RawShiftLine
-		duplicate/o CutForceSm root:CorrectRupture:Linear:CR_CutForceSm
-		duplicate/o Line1FitRegion root:CorrectRupture:Linear:CR_Line1FiTregion
-		duplicate/o Line2FitRegion root:CorrectRupture:Linear:CR_Line2FitRegion
-		duplicate/o CutForceWave root:CorrectRupture:Linear:CR_CutForceWave
-		make/o/n=(1,2) root:CorrectRupture:Linear:Final
-		wave w1= root:CorrectRupture:Linear:Final
-		w1={NaN,NaN,NaN}
-	endif
+			else
+				NewDataFolder/O root:CorrectRupture:Linear
+				duplicate/o Line1 root:CorrectRupture:Linear:CR_Line1
+				duplicate/o Line2 root:CorrectRupture:Linear:CR_Line2
+				Duplicate/o Line1Crossings root:CorrectRupture:Linear:CR_Line1Crossings
+				Duplicate/o Line2Crossings root:CorrectRupture:Linear:CR_Line2Crossings
+				Duplicate/o Line1Force root:CorrectRupture:Linear:CR_Line1Force
+				Duplicate/o Line2Force root:CorrectRupture:Linear:CR_Line2Force
+				Duplicate/o RawShiftLine root:CorrectRupture:Linear:CR_RawShiftLine
+				duplicate/o CutForceSm root:CorrectRupture:Linear:CR_CutForceSm
+				duplicate/o Line1FitRegion root:CorrectRupture:Linear:CR_Line1FiTregion
+				duplicate/o Line2FitRegion root:CorrectRupture:Linear:CR_Line2FitRegion
+				duplicate/o CutForceWave root:CorrectRupture:Linear:CR_CutForceWave
+				make/o/n=(1,2) root:CorrectRupture:Linear:Final
+				wave w1= root:CorrectRupture:Linear:Final
+				w1={NaN,NaN,NaN}
+			endif
 			return nAN
 		endif
 	endif
@@ -581,7 +582,7 @@ Static Function/C CalculateCrossingLinear(ForceWave,SepWave,WLCParms,FilterPoint
 	if(ParamisDefault(CopyWavesOUt)||CopyWavesOUt==0)
 	
 	else
-			NewDataFolder/O root:CorrectRupture
+		NewDataFolder/O root:CorrectRupture
 
 		NewDataFolder/O root:CorrectRupture:Linear
 		duplicate/o Line1 root:CorrectRupture:Linear:CR_Line1

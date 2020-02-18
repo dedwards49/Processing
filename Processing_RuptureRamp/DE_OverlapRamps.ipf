@@ -159,8 +159,12 @@ Static Function OffsetEachStepinForceWave(ForceIn,ForceOut,States)
 variable n,prevcut=0,currcut,FOFF
 	duplicate/o ForceIn ForceOut
 	for(n=1;n<dimsize(States,0);n+=1)
+
 		if(States[n][2]==2)
 			currcut=States[n][0]
+			if(n==dimsize(States,0)-1)
+			currcut=numpnts(ForceOut)-1
+			endif
 			FOFF=ReturnOffForceForState(ForceIn,States[n][3]-1)
 			ForceOut[prevcut,currcut]+=FOFF
 			prevcut=States[n][0]
