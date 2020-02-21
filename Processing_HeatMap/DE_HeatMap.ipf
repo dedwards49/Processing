@@ -22,12 +22,12 @@ Static Function/C ReturnXYOffsetfromGraph(WaveIn,GraphNameString)
 	endif
 end
 
-Static Function GenerateSingleWaveswithShifts(YIn,Xin,Yout,Xout)
+Static Function GenerateSingleWaveswithShifts(GraphNameString,YIn,Xin,Yout,Xout)
 	wave YIn,Xin,Yout,Xout
-
+String GraphNameString
 	duplicate/free Yin YFree
 	duplicate/free Xin Xfree
-	variable/c Offsets=ReturnXYOffsetfromGraph(Yin,"graph0")
+	variable/c Offsets=ReturnXYOffsetfromGraph(Yin,GraphNameString)
 	YFree-=imag(Offsets)
 	XFree+=real(Offsets)
 	YFree*=-1
@@ -35,11 +35,11 @@ Static Function GenerateSingleWaveswithShifts(YIn,Xin,Yout,Xout)
 	duplicate/o Xfree Xout
 end
 
-Static Function MakeSingleHeatMap(YIn,Xin,Xdims,Ydims,MapOut)
-
+Static Function MakeSingleHeatMap(GraphNameString,YIn,Xin,Xdims,Ydims,MapOut)
+	string GraphNameString
 	wave YIn,Xin,Xdims,Ydims,MapOut
 	make/o/n=0 Yfree,XFree
-	GenerateSingleWaveswithShifts(YIn,Xin,Yfree,XFree)	
+	GenerateSingleWaveswithShifts(GraphNameString,YIn,Xin,Yfree,XFree)	
 	JointHistogram/XBWV=Xdims/YBWV=Ydims XFree, Yfree
 	wave M_JointHistogram
 	duplicate/o M_JointHistogram MapOut
@@ -48,23 +48,24 @@ Static Function MakeSingleHeatMap(YIn,Xin,Xdims,Ydims,MapOut)
 	killwaves M_JointHistogram
 end
 
-Static Function AccumulateHeatMaps()
-	String ForceWaveNames=tracenamelist("graph0",";",1)
+Static Function AccumulateHeatMaps(graphnamestring)
+	String GraphNameString
+	String ForceWaveNames=tracenamelist(GraphNameString,";",1)
 	variable tot=itemsinlist(ForceWaveNames)
-	ForceWaveNames=RemoveListItem(tot-1, ForceWaveNames)
+	//ForceWaveNames=RemoveListItem(tot-1, ForceWaveNames)
 	tot=itemsinlist(ForceWaveNames)
 	variable n=0
-	variable nx=325
-	variable ny=250
-	make/o/n=(nx) XBins;XBins=0e-9+325e-9*x/(nx-1)
-	make/o/n=(ny) YBins;YBins=-10e-12+250e-12*x/(ny-1)
+	variable nx=200
+	variable ny=100
+	make/o/n=(nx) XBins;XBins=0e-9+200e-9*x/(nx-1)
+	make/o/n=(ny) YBins;YBins=10e-12+500e-12*x/(ny-1)
 	make/o/n=(nx-1,ny-1) Final=0
 	for(n=0;n<tot;n+=1)
 	print n
 		wave FW=$stringfromlist(n,ForceWaveNames)
-		wave SW=$replacestring("FSM",nameofwave(FW),"SSM")
+		wave SW=$replacestring("fORCE",nameofwave(FW),"sEP")
 		make/free/n=(0,0) MapOut
-		MakeSingleHeatMap(FW,SW,XBins,YBins,MapOut)
+		MakeSingleHeatMap(GraphNameString,FW,SW,XBins,YBins,MapOut)
 		Final+=MapOut
 	endfor
 

@@ -121,10 +121,26 @@ Static Function ReturnExtentionatForce(F,Lp,L0,T)
 	Ext=L0/999*x
 	Force=WLC(Ext,Lp,L0,T) 
 	FindLevel/Q Force F
+	if(numtype(V_levelX)!=0)
+	return NaN
+	endif
 	return Ext[V_levelx]
 
 end
+//This is a formula for the loading rate as a function of force
+//for a harmoinc spring of spring constant K pulled at a velocity of v
+//on a WLC of contour lenght L with persistence length lp
+Static Function DudkoSlope(F,L,K,v,lp)
+	variable F,L,v,K,lp
 
+	variable nlp=lp/(4.1e-21)
+	variable top=2*nlp*L*(1+nlp*f)
+	variable Bottom=3+5*nlp*f+8*(nlp*F)^(5/2)
+	
+	return v*(1/K+top/bottom)^-1
+
+
+end
 Static Function ContourTransform_Per(Force,x,Pers,T)
 	variable Force,x,Pers,T
 		if (Force<2e-12)

@@ -620,18 +620,18 @@ Function RunOnCombinedData(BaseString,ForceShifting,WLCShifting,[AltWLC])
 	SetScale/P x -1e-12,.5e-12,"", FHist;SetScale/P x 0e-12,1e-12,"", UFhist
 	
 	PushThrough(ForceWave,SepWave,0,StateWave,FHist,UFhist,WLCOut,ForceShifting)
-	string NameString=stringfromlist(0,nameofwave(ForceWave),"_")+"_"+stringfromlist(1,nameofwave(ForceWave),"_")
+	string NameString=stringfromlist(0,nameofwave(ForceWave),"_")+"_"+stringfromlist(1,nameofwave(ForceWave),"_")+"_"+stringfromlist(2,nameofwave(ForceWave),"_")
 	wave FAddHist,FaddTime,Frate,URate,UAddHist,UAddTime,FSm,SSm,ResultstoHold,ReturnTimesFoldedMassive,ReturnTimesUnfoldedMassive
-	duplicate/o FAddHist $(NameString+"_FoldHist")
-	duplicate/o FAddTime $(NameString+"_FoldTimes")
-	duplicate/o Frate $(NameString+"_FoldRate")
-	duplicate/o UAddHist $(NameString+"_UNfoldHist")
-	duplicate/o UAddTime $(NameString+"_UnfoldTimes")
-	duplicate/o Urate $(NameString+"_UnfoldRate")
-	duplicate/o UAddTime $(NameString+"_UnfoldTimes")
-	duplicate/o ResultstoHold $(NameString+"_AllTrans")
-	duplicate/o ReturnTimesFoldedMassive $(NameString+"_FoldTimes")
-	duplicate/o ReturnTimesUnfoldedMassive $(NameString+"_UnfoldTimes")
+	duplicate/o FAddHist $(NameString+"_DJ_FoldHist")
+	duplicate/o FAddTime $(NameString+"_DJ_FoldTimes")
+	duplicate/o Frate $(NameString+"_DJ_FoldRate")
+	duplicate/o UAddHist $(NameString+"_DJ_UNfoldHist")
+	duplicate/o UAddTime $(NameString+"_DJ_UnfoldTimes")
+	duplicate/o Urate $(NameString+"_DJ_UnfoldRate")
+	duplicate/o UAddTime $(NameString+"_DJ_UnfoldTimes")
+	duplicate/o ResultstoHold $(NameString+"_DJ_AllTrans")
+	duplicate/o ReturnTimesFoldedMassive $(NameString+"_DJ_FoldTimes")
+	duplicate/o ReturnTimesUnfoldedMassive $(NameString+"_DJ_UnfoldTimes")
 		killwaves FAddHist,FaddTime,Frate,URate,UAddHist,UAddTime,ResultstoHold,ReturnTimesFoldedMassive,ReturnTimesUnfoldedMassive
 		killwaves FSm,SSM
 	killwaves UFHIst,FHISt

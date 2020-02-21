@@ -902,9 +902,9 @@ Static Function CreateSlopeWave()
 	controlinfo/W=DudkoAnalysis de_Dudko_setvar2
 	variable slopes=V_Value
 	variable halfspacing=(UnFoldedForces[1]-UnFoldedForces[0])/2
-	UnfoldedSlope=WLCSlopeAtForce(UnfoldLC,Offset,UnFoldedForces+halfspacing,slopes)
+	UnfoldedSlope=WLCSlopeAtForce(foldLC,Offset,UnFoldedForces+halfspacing,slopes)
 	halfspacing=(FoldedForces[1]-FoldedForces[0])/2
-	FoldedSlope=WLCSlopeAtForce(FoldLC,Offset,FoldedForces+halfspacing,slopes)
+	FoldedSlope=WLCSlopeAtForce(unFoldLC,Offset,FoldedForces+halfspacing,slopes)
 	//UnfoldedSlope*=-1
 	//FoldedSlope*=-1
 end
@@ -1288,7 +1288,84 @@ Static Function HistogramButton()
 	SmartProduceHistograms(AccRe,ReHist,v_value)
 
 end
+//ExtractDFS will simply go through an assembled StateWave and extract all the 
+//first rupture from each ramp. It is a very simple step-through program. However,
+//it will do TWO things. First it will simply use the calculated RupForce from whatever
+//is in the statewave. Second, it will calculate the rupture based on WLC Parms
 
+Static Function ExtractDFS(ForceWave,SepWave,WLCParms,StateWave)
+	wave ForceWave,SepWave,WLCParms,StateWave
+
+	make/free/n=(dimsize(Statewave,0)) Points,RupForce,Type,Trace
+	Points=Statewave[p][0]
+	RupForce=-Statewave[p][1]
+	Type=Statewave[p][2]
+	Trace=Statewave[p][3]
+	variable n, top,i
+	top=wavemax(Trace)
+	make/o/n=(top) RupPnts,SimpForces,CompForces,SimpRates,CompRates
+	variable FOldedLC=WLCPArms[0]
+	variable UnfoldedLC=WLCPArms[1]
+	Variable FOrceOff=WLCPArms[2]
+	variable SepOff=WLCPArms[3]
+	variable turnaround
+	variable SpringCon=str2num(stringbykey("Spring Constant",note(Forcewave),":","\r"))
+	variable vel=str2num(stringbykey("ApproachVelocity",note(Forcewave),":","\r"))*1e-9
+	for(n=0;n<top;n+=1)
+	
+		Extract/INDX/Free Points, LocalIndex, Trace==n
+		make/free/n=(numpnts(LocalIndex)+1) LocalPoints,LocalType,LocalTrace,LocalForces
+		LocalPoints[]=Points[LocalIndex[0]+p][0]
+		LocalForces[]=RupForce[LocalIndex[0]+p][0]
+		LocalType[]=Type[LocalIndex[0]+p][2]
+		LocalTrace[]=Trace[LocalIndex[0]+p][3]
+		FindValue/V=-2/T=.1 LocalType
+		turnaround=v_value
+		
+		
+		duplicate/free/R=[LocalPoints[0],LocalPoints[turnaround]] SepWave, FirstSepWave,FirstSepWaveFolded,FirstSepWaveUnfolded
+		duplicate/free/R=[LocalPoints[turnaround],LocalPoints[numpnts(localpoints)-2]] SepWave, SecondSepWave,SecondSepWaveFolded,SecondSepWaveUnfolded
+		duplicate/free/R=[LocalPoints[0],LocalPoints[turnaround]] ForceWave, FirstForceWave
+		duplicate/free/R=[LocalPoints[turnaround],LocalPoints[numpnts(localpoints)-1]] ForceWave, SecondForceWave
+
+		DE_NewDudko#GenerateSepLine(ForceWave,SepWave,StateWave,n,0,0,FirstSepWaveUnfolded)
+		DE_NewDudko#GenerateSepLine(ForceWave,SepWave,StateWave,n,0,1,FirstSepWaveFolded)
+		DE_NewDudko#GenerateSepLine(ForceWave,SepWave,StateWave,n,1,0,SecondSepWaveUnfolded)
+		DE_NewDudko#GenerateSepLine(ForceWave,SepWave,StateWave,n,1,1,SecondSepWaveFolded)
+	variable CurrentTime,CurrentSep,CurrentForce
+
+		
+		for(i=0;i<turnaround;i+=1)
+			if(LocalType[i]==-1)
+
+				RupPnts[n]=LocalPoints[i]
+				SimpForces[n]=LocalForces[i]
+				CurrentTime=pnt2x(Sepwave,LocalPoints[i])
+
+				CurrentSep=FirstSepWaveFolded(CurrentTime)
+				CurrentForce=WLC(CurrentSep-SepOff,-.4e-9,FOldedLC,298)-FOrceOff
+				CompForces[n]=-1*CurrentForce
+				SimpRates[n]=DE_WLC#DudkoSlope(SimpForces[n],FOldedLC,SpringCon,vel,.4e-9)
+				CompRates[n]=DE_WLC#DudkoSlope(CompForces[n],FOldedLC,SpringCon,vel,.4e-9)
+			break
+			endif
+		
+		endfor
+	
+	endfor
+	wavestats/q SimpForces
+	variable SimpAvg=v_avg
+	Variable SimpLoading=DE_WLC#DudkoSlope(SimpAvg,FOldedLC,SpringCon,vel,.4e-9)
+	print 1/(sqrt(v_sdev^2*pi/2)/SimpLoading)
+	
+	wavestats/q CompForces
+	variable CompAvg=v_avg
+	print compavg
+	Variable CompLoading=DE_WLC#DudkoSlope(CompAvg,FOldedLC,SpringCon,vel,.4e-9)
+	print 1/((sqrt(v_rms^2-v_avg^2)*pi/2)/CompLoading)
+
+	
+end
 
 Static Function NewHistogramButton()
 	string saveDF = GetDataFolder(1)

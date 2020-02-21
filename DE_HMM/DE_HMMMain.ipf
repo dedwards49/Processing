@@ -1,9 +1,9 @@
 // Use modern global access method, strict compilation
 #pragma rtGlobals=3	
 #pragma ModuleName = DE_HMMPython
-#include "C:\Users\dedwards\src_prh\IgorUtil\IgorCode\Util\IoUtil"
-#include "C:\Users\dedwards\src_prh\IgorUtil\IgorCode\Util\PlotUtil"
-#include "C:\Users\dedwards\src_prh\IgorUtil\IgorCode\Util:OperatingSystemUtil"
+#include "C:\Users\Perkins Lab\src_prh\IgorUtil\IgorCode\Util\IoUtil"
+#include "C:\Users\Perkins Lab\src_prh\IgorUtil\IgorCode\Util\PlotUtil"
+#include "C:\Users\Perkins Lab\src_prh\IgorUtil\IgorCode\Util:OperatingSystemUtil"
 #include "DE_HMM"
 
 //#include "C:\Users\dedwards\src_prh\IgorUtil\PythonApplications\FEATHER\Example\MainFeather"

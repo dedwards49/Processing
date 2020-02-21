@@ -35,6 +35,30 @@
 //	ControlInfo/W=RupRampPanel  de_RupRamp_popup5
 //	wave StateWave=$S_Value
 //	
+
+Static Function AutoFill()
+	
+	ControlUpdate/w=RupRampPanel de_RupRamp_popup1
+	ControlUpdate/w=RupRampPanel de_RupRamp_popup2
+	ControlUpdate/w=RupRampPanel de_RupRamp_popup3
+	ControlUpdate/w=RupRampPanel de_RupRamp_popup5
+	ControlUpdate/w=RupRampPanel de_RupRamp_popup6
+	ControlUpdate/w=RupRampPanel de_RupRamp_popup7
+
+	ControlUpdate/w=RupRampPanel de_RupRamp_popup12
+	ControlUpdate/w=RupRampPanel de_RupRamp_popup14
+	
+	ControlUpdate/w=RupRampPanel de_RupRamp_popup16
+	ControlUpdate/w=RupRampPanel de_RupRamp_popup17
+	ControlUpdate/w=RupRampPanel de_RupRamp_popup19
+	ControlUpdate/w=RupRampPanel de_RupRamp_popup20
+	//popupmenu de_RupRamp_popup1 win=RupRampPanel,popmatch=nameofwave(UpPoints)+"_Mod"
+
+
+end
+
+
+
 Static Function CutStatebySep(ForceIn,SepIn,ForceOut,SepOut,SepMax,SepMin)
 
 	wave ForceIn,SepIn,ForceOut,SepOut
@@ -1625,7 +1649,18 @@ Static Function SetVarProc(sva) : SetVariableControl
 
 	return 0
 End
-
+Static Function PopupMenuAction(PU_Struct) : PopupMenuControl
+	STRUCT WMPopupAction &PU_Struct
+	switch(PU_Struct.eventcode)
+		case 2:
+			AutoFill()
+		break
+	
+	
+	endswitch
+	//AutoFill()
+	return 0
+End
 
 Window RuptureRamp_Panel() : Panel
 
@@ -1662,7 +1697,7 @@ Window RuptureRamp_Panel() : Panel
 
 	Button de_RupRamp_button18,pos={450,740},size={150,20},proc=DE_RuptureRamp#ButtonProc,title="Single"
 
-	PopupMenu de_RupRamp_popup0,pos={10,2},size={129,21},title="Folder",mode=1
+	PopupMenu de_RupRamp_popup0,pos={10,2},size={129,21},title="Folder",mode=1,proc=DE_RuptureRamp#PopupMenuAction
 	PopupMenu de_RupRamp_popup0,mode=1,popvalue="X",value= #"DE_PanelProgs#ListFolders()"
 	PopupMenu de_RupRamp_popup1,pos={200,2},size={129,21},title="Force Wave",mode=0
 	PopupMenu de_RupRamp_popup1,mode=1,popvalue="X",value= #"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*Force*Adj\")"
@@ -1745,7 +1780,7 @@ Static Function/S ListWaves(ControlStr,SearchString)
 	String saveDF
 
 	saveDF = GetDataFolder(1)
-	controlinfo $ControlStr
+	controlinfo/W=RupRampPanel $ControlStr
 	string Result=s_value
 	SetDataFolder Result
 	String list = WaveList(SearchString, ";", "")
