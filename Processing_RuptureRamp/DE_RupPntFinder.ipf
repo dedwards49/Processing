@@ -65,14 +65,14 @@ Static Function FitPython()
 	variable FOffset, Soffset
 
 	saveDF = GetDataFolder(1)
-	wave/T parmWave=root:DE_RupRamp:MenuStuff:PyParmWave
+	wave/T parmWave=root:DE_RupturePntFinder:MenuStuff:PyParmWave
 
-	controlinfo de_RupRamp_popup0
+	controlinfo/W=RupPntFinder de_RupPnt_popup0
 	SetDataFolder s_value
-	controlinfo de_RupRamp_popup1
+	controlinfo/W=RupPntFinder de_RupPnt_popup1
 	wave ForceWave=$S_value
 	wave SepWave=$ReplaceString("Force",S_value,"Sep")
-	controlinfo/W=RupRampPanel de_RupRamp_check3
+	controlinfo/W=RupPntFinder de_RupPnt_check3
 	variable nodelay=v_value
 	//	make/o/n=0 RupPntU,RupPntD
 	make/o/n=0 ForceWaveS,SepWaveS
@@ -97,7 +97,7 @@ Static Function FitPython()
 	//setscale/P x dimoffset(ForceWave,0), dimdelta(ForceWave,0), "s", LC//ensuring scaling of input and output wave are the same
 	//Resample/DOWN=(str2num(parmWave[7][1]))/N=1/WINF=None LC
 	Resample/DOWN=(str2num(parmWave[1][1]))/N=1/WINF=None ForceWaveS
-	controlinfo de_RupRamp_popup2
+	controlinfo/W=RupPntFinder de_RupPnt_popup2
 	PythonFitter( ForceWaveS,S_Value,str2num(parmWave[3][1]),str2num(parmWave[2][1]))
 	wave no0=wave0
 	make/o/n=0 UpP,DownP;DE_RuptureRamp#SortSteps(ForceWaveS,no0,UpP,DownP,20)
@@ -184,8 +184,8 @@ Static Function ButtonProc(ba) : ButtonControl
 	switch( ba.eventCode )
 		case 2: // mouse up
 			strswitch( ba.ctrlName)
-				case "de_RupRamp_button0":
-					//FitPython()
+				case "de_RupPnt_button0":
+					FitPython()
 					break
 
 			endswitch
@@ -226,23 +226,23 @@ end
 
 Window RupturePntFinder() 
 	PauseUpdate; Silent 1		// building window...
-	NewPanel/N=RupPnt /W=(0,0,300,175)
+	NewPanel/N=RupPntFinder /W=(0,0,300,175)
 	NewDataFolder/o root:DE_RupturePntFinder
 	NewDataFolder/o root:DE_RupturePntFinder:MenuStuff
 
 	DE_RupPntFinder#UpdateParmWave()
-	Button de_RupRamp_button0,pos={10,33},size={150,20},proc=DE_RupPntFinder#ButtonProc,title="Pythong!"
-	PopupMenu de_RupRamp_popup0,pos={10,2},size={129,21},title="Folder",mode=1
-	PopupMenu de_RupRamp_popup0,mode=1,popvalue="X",value= #"DE_PanelProgs#ListFolders()"
-	PopupMenu de_RupRamp_popup1,pos={157,2},size={129,21},title="Force Wave"
-	PopupMenu de_RupRamp_popup1,mode=1,popvalue="X",value= #"DE_RupPntFinder#ListWaves(\"de_RupRamp_popup0\",\"*Force\")"
-	PopupMenu de_RupRamp_popup2,pos={208,65},size={129,21},title="Method"
-	PopupMenu de_RupRamp_popup2,mode=1,popvalue="X",value= "gauss;ms;"
+	Button de_RupPnt_button0,pos={10,33},size={150,20},proc=DE_RupPntFinder#ButtonProc,title="Pythong!"
+	PopupMenu de_RupPnt_popup0,pos={10,2},size={129,21},title="Folder",mode=1
+	PopupMenu de_RupPnt_popup0,mode=1,popvalue="X",value= #"DE_PanelProgs#ListFolders()"
+	PopupMenu de_RupPnt_popup1,pos={157,2},size={129,21},title="Force Wave"
+	PopupMenu de_RupPnt_popup1,mode=1,popvalue="X",value= #"DE_RupPntFinder#ListWaves(\"de_RupPnt_popup0\",\"*Force\")"
+	PopupMenu de_RupPnt_popup2,pos={208,65},size={129,21},title="Method"
+	PopupMenu de_RupPnt_popup2,mode=1,popvalue="X",value= "gauss;ms;"
 
-	ListBox DE_RupRamp_list1,pos={7,70},size={175,75},proc=DE_RupPntFinder#ListBoxProc,listWave=root:DE_RupturePntFinder:MenuStuff:PyParmWave
-	ListBox DE_RupRamp_list1,selWave=root:DE_RupturePntFinder:MenuStuff:PySelWave,editStyle= 2,userColumnResize= 1,widths={70,40,70,40}
+	ListBox DE_RupPnt_list1,pos={7,70},size={175,75},proc=DE_RupPntFinder#ListBoxProc,listWave=root:DE_RupturePntFinder:MenuStuff:PyParmWave
+	ListBox DE_RupPnt_list1,selWave=root:DE_RupturePntFinder:MenuStuff:PySelWave,editStyle= 2,userColumnResize= 1,widths={70,40,70,40}
 
-	CheckBox de_RupRamp_check3 title="No Delays",pos={202,36},size={150,20},proc=DE_RuptureRamp#CheckProc
+	CheckBox de_RupPnt_check3 title="No Delays",pos={202,36},size={150,20},proc=DE_RuptureRamp#CheckProc
 
 //	ControlUpdate/A/W=RupRampPanel
 EndMacro

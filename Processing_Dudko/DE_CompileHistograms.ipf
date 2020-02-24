@@ -606,21 +606,40 @@ Static Function ButtonProc(ba) : ButtonControl
 		case "de_Dudko_button4": //Just Histogram
 			switch( ba.eventCode )
 				case 2: // mouse up
-				NewHistogramButton()
+					NewHistogramButton()
 					break
 				case -1: // control being killed
 					break
 			endswitch
 			break
 		case "de_Dudko_button5":
-				switch( ba.eventCode )
+			switch( ba.eventCode )
 				case 2: // mouse up
-				BatchProcess()
+					BatchProcess()
 					break
 				case -1: // control being killed
 					break
 			endswitch
-				break
+			break
+				
+		case "de_Dudko_button6":
+			switch( ba.eventCode )
+				case 2: // mouse up
+					AccumulateButton()
+					ForceStateAccum()
+					TrimForceWaves(1e5)
+					FittheContour()
+					NewHistogramButton()
+					//HistogramButton()
+					CreateSlopeWave()
+					NumbersCalc()
+					makeRates()
+					CalcErrorBars()
+					break
+				case -1: // control being killed
+					break
+			endswitch
+			break
 			
 	endswitch
 	return 0
@@ -1514,7 +1533,7 @@ Static Function WLCFitter(FoldedForceWave,FoldedSepWave,UnFoldedForceWave,UnFold
 		FuncFit/Q/H="10111"/NTHR=0 WLC_FIT W_coef  UnFoldedForceWave /X=UnFoldedSepWave/D
 		UnfoldedContour=w_coef[1]
 		ForceOffset=w_coef[3]
-	else
+	elseif(FitFOldedFirst==0)
 		FuncFit/Q/H="10100"/NTHR=0 WLC_FIT W_coef  UnFoldedForceWave /X=UnFoldedSepWave/C=T_Constraints/D
 		fitstart=w_coef[4]
 		UnfoldedContour=w_coef[1]
@@ -1523,8 +1542,10 @@ Static Function WLCFitter(FoldedForceWave,FoldedSepWave,UnFoldedForceWave,UnFold
 		FuncFit/Q/H="10111"/NTHR=0 WLC_FIT W_coef  FoldedForceWave /X=FoldedSepWave/D
 		FoldedContour=w_coef[1]		
 		ForceOffset=w_coef[3]	
-	endif
+	elseif(FitFOldedFirst==-1)
 
+	endif
+	
 	make/free/n=4 Something
 	Something={FoldedContour,UnfoldedContour,ForceOffset,fitstart}
 	print Something
@@ -1577,6 +1598,8 @@ Window DudkoAnalysis() : Panel
 	Button de_Dudko_button3,pos={75,210},size={150,21},proc=DE_NewDudko#ButtonProc,title="Make plots"
 	Button de_Dudko_button4,pos={75,250},size={150,21},proc=DE_NewDudko#ButtonProc,title="JustHistogram"
 	Button de_Dudko_button5,pos={250,250},size={150,50},proc=DE_NewDudko#ButtonProc,title="Batch"
+	Button de_Dudko_button6,pos={515,150},size={150,50},proc=DE_NewDudko#ButtonProc,title="JustOne"
+
 
 	SetVariable de_Dudko_setvar1,pos={250,175},size={150,16},value= _num:10,title="Bins"
 	SetVariable de_Dudko_setvar2,pos={350,175},size={150,16},value= _num:20e-9,title="Velocity"

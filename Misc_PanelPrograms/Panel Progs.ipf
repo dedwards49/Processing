@@ -44,6 +44,8 @@ while(index>-1)
 
 end
 
+
+
 Static Function/S PrintAllFolders(w1,SearchParm)
 	wave/t w1
 	string SearchParm
@@ -192,5 +194,19 @@ Static function ReplaceNote(w1,s1,k1)
 	string Total=note(w1)
 	Total=replacestringbykey(k1,Total,s1,":","\r")
 	note/k w1 Total
+
+end
+
+Static Function/S ListWavesFromPanel(PanelString,ControlStr,SearchString)
+	string ControlStr,SearchString,PanelString
+	String saveDF
+
+	saveDF = GetDataFolder(1)
+	controlinfo/W=$PanelString $ControlStr
+	string Result=s_value
+	SetDataFolder Result
+	String list = WaveList(SearchString, ";", "")
+	SetDataFolder saveDF
+	return list
 
 end

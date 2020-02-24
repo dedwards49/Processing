@@ -1755,7 +1755,7 @@ Window RuptureRamp_Panel() : Panel
 	SetVariable de_RupRamp_setvar3,pos={395,315},size={150,18.00},proc=DE_RuptureRamp#SetVarProc,value=_num:0
 	SetVariable de_RupRamp_setvar3,limits={0,inf,0},title="SepMin"
 	SetVariable de_RupRamp_setvar4,pos={560,315},size={125,18.00},proc=DE_RuptureRamp#SetVarProc,value=_num:0
-	SetVariable de_RupRamp_setvar4,limits={0,inf,0},title="Static\rOffset"
+	SetVariable de_RupRamp_setvar4,limits={-inf,inf,0},title="Static\rOffset"
 	SetVariable de_RupRamp_setvar5,pos={105,390},size={50.00,18.00},proc=DE_RuptureRamp#SetVarProc,value=_num:10e-9
 	Setvariable de_RupRamp_setvar5,limits={0,inf,0}
 	SetVariable de_RupRamp_setvar6,pos={200,460},size={150.00,18.00},proc=DE_RuptureRamp#SetVarProc,value=_num:0

@@ -590,8 +590,8 @@ Function RunJustFromFolder(FolderString,Shifting)
 	//PlotThingsNiceWithaNameString(NameString)
 end
 
-Function RunOnCombinedData(BaseString,ForceShifting,WLCShifting,[AltWLC])
-	String BaseString,ForceShifting,WLCShifting
+Function RunOnCombinedData(BaseString,ForceShifting,WLCShifting,[AltWLC,Folder])
+	String BaseString,ForceShifting,WLCShifting,Folder
 	wave AltWLC
 	if(ParamisDefault(AltWLC))
 		wave WLC=$(BaseString+"_WLCParms")
@@ -599,6 +599,13 @@ Function RunOnCombinedData(BaseString,ForceShifting,WLCShifting,[AltWLC])
 		wave WLC=AltWLC
 	
 	endif
+	
+	
+	if(ParamisDefault(Folder))
+		Folder="root:"
+	else
+	endif
+	
 	variable WLCTYPE
 	wave ForceWave=$(BaseString+"_Force")
 	wave SepWave=$(BaseString+"_Sep")
@@ -618,22 +625,22 @@ Function RunOnCombinedData(BaseString,ForceShifting,WLCShifting,[AltWLC])
 	make/o/n=28 $UFHIstString/Wave=UFHIst
 	make/o/n=24 $FHIstString/Wave=FHIst
 	SetScale/P x -1e-12,.5e-12,"", FHist;SetScale/P x 0e-12,1e-12,"", UFhist
-	
+	print WLCOut
 	PushThrough(ForceWave,SepWave,0,StateWave,FHist,UFhist,WLCOut,ForceShifting)
 	string NameString=stringfromlist(0,nameofwave(ForceWave),"_")+"_"+stringfromlist(1,nameofwave(ForceWave),"_")+"_"+stringfromlist(2,nameofwave(ForceWave),"_")
 	wave FAddHist,FaddTime,Frate,URate,UAddHist,UAddTime,FSm,SSm,ResultstoHold,ReturnTimesFoldedMassive,ReturnTimesUnfoldedMassive
-	duplicate/o FAddHist $(NameString+"_DJ_FoldHist")
-	duplicate/o FAddTime $(NameString+"_DJ_FoldTimes")
-	duplicate/o Frate $(NameString+"_DJ_FoldRate")
-	duplicate/o UAddHist $(NameString+"_DJ_UNfoldHist")
-	duplicate/o UAddTime $(NameString+"_DJ_UnfoldTimes")
-	duplicate/o Urate $(NameString+"_DJ_UnfoldRate")
-	duplicate/o UAddTime $(NameString+"_DJ_UnfoldTimes")
-	duplicate/o ResultstoHold $(NameString+"_DJ_AllTrans")
-	duplicate/o ReturnTimesFoldedMassive $(NameString+"_DJ_FoldTimes")
-	duplicate/o ReturnTimesUnfoldedMassive $(NameString+"_DJ_UnfoldTimes")
-		killwaves FAddHist,FaddTime,Frate,URate,UAddHist,UAddTime,ResultstoHold,ReturnTimesFoldedMassive,ReturnTimesUnfoldedMassive
-		killwaves FSm,SSM
+	duplicate/o FAddHist $(Folder+":"+NameString+"_DJ_FoldHist")
+	duplicate/o FAddTime $(Folder+":"+NameString+"_DJ_FoldTimes")
+	duplicate/o Frate $(Folder+":"+NameString+"_DJ_FoldRate")
+	duplicate/o UAddHist $(Folder+":"+NameString+"_DJ_UNfoldHist")
+	duplicate/o UAddTime $(Folder+":"+NameString+"_DJ_UnfoldTimes")
+	duplicate/o Urate $(Folder+":"+NameString+"_DJ_UnfoldRate")
+	duplicate/o UAddTime $(Folder+":"+NameString+"_DJ_UnfoldTimes")
+	duplicate/o ResultstoHold $(Folder+":"+NameString+"_DJ_AllTrans")
+	duplicate/o ReturnTimesFoldedMassive $(Folder+":"+NameString+"_DJ_FoldTimes")
+	duplicate/o ReturnTimesUnfoldedMassive $(Folder+":"+NameString+"_DJ_UnfoldTimes")
+	killwaves FAddHist,FaddTime,Frate,URate,UAddHist,UAddTime,ResultstoHold,ReturnTimesFoldedMassive,ReturnTimesUnfoldedMassive
+	killwaves FSm,SSM
 	killwaves UFHIst,FHISt
 end
 
@@ -1363,3 +1370,125 @@ Static Function CombineAllRates()
 
 
 end
+
+Static Function ButtonProc(ba) : ButtonControl
+	STRUCT WMButtonAction &ba
+	Strswitch(ba.ctrlname)
+			string saveDF
+			variable ms
+		case "de_Count_button0":
+			switch( ba.eventCode )
+				case 2: // mouse up
+					PanelRunCombined()
+					break
+				case -1: // control being killed
+					break
+			endswitch
+			break
+		
+			
+	endswitch
+	return 0
+End
+Static Function panelRunCombined()
+	string saveDF
+	saveDF = GetDataFolder(1)
+	ControlINfo/W=CountRate de_Count_popup1
+	SetDataFolder s_value
+	ControlINfo/W=CountRate de_Count_popup2
+	String Name=replacestring("_AccUnfold",S_Value,"")
+	ControlINfo/W=CountRate de_Count_popup3
+	String ForceShift=S_value
+	ControlINfo/W=CountRate de_Count_popup4
+	String WLCShift=S_value
+	
+	ControlINfo/W=CountRate de_Count_setvar0
+	String FolderName="root:"+S_Value
+
+	if(DataFolderExists(FolderName)==0)
+	
+	else
+	
+		KillDataFolder $FolderName
+	endif
+	NewDataFolder $FolderName
+	string NewNameString=stringfromlist(0,Name,"_")+"_"+stringfromlist(1,Name,"_")+"_"+stringfromlist(2,Name,"_")+"_DJ"
+ 
+	RunOnCombinedData(Name,ForceShift,WLCShift,Folder=FolderName)
+	CalculateErrors(FolderName,NewNameString)
+	SetDataFolder saveDF
+
+
+end
+
+Macro DE_CountRate() : Panel
+	//
+	PauseUpdate; Silent 1		// building window...
+	NewPanel/N=CountRate /W=(50,50,500,400)
+	
+	NewDataFolder/o root:DE_CountRate
+	NewDataFolder/o root:DE_CountRate:MenuStuff
+//	
+//	SetVariable de_Count_setvar0,pos={15,2},size={150,21},value=_STR:"Image",title="Name"
+	PopupMenu de_Count_popup0,pos={0,2},size={125,21},Title="Type"
+	PopupMenu de_Count_popup0,mode=1,popvalue="X",value= "Compiled;Single"
+	
+	PopupMenu de_Count_popup1,pos={120,2},size={125,21},Title="Folder"
+	PopupMenu de_Count_popup1,mode=1,popvalue="X",value= #"DE_CountRates#Something()"
+	
+	PopupMenu de_Count_popup2,pos={280,2},size={125,21},Title="BaseName"
+	PopupMenu de_Count_popup2,mode=1,popvalue="X",value= #"DE_PanelProgs#ListWavesFromPanel(\"CountRate\",\"de_Count_popup1\",\"*AccUnfold\")"
+	PopupMenu de_Count_popup3,pos={120,30},size={125,21},Title="Force Shifting"
+	PopupMenu de_Count_popup3,mode=1,popvalue="X",value= "Used;Shifted;UnShifted;Alt"
+	PopupMenu de_Count_popup4,pos={280,30},size={125,21},Title="WLC Shifting"
+	PopupMenu de_Count_popup4,mode=1,popvalue="X",value= "Used;Shifted;UnShifted;Alt"
+
+	Button de_Count_button0,pos={0,30},size={100,21},proc=DE_CountRates#ButtonProc,title="Run!"
+	SetVariable de_Count_setvar0,pos={0,60},size={150,21},value=_STR:"Image",title="Folder Name"
+
+	//"DE_RuptureRamp#ListWaves(\"de_RupRamp_popup0\",\"*Force*Adj\")"
+//
+//
+//	PopupMenu de_Dudko_popup1,pos={15,50},size={129,21},Title="AccumulateFile",proc=DE_NewDudko#PopMenuProc
+//	PopupMenu de_Dudko_popup1,mode=1,popvalue="X",value= #"DE_NewDudko#ListWaves(\"de_Dudko_popup0\",\"*Acc*Unf*\")"
+//
+//	PopupMenu de_Dudko_popup2,pos={75,90},size={129,21},Title="ForceFolder",proc=DE_NewDudko#PopMenuProc1
+//	PopupMenu de_Dudko_popup2,mode=1,popvalue="X",value= #"DE_PanelProgs#ListFolders()"
+//	PopupMenu de_Dudko_popup3,pos={15,120},size={129,21},Title="Force",proc=DE_NewDudko#PopMenuProc
+//	PopupMenu de_Dudko_popup3,mode=1,popvalue="X",value= #"DE_NewDudko#ListWaves(\"de_Dudko_popup2\",\"*Force*\")"
+//	PopupMenu de_Dudko_popup4,pos={200,120},size={129,21},Title="State"
+//	PopupMenu de_Dudko_popup4,mode=1,popvalue="X",value= #"DE_NewDudko#ListWaves(\"de_Dudko_popup2\",\"*State*\")"
+////	
+////	CheckBox de_Dudko_check0 title="Restart?",pos={275,45},size={150,25},proc=DE_NewDudko#CheckProc
+//	Button de_Dudko_button1,pos={75,150},size={50,21},proc=DE_NewDudko#ButtonProc,title="GO!"
+//	Button de_Dudko_button2,pos={75,175},size={150,21},proc=DE_NewDudko#ButtonProc,title="Find Contour"
+//	Button de_Dudko_button3,pos={75,210},size={150,21},proc=DE_NewDudko#ButtonProc,title="Make plots"
+//	Button de_Dudko_button4,pos={75,250},size={150,21},proc=DE_NewDudko#ButtonProc,title="JustHistogram"
+//	Button de_Dudko_button5,pos={250,250},size={150,50},proc=DE_NewDudko#ButtonProc,title="Batch"
+//
+//	SetVariable de_Dudko_setvar1,pos={250,175},size={150,16},value= _num:10,title="Bins"
+//	SetVariable de_Dudko_setvar2,pos={350,175},size={150,16},value= _num:20e-9,title="Velocity"
+//	checkbox de_Dudko_Check0,pos={350,50},size={150,16},title="ShiftS?"
+//	//checkbox de_Dudko_Check1,pos={450,50},size={150,16},title="ShiftS?"
+//	SetVariable de_Dudko_setvar3,pos={275,80},size={150,16},value= _num:0,title="FOff"
+//	SetVariable de_Dudko_setvar4,pos={450,80},size={150,16},value= _num:0,title="SOff"
+
+EndMacro
+
+Static Function/S Something()
+	ControlInfo/W=CountRate de_Count_popup0
+	String Result
+
+	StrSwitch(S_Value)
+		case "Compiled":
+			Result=DE_PanelProgs#PrintAllFolders_String("*ACCUnfold")
+		break
+		
+		case "Single":
+			Result=DE_PanelProgs#PrintAllFolders_String("ThisIsntReady")
+		break
+	endswitch
+
+	Return Result
+end
+
