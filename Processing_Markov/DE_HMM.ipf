@@ -32,6 +32,8 @@ Static Function DriftMarkovFitter( UseWave, stateCount, modeCount, timeStep, dri
 	endif
 	String InfoPass = "java -Xmx" + num2str(RAM) +"g -jar C:\MarkovFitter\DriftMarkov2.jar C:\MarkovFitter\UseWave.txt " + num2str(stateCount)+" 0 "//infopass exists to hold the command sent to DOS
 	InfoPass = InfoPass + num2str(modeCount)+" "+num2str(timeStep)+" "+num2str(driftBound)+" "+num2str(sigmaBound)+" "+num2str(transitionBound)+" "+num2str(iterationCount)+" "+num2str(Threads)
+	
+	print InfoPass
 	Save/J/W Used as "C:\MarkovFitter\UseWave.txt"//saving the wave that was given to  proper location
 	print(InfoPass)//gives view of command line in case anything is wrong
 	executescripttext InfoPass//sendng command to command line
@@ -60,44 +62,81 @@ Static Function ButtonProc(ba) : ButtonControl
 	switch( ba.eventCode )
 		case 2: // mouse up
 			string saveDF = GetDataFolder(1)
-			controlinfo de_HMM_popup0
-			SetDataFolder s_value
-			controlinfo de_HMM_popup1
+			controlinfo/W=HmmPanel de_HMM_popup0
+			String BaseFoldStr=S_value
+			SetDataFolder BaseFoldStr
+			controlinfo/W=HmmPanel de_HMM_popup1
 			wave w1=$S_value
+			string BaseName=nameofwave(w1)
+
 			duplicate/free w1 Test,Test1	
+						setscale/P x dimoffset(w1,0), dimdelta(w1,0), "s", Test,Test1//ensuring scaling of input and output wave are the same
+
 			wave/T parmWave=root:DE_HMM:MenuStuff:ParmWave
 			variable filtering=str2num(parmWave[6][1])
+
+//					
+//			if(waveexists($(nameofwave(w1)+"_drift"))==0)
+//				DetermineDrift()
+//			else
+//			endif
+//			wave DriftWave=$(S_value+"_drift")
+	
 			if(filtering>=1)
 	
 				Smooth/S=2 Filtering,Test1
+				if(str2num(parmWave[7][1])==1)	
+					if(Filtering>4)
+						Resample/DOWN=(floor(Filtering/2))/N=1/WINF=None Test1
+
+					endif
+					
+				else
+				
+					Resample/DOWN=(str2num(parmWave[7][1]))/N=1/WINF=None Test1
+				endif
 
 			else
 				DE_Filtering#TVD1D_denoise(Test,filtering,Test1)
-	
+				Resample/DOWN=(str2num(parmWave[7][1]))/N=1/WINF=None Test1
+
 			endif
 			
-			Test1*=1e12
-			setscale/P x dimoffset(w1,0), dimdelta(w1,0), "s", Test1//ensuring scaling of input and output wave are the same
-			Resample/DOWN=(str2num(parmWave[7][1]))/N=1/WINF=None Test1
-			DriftMarkovFitter( Test1, str2num(parmWave[0][1]), str2num(parmWave[1][1]), dimdelta(w1,0),str2num(parmWave[2][1]),str2num(parmWave[3][1]), str2num(parmWave[4][1]), str2num(parmWave[5][1]))
+			Test1*=1e9
+			newdataFolder/o/S $(BaseFoldStr+"JavaHMMFit")
+			print "Dim"+num2str(dimdelta(test1,0))
+			DriftMarkovFitter(Test1, str2num(parmWave[0][1]), str2num(parmWave[1][1]), 1,str2num(parmWave[2][1]),str2num(parmWave[3][1]), str2num(parmWave[4][1]), str2num(parmWave[5][1]))
 			wave HidMar0,HidMar1,HidMar2,HidMar3,HidMar4,HidMarParms0
-			variable state0=HidMarParms0[1][0]/1e12
-			variable state1=state0+HidMarParms0[1][1]/1e12
-			HidMar1/=1e12
-			HidMar3/=1e12
-			Test1/=1e12
+			variable state0=HidMarParms0[1][0]/1e9
+			variable state1=state0+HidMarParms0[1][1]/1e9
+			HidMar1/=1e9
+			HidMar3/=1e9
+			Test1/=1e9
+			variable Rate1=HidMarParms0[1][11]/dimdelta(Test1,0)
+			variable Rate2=HidMarParms0[1][12]/dimdelta(Test1,0)
+			print rate1
+			print rate2
 			state0+=mean(HidMar3)
 			state1+=mean(HidMar3)
-			
-			duplicate/o HidMar1 $(S_value+"_fit")
-			duplicate/o HidMar2 $(S_value+"_st")
-			duplicate/o HidMar3 $(S_value+"_dr")
+			String NewNoteInfo=note(test1)
+			NewNoteInfo=replacestringbykey("DE_JavaHMM_UpperRate",NewNoteInfo,num2str(rate1),":","\r")
+			NewNoteInfo=replacestringbykey("DE_JavaHMM_LowerRate",NewNoteInfo,num2str(rate2),":","\r")		
+			NewNoteInfo=replacestringbykey("DE_JavaHMM_State0",NewNoteInfo,num2str(state0),":","\r")
+			NewNoteInfo=replacestringbykey("DE_JavaHMM_State1",NewNoteInfo,num2str(state1),":","\r")
+			duplicate/o HidMar1 $(S_value+"_Javafit")
+			duplicate/o HidMar2 $(S_value+"_Javast")
+			duplicate/o HidMar3 $(S_value+"_Javadr")
 
-			wave States=$(S_value+"_st")
-			setscale/P x dimoffset(test1,0), dimdelta(test1,0), "s", $(S_value+"_fit"),$(S_value+"_st"), $(S_value+"_dr")//ensuring scaling of input and output wave are the same
-			duplicate/o Test1 $(S_value+"_Hmm")
-			wave HmmIN=$((S_value+"_Hmm")[0,30])
-			PlotandProcessHMM($(S_value+"_st"),w1,HmmIN,S_value,state0,state1)
+			wave States=$(S_value+"_Javast")
+			setscale/P x dimoffset(test1,0), dimdelta(test1,0), "s", $(S_value+"_Javafit"),$(S_value+"_Javast"), $(S_value+"_Javadr")//ensuring scaling of input and output wave are the same
+			duplicate/o Test1 $(S_value+"_JavaHMM")
+			wave HmmIN=$((S_value+"_JavaHMM")[0,30])
+		note/k HmmIN,NewNoteInfo
+				note/k $(S_value+"_Javafit"),NewNoteInfo
+				note/k $(S_value+"_Javadr"),NewNoteInfo
+				note/k $(S_value+"_Javast"),NewNoteInfo
+
+			PlotandProcessJavaHMM($(S_value+"_Javast"),w1,HmmIN,BaseName,state0,state1)
 
 			Killwaves HidMar0,HidMar1,HidMar2,HidMar3,HidMar4,HidMarParms0
 			
@@ -115,15 +154,16 @@ Static Function PlotandProcessHMM(StateWave,RawForceWave,ForceWave,NameString,st
 	wave statewave,ForceWave,RawForceWave
 
 	variable state1,state2
-
 	string NameString
-	
+
 	wave fitwave=$(NameString+"_fit")
 
 	//Position histograms
 	make/o/n=40 $(nameofwave(ForceWave)+"_Hist")
 	wave FHist=$(nameofwave(ForceWave)+"_Hist")
+
 	Histogram/C/B=1 ForceWave,FHist
+
 	wavestats/q/R=[0,numpnts(FHist)/2] FHist
 	variable P1=state1
 	variable H1=v_max
@@ -144,6 +184,8 @@ Static Function PlotandProcessHMM(StateWave,RawForceWave,ForceWave,NameString,st
 	variable totaltransition=numpnts(FoldedLifetime)+numpnts(unFoldedLifetime)
 	variable FoldedLTAvg=mean(FoldedLifetime)
 	variable UnfoldedLTAvg= mean(UnFoldedLifetime)
+	String HMMUpperTime=num2str(1/str2num(Stringbykey("DE_HMM_URate",note(ForceWave),":","\r"))*1e3)
+	String HMMLowerTime=num2str(1/str2num(Stringbykey("DE_HMM_LRate",note(ForceWave),":","\r"))*1e3)
 
 	//Make Lifetime histograms and FIT
 	make/free/n=0 OutUHist,OutLHist,OutUHist,FitOutUHist,FitOutLHist
@@ -154,17 +196,120 @@ Static Function PlotandProcessHMM(StateWave,RawForceWave,ForceWave,NameString,st
 	wave FLFit= $("fit_"+nameofwave(RawForceWave)+"_Hmm_FH")	
 	wave UFLFit= $("fit_"+nameofwave(RawForceWave)+"_Hmm_UH")	
 
-	variable/C Lifetimes=ReturnStateLifetimes(statewave,totallength/2000,FLTHist,FLFit,UFLTHist,UFLFit)
-	print/C Lifetimes
+	variable/C Lifetimes=ReturnStateLifetimes(statewave,totallength/2000,UFLTHist,UFLFit,FLTHist,FLFit)
 
-//	Histogram/C/B={1e-3,(dimdelta(RawForceWave,0)*numpnts(RawForceWave)/totaltransition/3),20} FoldedLifetime FLTHist
-//	Histogram/C/B={1e-3,(dimdelta(RawForceWave,0)*numpnts(RawForceWave)/totaltransition)/3,20} UnFoldedLifetime UFLTHist
-//	make/D/free/n=3 w_coefL1
-//	w_coefL1[0]={0,100,1e-2}
-//	CurveFit/W=2/Q/G/H="100"/NTHR=0 exp_XOffset kwCWave=w_coefL1 ,FLTHist /D
-//	make/D/free/n=3 w_coefL2
-//	w_coefL2[0]={0,100,1e-2}
-//	CurveFit/W=2/Q/G/H="100"/NTHR=0 exp_XOffset kwCWave=w_coefL2,UFLTHist /D 
+
+	//print/C Lifetimes
+
+	make/o/n=(3,2) $(nameofwave(RawForceWave)+"_HMM_S1"),$(nameofwave(RawForceWave)+"_HMM_S2")
+	wave State1Pos=$(nameofwave(RawForceWave)+"_HMM_S1")
+	wave State2pos=$(nameofwave(RawForceWave)+"_HMM_S2")
+	State1Pos[0][0]=State1-.05e-9
+	State1Pos[0][1]=0
+	State1Pos[1][0]=State1
+	State1Pos[1][1]=wavemax(FHist)
+	State1Pos[2][0]=State1+.05e-9
+	State1Pos[2][1]=0
+	State2Pos[0][0]=State2-.05e-9
+	State2Pos[0][1]=0
+	State2Pos[1][0]=State2
+	State2Pos[1][1]=wavemax(FHist)
+	State2Pos[2][0]=State2+.05e-9
+	State2Pos[2][1]=0
+	String WindowName=nameofwave(RawForceWave)+"_HMM_Win"
+	DE_HMM#MakeNicePlot(RawForceWave,ForceWave,fitwave,FHist,WFIT,FLTHist,FLFit,UFLTHist,UFLFit,State1Pos,State2Pos,WindowName)
+	variable Spacing=abs(State2-State1)*1e9
+	variable StatePercentage=round(100*(1-sum(StateWave)/numpnts(StateWave)))
+	variable fitPerCentage=round(100*w_coefs[1]/(w_coefs[1]+w_coefs[2]))
+	TextBox/W=$WindowName/N=Populations/X=40/Y=0/C/N=text0/F=0 num2str(StatePercentage)+"%\r"+num2str(Spacing)+" nm"
+	string lifetimeUS,lifetimeFS,lifetimeUAS,lifetimeFAS
+	print lifetimes
+	sprintf lifetimeUS, "%0.2f",real(lifetimes)*1e3
+	sprintf lifetimeFS, "%0.2f",imag(Lifetimes)*1e3
+	sprintf lifetimeUAS, "%0.2f",1e3*UnfoldedLTAvg
+	sprintf lifetimeFAS, "%0.2f",1e3*FoldedLTAvg	
+			
+	TextBox/W=$WindowName/N=FLifetimes/X=22/Y=0/C/N=text0/F=0 "\\K(19712,44800,18944)Folded:\r"+HMMUpperTime+" ms (HMM)\r"+lifetimeFAS+" ms (Avg)\r"+lifetimeFS+" ms (Fit)"
+	TextBox/W=$WindowName/N=ULifetimes/X=-1/Y=0/C/N=text0/F=0 "\\K(14848,32256,47104)UnFolded:\r"+HMMLowertime+" ms (HMM)\r"+lifetimeUAS+" ms (Avg)\r"+lifetimeUS+" ms (Fit)"
+	wave W_Coef,W_Sigma,w_coefs,W_fitConstants
+	
+	make/o/n=(1,8) Test
+	Test[0][0]=StatePercentage
+	Test[0][1]=Spacing
+	Test[0][2]=str2num(HMMUpperTime)
+	Test[0][3]=str2num(HMMLowertime)
+	Test[0][4]=str2num(lifetimeFAS)
+	Test[0][5]=str2num(lifetimeUAS)
+	Test[0][6]=str2num(lifetimeFS)
+	Test[0][7]=str2num(lifetimeUS)
+	DoWindow CurrRes
+	if(V_flag==1)
+		killwindow CurrRes
+	endif
+	edit/W=(10,500,800,625)/N=CurrRes	 Test
+	
+	killwaves W_Coef,W_Sigma,w_coefs,W_fitConstants				
+	
+					
+	//killwaves FHist
+end
+
+
+
+
+Static Function PlotandProcessJavaHMM(StateWave,RawForceWave,ForceWave,NameString,state1,state2)
+	wave statewave,ForceWave,RawForceWave
+
+	variable state1,state2
+
+	string NameString
+	
+	wave fitwave=$(NameString+"_Javafit")
+
+	//Position histograms
+	make/o/n=40 $(nameofwave(ForceWave)+"_JavaHist")
+	wave FHist=$(nameofwave(ForceWave)+"_JavaHist")
+
+	Histogram/C/B=1 ForceWave,FHist
+
+	wavestats/q/R=[0,numpnts(FHist)/2] FHist
+	variable P1=state1
+	variable H1=v_max
+	wavestats/q/R=[numpnts(FHist)/2,numpnts(FHist)-1] FHist
+	variable P2=state2
+	variable H2=v_max
+	make/D/o/n=7 w_coefs
+	w_coefs[0]={0,H1,H2,P1,P2,.2e-9,.2e-9}
+	FuncFit/Q/W=2/H="1000000"/N/NTHR=0 DGauss w_coefs  FHist/D
+	//wave WFIT=$(("fit_"+nameofwave(FHist))[0,30])
+	wave WFIT=$(("fit_"+nameofwave(FHist)))
+	
+	//Make lifetimes
+	make/o/n=0 $(NameString+"_JavaHMM_ULT"),$(NameString+"_JavaHMM_FLT")
+	wave UnfoldedLifetime=$(NameString+"_JavaHMM_ULT")
+	wave FoldedLifetime=$(NameString+"_JavaHMM_FLT")
+	CalcLifetimes(statewave,UnfoldedLifetime,FoldedLifetime)
+	variable totaltransition=numpnts(FoldedLifetime)+numpnts(unFoldedLifetime)
+	variable FoldedLTAvg=mean(FoldedLifetime)
+	variable UnfoldedLTAvg= mean(UnFoldedLifetime)
+	print nameofwave(ForceWave)
+	String HMMUpperTime=num2str(1/str2num(Stringbykey("DE_JavaHMM_UpperRate",note(ForceWave),":","\r"))*1e3)
+	String HMMLowerTime=num2str(1/str2num(Stringbykey("DE_JavaHMM_LowerRate",note(ForceWave),":","\r"))*1e3)
+
+	//Make Lifetime histograms and FIT
+	make/free/n=0 OutUHist,OutLHist,OutUHist,FitOutUHist,FitOutLHist
+	variable totallength=dimdelta(statewave,0)*dimsize(statewave,0)
+	make/o/n=(20) $(nameofwave(RawForceWave)+"_Hmm_FH"),$(nameofwave(RawForceWave)+"_HMM_UH"),$("fit_"+nameofwave(RawForceWave)+"_Hmm_FH"),$("fit_"+nameofwave(RawForceWave)+"_Hmm_UH")
+	wave FLTHist=$(nameofwave(RawForceWave)+"_Hmm_FH")
+	wave UFLTHist=$(nameofwave(RawForceWave)+"_HMM_UH")
+	wave FLFit= $("fit_"+nameofwave(RawForceWave)+"_Hmm_FH")	
+	wave UFLFit= $("fit_"+nameofwave(RawForceWave)+"_Hmm_UH")	
+
+	variable/C Lifetimes=ReturnJavaStateLifetimes(statewave,totallength/2000,UFLTHist,UFLFit,FLTHist,FLFit)
+
+
+	//print/C Lifetimes
+
 	make/o/n=(3,2) $(nameofwave(RawForceWave)+"_HMM_S1"),$(nameofwave(RawForceWave)+"_HMM_S2")
 	wave State1Pos=$(nameofwave(RawForceWave)+"_HMM_S1")
 	wave State2pos=$(nameofwave(RawForceWave)+"_HMM_S2")
@@ -181,21 +326,22 @@ Static Function PlotandProcessHMM(StateWave,RawForceWave,ForceWave,NameString,st
 	State2Pos[2][0]=State2+.05e-9
 	State2Pos[2][1]=0
 
-	DE_HMM#MakeNicePlot(RawForceWave,ForceWave,fitwave,FHist,WFIT,FLTHist,FLFit,UFLTHist,UFLFit,State1Pos,State2Pos)
-
-	TextBox/N=Populations/X=35/Y=1/C/N=text0/F=0 num2str(round(100*w_coefs[1]/(w_coefs[1]+w_coefs[2])))+"%"
-	string lifetime1S,lifetime2S,lifetime1AS,lifetime2AS
-	sprintf lifetime1S, "%0.2f",imag(lifetimes)*1e3
-	sprintf lifetime2S, "%0.2f",real(Lifetimes)*1e3
-	sprintf lifetime1AS, "%0.2f",1e3*FoldedLTAvg
-	sprintf lifetime2AS, "%0.2f",1e3*UnfoldedLTAvg		
-	TextBox/N=Lifetimes/X=0/Y=1/C/N=text0/F=0 "\\K(19712,44800,18944)Folded: "+lifetime1AS+"("+lifetime1S+") ms\r\\K(14848,32256,47104)UnFolded: "+lifetime2AS+"("+lifetime2S+") ms"
+	DE_HMM#MakeNicePlot(RawForceWave,ForceWave,fitwave,FHist,WFIT,FLTHist,FLFit,UFLTHist,UFLFit,State1Pos,State2Pos,nameofwave(RawForceWave)+"_JavaHMM_Win")
+	TextBox/N=Populations/X=45/Y=0/C/N=text0/F=0 num2str(round(100*w_coefs[1]/(w_coefs[1]+w_coefs[2])))+"%"
+	string lifetimeUS,lifetimeFS,lifetimeUAS,lifetimeFAS
+	print lifetimes
+	sprintf lifetimeUS, "%0.2f",real(lifetimes)*1e3
+	sprintf lifetimeFS, "%0.2f",imag(Lifetimes)*1e3
+	sprintf lifetimeUAS, "%0.2f",1e3*UnfoldedLTAvg
+	sprintf lifetimeFAS, "%0.2f",1e3*FoldedLTAvg	
+			
+	TextBox/N=FLifetimes/X=22/Y=0/C/N=text0/F=0 "\\K(19712,44800,18944)Folded:\r"+HMMUpperTime+" ms (HMM)\r"+lifetimeFAS+" ms (Avg)\r"+lifetimeFS+" ms (Fit)"
+	TextBox/N=ULifetimes/X=-1/Y=0/C/N=text0/F=0 "\\K(14848,32256,47104)UnFolded:\r"+HMMLowertime+" ms (HMM)\r"+lifetimeUAS+" ms (Avg)\r"+lifetimeUS+" ms (Fit)"
 	wave W_Coef,W_Sigma,w_coefs,W_fitConstants
 	killwaves W_Coef,W_Sigma,w_coefs,W_fitConstants				
 					
 	//killwaves FHist
 end
-
 
 Static Function/C ReturnStateLifetimes(HMM_FIt,HistStepO,OutUHist,FitOutUHist,OutFHist,FitOutFHist)
 	Wave HMM_Fit,OutUHist,OutFHist,FitOutFHist,FitOutUHist
@@ -208,34 +354,66 @@ Static Function/C ReturnStateLifetimes(HMM_FIt,HistStepO,OutUHist,FitOutUHist,Ou
 	if(cmpstr(UpperRate,"")==0)
 	else
 		HistStepU=1/str2num(Stringbykey("DE_HMM_URate",note(HMM_FIT),":","\r"))/5
-		HistStepF=1/str2num(Stringbykey("DE_HMM_LRate",note(HMM_FIT),":","\r"))/5
+		HistStepF=1/str2num(Stringbykey("DE_Hmm_LRate",note(HMM_FIT),":","\r"))/5
 
 	endif
-	print HistStepU
-	print HistStepF
-	make/free/n=30 FreeFHist,FreeFHistFit
-	Histogram/C/B={2e-3,HistStepF,30} FreeFTime,FreeFHist
+	variable LTBins=10
+	make/free/n=(LTBins) FreeFHist,FreeFHistFit
+	Histogram/C/B={10e-4,3*HistStepF,LTBins} FreeFTime,FreeFHist
 	make/o/n=3 W_coef
 	W_Coef={0,wavemax(FreeFHist),1/HistStepF}
 	CurveFit/Q/W=2/N/H="100"/NTHR=0 exp  FreeFHist/D=FreeFHistFit
 	Setscale/P x, pnt2x(FreeFHist,0), dimdelta(FreeFHist,0),FreeFHistFit
 	
-	variable/C Result=Cmplx(1/w_coef[2],0)
-
-	make/free/n=30 FreeUHist,FreeUHistFit
-	Histogram/C/B={2e-3,HistStepU,30} FreeUTime,FreeUHist
+	variable/C Result=Cmplx(0,1/w_coef[2])
+	make/free/n=(LTBins) FreeUHist,FreeUHistFit
+	Histogram/C/B={10e-4,3*HistStepU,LTBins} FreeUTime,FreeUHist
 	W_Coef={0,wavemax(FreeFHist),1/HistStepU}
 	CurveFit/Q/W=2/N/H="100"/NTHR=0 exp  FreeUHist/D=FreeUHistFit
 	Setscale/p x, pnt2x(FreeUHist,0), dimdelta(FreeUHist,0),FreeUHistFit
-
-	Result+=cmplx(0,1/w_coef[2])
+	Result+=cmplx(1/w_coef[2],0)
 	duplicate/o FreeUHist OutUHist
 	duplicate/o FreeFHist OutFHist
 	duplicate/o FreeUHistFit FitOutUHist
 	duplicate/o FreeFHistFit FitOutFHist
 	return result
 end
+Static Function/C ReturnJavaStateLifetimes(HMM_FIt,HistStepO,OutUHist,FitOutUHist,OutFHist,FitOutFHist)
+	Wave HMM_Fit,OutUHist,OutFHist,FitOutFHist,FitOutUHist
+	variable HistStepO
+	make/free/n=0 FreeUTime,FreeFTime
+	CalcLifetimes(HMM_FIT,FreeUTime,FreeFTime)
+	variable HistStepF=HistStepO
+	variable HistStepU=HistStepO
+	String UpperRate=Stringbykey("DE_JavaHMM_UpperRate",note(HMM_FIT),":","\r")
+	if(cmpstr(UpperRate,"")==0)
+	else
+		HistStepU=1/str2num(Stringbykey("DE_JavaHMM_UpperRate",note(HMM_FIT),":","\r"))/5
+		HistStepF=1/str2num(Stringbykey("DE_JavaHmm_LowerRate",note(HMM_FIT),":","\r"))/5
 
+	endif
+	print note(HMM_FIT)
+	variable LTBins=10
+	make/free/n=(LTBins) FreeFHist,FreeFHistFit
+	Histogram/C/B={10e-4,3*HistStepF,LTBins} FreeFTime,FreeFHist
+	make/o/n=3 W_coef
+	W_Coef={0,wavemax(FreeFHist),1/HistStepF}
+	CurveFit/Q/W=2/N/H="100"/NTHR=0 exp  FreeFHist/D=FreeFHistFit
+	Setscale/P x, pnt2x(FreeFHist,0), dimdelta(FreeFHist,0),FreeFHistFit
+	
+	variable/C Result=Cmplx(0,1/w_coef[2])
+	make/free/n=(LTBins) FreeUHist,FreeUHistFit
+	Histogram/C/B={10e-4,3*HistStepU,LTBins} FreeUTime,FreeUHist
+	W_Coef={0,wavemax(FreeFHist),1/HistStepU}
+	CurveFit/Q/W=2/N/H="100"/NTHR=0 exp  FreeUHist/D=FreeUHistFit
+	Setscale/p x, pnt2x(FreeUHist,0), dimdelta(FreeUHist,0),FreeUHistFit
+	Result+=cmplx(1/w_coef[2],0)
+	duplicate/o FreeUHist OutUHist
+	duplicate/o FreeFHist OutFHist
+	duplicate/o FreeUHistFit FitOutUHist
+	duplicate/o FreeFHistFit FitOutFHist
+	return result
+end
 Static Function PopMenuProc(pa) : PopupMenuControl
 	STRUCT WMPopupAction &pa
 
@@ -292,7 +470,7 @@ Static Function/S ListWaves()
 	saveDF = GetDataFolder(1)
 	controlinfo de_HMM_popup0
 	SetDataFolder s_value
-	String list = WaveList("*", ";", "")
+	String list = WaveList("*Sep_1", ";", "")+WaveList("*Sep_2", ";", "")+WaveList("*Sep_3", ";", "")
 	SetDataFolder saveDF
 	return list
 
@@ -327,16 +505,17 @@ Menu "Equilibrium"
 	//end
 	
 end
-Static Function MakeNicePlot(RawForce,SmForce,ForceFit,HistWave,HistFit,LT1,LT1Fit,LT2,LT2Fit,state1,state2)
+Static Function MakeNicePlot(RawForce,SmForce,ForceFit,HistWave,HistFit,LT1,LT1Fit,LT2,LT2Fit,state1,state2,WindowName)
 	wave RawForce,SmForce,HistWave,HistFit,LT1,LT2,LT1Fit,LT2Fit,ForceFit, state1,state2
-	string WindowName=nameofwave(RawForce)+"_HMM_Win"
+	string WindowName
+//	string WindowName=nameofwave(RawForce)+"_HMM_Win"
 	dowindow $Windowname
 	if(V_flag==1)
 		killwindow $windowname
 	else
 	endif
 	Display/N=$WindowName RawForce,SmForce,ForceFit
-	
+		
 	AppendToGraph/W=$WindowName/B=B1/L=L1/VERT HistWave
 	AppendToGraph/W=$WindowName/B=B1/L=L1/VERT HistFit
 	AppendToGraph/W=$WindowName/B=B1/L=L1/Vert State1[][1] vs State1[][0]
@@ -345,33 +524,37 @@ Static Function MakeNicePlot(RawForce,SmForce,ForceFit,HistWave,HistFit,LT1,LT1F
 	AppendToGraph/W=$WindowName/B=B2/L=L2 LT1
 	AppendToGraph/W=$WindowName/B=B2/L=L2 LT1Fit
 
-	AppendToGraph/W=$WindowName/B=B2/L=L2 LT2
-	AppendToGraph/W=$WindowName/B=B2/L=L2 LT2Fit
+	AppendToGraph/W=$WindowName/B=B3/L=L3 LT2
+	AppendToGraph/W=$WindowName/B=B3/L=L3 LT2Fit
 
 	//	//SetAxis L1 2.1312133e-08,2.9592798e-08
 	ModifyGraph/W=$WindowName mode($nameofwave(State1))=5,hbFill($nameofwave(State1))=4,rgb($nameofwave(State1))=(0,65280,65280);DelayUpdate
 	ModifyGraph/W=$WindowName mode($nameofwave(State2))=5,hbFill($nameofwave(State2))=4,rgb($nameofwave(State2))=(0,65280,65280)
 
 	ModifyGraph/W=$WindowName tick=2,fSize=9,lblPosMode=1,lblPos=42,standoff=0,font="Arial"
-	ModifyGraph/W=$WindowName axisEnab(bottom)={0,0.5}
-	ModifyGraph/W=$WindowName axisEnab(B1)={0.55,0.7}
-	ModifyGraph/W=$WindowName axisEnab(B2)={0.75,1}
+	ModifyGraph/W=$WindowName axisEnab(bottom)={0,0.45}
+	ModifyGraph/W=$WindowName axisEnab(B1)={0.47,0.60}
+	ModifyGraph/W=$WindowName axisEnab(B2)={0.63,.8}
+		ModifyGraph/W=$WindowName axisEnab(B3)={0.83,1}
+
 	ModifyGraph/W=$WindowName freePos(B1)={0,L1}
 	ModifyGraph/W=$WindowName freePos(L1)={0,B1}
 	ModifyGraph/W=$WindowName freePos(B2)={0,L2}
 	ModifyGraph/W=$WindowName freePos(L2)={0,B2}
+	ModifyGraph/W=$WindowName freePos(B3)={0,L3}
+	ModifyGraph/W=$WindowName freePos(L3)={0,B3}
 	ModifyGraph/W=$WindowName rgb($nameofwave(HistFit))=(0,0,0)
 	ModifyGraph/W=$WindowName rgb($(nameofwave(RawForce)))=(65280,48896,48896)
 	ModifyGraph/W=$WindowName hideTrace($(nameofwave(RawForce)))=1
 	ModifyGraph/W=$WindowName rgb($(nameofwave(ForceFit)))=(0,0,0)
 	ModifyGraph/W=$WindowName margin(left)=36,margin(bottom)=29,margin(top)=21,margin(right)=14;DelayUpdate
-	ModifyGraph/W=$WindowName mode($nameofwave(LT1))=3,marker($nameofwave(LT1))=16;DelayUpdate
+	ModifyGraph/W=$WindowName mode($nameofwave(LT1))=5,hbfill($nameofwave(LT1))=5;DelayUpdate
 	ModifyGraph/W=$WindowName rgb($nameofwave(LT1))=(19712,44800,18944);DelayUpdate
-	ModifyGraph/W=$WindowName useMrkStrokeRGB($nameofwave(LT1))=1,mode($nameofwave(LT2))=3;DelayUpdate
-	ModifyGraph/W=$WindowName marker($nameofwave(LT2))=16;DelayUpdate
+	ModifyGraph/W=$WindowName useMrkStrokeRGB($nameofwave(LT1))=1,mode($nameofwave(LT2))=5;DelayUpdate
+	ModifyGraph/W=$WindowName hbfill($nameofwave(LT2))=5;DelayUpdate
 	ModifyGraph/W=$WindowName rgb($nameofwave(LT2))=(14848,32256,47104);DelayUpdate
 	ModifyGraph/W=$WindowName useMrkStrokeRGB($nameofwave(LT2))=1
-	ModifyGraph/W=$WindowName width=576,height=144
+	ModifyGraph/W=$WindowName width=800,height=144
 	ModifyGraph/W=$WindowName noLabel(L1)=2
 	ModifyGraph/W=$WindowName tickUnit(left)=1,prescaleExp(left)=9;DelayUpdate
 	Label/W=$WindowName left "\\f01Extension (nm)"
@@ -402,8 +585,6 @@ Static Function CalcLifetimes(States,UOut,LOut)
 	for(n=1;n<numpnts(States);n+=1)
 		if(States[n]==States[n-1])
 		else
-			
-			
 			if(States[n-1]==1)
 			insertpoints 0,1,UpperLifetime
 			UpperLifetime[0]=((n-1-StartPoint))

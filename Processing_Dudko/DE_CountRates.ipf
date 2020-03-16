@@ -174,6 +174,7 @@ static Function AddUpTimes(Fsm,StateWave,index,FoldedTimes,UnfoldedTimes,FoldedH
 	FoldedTimeSpent=0
 	
 	variable currentlyFolded=1
+
 	variable timeentered=max(unFoldedTimesOut[0],pnt2x(Fsm,LocalPoints[0]))
 	variable pointentered,targetpoint
 	make/free/n=(numpnts(LocalPoints)-4,20) FreeNewState
@@ -622,9 +623,9 @@ Function RunOnCombinedData(BaseString,ForceShifting,WLCShifting,[AltWLC,Folder])
 	endif
 	string UFHIstString=(BaseString+"_Count_UFHIst")
 	string FHIstString=(BaseString+"_Count_FHIst")
-	make/o/n=28 $UFHIstString/Wave=UFHIst
-	make/o/n=24 $FHIstString/Wave=FHIst
-	SetScale/P x -1e-12,.5e-12,"", FHist;SetScale/P x 0e-12,1e-12,"", UFhist
+	make/o/n=50 $UFHIstString/Wave=UFHIst
+	make/o/n=30 $FHIstString/Wave=FHIst
+	SetScale/P x -1e-12,.5e-12,"", FHist;SetScale/P x 1e-12,1e-12,"", UFhist
 	print WLCOut
 	PushThrough(ForceWave,SepWave,0,StateWave,FHist,UFhist,WLCOut,ForceShifting)
 	string NameString=stringfromlist(0,nameofwave(ForceWave),"_")+"_"+stringfromlist(1,nameofwave(ForceWave),"_")+"_"+stringfromlist(2,nameofwave(ForceWave),"_")

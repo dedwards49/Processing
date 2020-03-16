@@ -34,6 +34,12 @@ function TresEquil(ZsnsrWave,SepWave,SepAddOff,ForceWave,ForceAddOff,BaseOutStri
 	elseif(totaltime>30.5&&totaltime<31.5)
 		stepdown=.15
 		stepup=9.9
+	elseif(totaltime>31.5&&totaltime<33.5)
+		stepdown=.25
+		stepup=9.8
+	elseif(totaltime>46&&totaltime<48)
+		stepdown=.25
+		stepup=14.8
 	else
 		stepdown=.15
 		stepup=totaltime/3-1.5/3
@@ -72,7 +78,8 @@ function TresEquil(ZsnsrWave,SepWave,SepAddOff,ForceWave,ForceAddOff,BaseOutStri
 
 			CutoutRegion(ForceWave,MidPoints,q,stepup)
 			wave/z CutF=$FWaveName
-			CutF-=ForceAddOff
+			print ForceAddOff
+			//CutF-=ForceAddOff
 			CutF-=FOffset
 
 			length=strlen(nameofwave(ForceWave))-1
@@ -87,6 +94,7 @@ function TresEquil(ZsnsrWave,SepWave,SepAddOff,ForceWave,ForceAddOff,BaseOutStri
 	
 	endfor
 	variable np=numpnts(midpoints)/2
+
 	killwaves CutS,CutF,MidPoints
 
 	return np
@@ -164,7 +172,7 @@ function FindPeaks(wavein)
 	Variable pBegin=0, pEnd= numpnts(wavein)-1
 	Variable maxPeaks=150, minPeakPercent=30
 	Variable noiselevel=0
-	Variable smoothingFactor=10
+	Variable smoothingFactor=5
 	AutoFindPeaksWorker(wavein, wx, pBegin, pEnd, maxPeaks, minPeakPercent, noiseLevel, smoothingFactor)
 	killwindow showpeaks
 	killwindow table0
@@ -217,113 +225,13 @@ end
 Static Function ButtonProc(ba) : ButtonControl
 	STRUCT WMButtonAction &ba
 	Strswitch(ba.ctrlname)
-			string saveDF
+			
 			
 		case "de_EQJ_button0":
 			switch( ba.eventCode )
 				case 2: // mouse up
-					saveDF = GetDataFolder(1)
-					controlinfo/W=EqJPanel de_EQJ_popup0
-					SetDataFolder s_value
-					controlinfo/W=EqJPanel de_EQJ_popup1
-					wave w1=$S_value
-					wave w2=$ReplaceString("Force", S_Value, "Sep")
-					wave w3=$ReplaceString("Force", S_Value, "ZSnsr")
-					print nameofwave(w1)
-
-					controlinfo/W=EqJPanel de_EQJ_setvar0
-					variable ForceOff =V_value
-					controlinfo/W=EqJPanel de_EQJ_setvar1
-					variable SepOff=V_value
-					controlinfo/W=EqJPanel de_EQJ_setvar2
-					variable Filtering=V_value
-					
-					struct ForceWave Name1
-					DE_Naming#WavetoStruc(nameofwave(w1),Name1)
-					
-	
-					string basename=name1.Name+name1.Snum
-					print basename
-					
-					variable number=DE_EQuilJump#TresEquil(w3,w2,SepOff,w1,ForceOff,basename)
-					variable n=0
-					variable StartingState,FoldedLTAvg,UnfoldedLTAvg
-					
-					for(n=1;n<=number;n+=1)
-						//make/o/n=0 $(basename+"Sep_"+num2str(n)+"_Sm")
-						wave w0=$(basename+"Sep_"+num2str(n))
-						duplicate/o w0 $(basename+"Sep_"+num2str(n)+"_Sm")
-						wave w1=$(basename+"Sep_"+num2str(n)+"_Sm")
-						//DE_FILTERING#TVD1D_denoise(w0,Filtering,w1)
-						Smooth/S=2 Filtering,w1
-						make/o/n=100 $(nameofwave(w1)+"_Hist")
-						wave w1Hist=$(nameofwave(w1)+"_Hist")
-						wavestats/q w1
-						variable SMax=v_max
-						variable SMin=v_min
-						Histogram/C w1 w1Hist
-						Integrate/METH=1 w1Hist/D=w1Hist_Int;DelayUpdate
-						w1Hist_Int/=w1Hist_Int[numpnts(w1Hist_Int)-1]
-						FindLevel/P/Q w1Hist_Int,0.33
-						variable firstthird=v_levelx
-							FindLevel/P/Q w1Hist_Int,0.66
-						variable lastthird=v_levelx
-						killwaves w1Hist_Int
-						//wavestats/Q/R=[0,firstthird] w1Hist
-
-						wavestats/q/R=[0,numpnts(w1Hist)/2] w1Hist
-						variable P1=v_maxloc
-						variable H1=v_max
-						//wavestats/Q/R=[lastthird,numpnts(w1Hist)-1] w1Hist
-
-						wavestats/q/R=[numpnts(w1Hist)/2,numpnts(w1Hist)-1] w1Hist
-						variable P2=v_maxloc
-						variable H2=v_max
-						make/D/o/n=7 w_coefs
-						w_coefs[0]={0,H1,H2,P1,P2,.2e-9,.2e-9}
-						print w_coefs
-						FuncFit/ODR=1/W=2/Q/H="1000000"/NTHR=0 DGauss w_coefs  w1Hist /D
-						wave WFIT=$("fit_"+nameofwave(w1Hist))
-						variable midpoint=(w_coefs[3]+w_coefs[4])/2
-						make/free/n=0 OutWave,FoldedLiftime,UnFoldedLiftime
-						StartingState=GenerateThreeCuts(w1,w_coefs[3],w_coefs[4],OutWave)
-						//StartingState=FindTransitions(w1,midpoint,OutWave)
-						duplicate/o OutWave $(nameofwave(w1)+"TransitionX"),$(nameofwave(w1)+"TransitionY")
-						wave trx=$(nameofwave(w1)+"TransitionX")
-						wave trys=$(nameofwave(w1)+"Transitiony")
-						trys=w1(trx)
-						CalculateTwoStateLifeTimes(OutWave,FoldedLiftime,UnFoldedLiftime,StartingState)
-						FoldedLTAvg=mean(FoldedLiftime)
-						UnfoldedLTAvg= mean(UnFoldedLiftime)
-						make/o/n=(40) $(nameofwave(w1)+"_FLHist")
-						wave FLTHist=$(nameofwave(w1)+"_FLHist")
-						Histogram/C/B={1e-5,(dimdelta(w1,0)*numpnts(w1)/numpnts(Outwave)/4),40} FoldedLiftime FLTHist
-						make/o/n=(40) $(nameofwave(w1)+"_UFLHist")
-						wave UFLTHist=$(nameofwave(w1)+"_UFLHist")
-						Histogram/C/B={1e-5,(dimdelta(w1,0)*numpnts(w1)/numpnts(Outwave))/4,40} UnFoldedLiftime UFLTHist
-						make/D/o/n=3 w_coefL1
-						w_coefL1[0]={0,100,1e-2}
-						CurveFit/W=2/Q/G/H="100"/NTHR=0 exp_XOffset kwCWave=w_coefL1 ,FLTHist /D
-						wave FLFit= $("fit_"+nameofwave(FLTHist))	
-						make/D/o/n=3 w_coefL2
-						w_coefL2[0]={0,100,1e-2}
-						CurveFit/W=2/Q/G/H="100"/NTHR=0 exp_XOffset kwCWave=w_coefL2,UFLTHist /D 
-						wave UFLFit= $("fit_"+nameofwave(UFLTHist))	
-						wave WFIT=$("fit_"+nameofwave(w1Hist))				
-						MakeNicePlot(w0,w1,w1Hist,WFIT,FLTHist,FLFit,UFLTHist,UFLFit,Trx,trys)
-						TextBox/N=Populations/X=35/Y=1/C/N=text0/F=0 num2str(round(100*w_coefs[1]/(w_coefs[1]+w_coefs[2])))+"%"
-						string lifetime1S,lifetime2S,lifetime1AS,lifetime2AS
-						sprintf lifetime1S, "%0.2f",-1e3*w_coefL1[2]*ln(1/2)
-						sprintf lifetime2S, "%0.2f",-1e3*w_coefL2[2]*ln(1/2)
-						sprintf lifetime1AS, "%0.2f",1e3*FoldedLTAvg
-						sprintf lifetime2AS, "%0.2f",1e3*UnfoldedLTAvg		
-						TextBox/N=Lifetimes/X=0/Y=1/C/N=text0/F=0 "\\K(19712,44800,18944)Folded: "+lifetime1AS+"("+lifetime1S+") ms\r\\K(14848,32256,47104)UnFolded: "+lifetime2AS+"("+lifetime2S+") ms"
-					endfor
-					
-					wave W_sigma,W_FindLevels,W_fitConstants
-					killwaves w_coefs,w_coefL2,w_coefL1,W_sigma,W_FindLevels,W_fitConstants
-					//SetDataFolder saveDF
-
+					variable number=SplitTheTrace()
+					PlotEach(number)
 					break
 				case -1: // control being killed
 					break
@@ -335,6 +243,134 @@ Static Function ButtonProc(ba) : ButtonControl
 	return 0
 End
 
+
+Static Function SplitTheTrace()
+	string saveDF
+	saveDF = GetDataFolder(1)
+	controlinfo/W=EqJPanel de_EQJ_popup0
+	SetDataFolder s_value
+	controlinfo/W=EqJPanel de_EQJ_popup1
+	wave w1=$S_value
+	wave w2=$ReplaceString("Force", S_Value, "Sep")
+	wave w3=$ReplaceString("Force", S_Value, "ZSnsr")
+	controlinfo/W=EqJPanel de_EQJ_setvar0
+	variable ForceOff =V_value
+	controlinfo/W=EqJPanel de_EQJ_setvar1
+	variable SepOff=V_value
+	struct ForceWave Name1
+	DE_Naming#WavetoStruc(nameofwave(w1),Name1)
+	string basename=name1.Name+name1.Snum
+	variable number=DE_EQuilJump#TresEquil(w3,w2,SepOff,w1,ForceOff,basename)
+	SetDataFolder saveDF
+
+	return number
+
+end
+
+Static Function PlotEach(number)
+	variable number
+
+
+	string saveDF = GetDataFolder(1)
+	controlinfo/W=EqJPanel de_EQJ_popup0
+	string RawDatafolder=s_value
+	SetDataFolder RawDatafolder
+	controlinfo/W=EqJPanel de_EQJ_popup1
+	wave w1=$S_value
+	wave w2=$ReplaceString("Force", S_Value, "Sep")
+	wave w3=$ReplaceString("Force", S_Value, "ZSnsr")
+
+
+	controlinfo/W=EqJPanel de_EQJ_setvar2
+	variable Filtering=V_value
+	struct ForceWave Name1
+	DE_Naming#WavetoStruc(nameofwave(w1),Name1)
+	string basename=name1.Name+name1.Snum
+	
+
+	variable n=0
+	variable StartingState,FoldedLTAvg,UnfoldedLTAvg
+	newdatafolder/o/s $(basename+"_Plot")
+	for(n=1;n<=3;n+=1)
+		make/o/n=0 $(basename+"Sep_"+num2str(n)+"_Sm")
+		wave w0=$(RawDatafolder+basename+"Sep_"+num2str(n))
+		duplicate/o w0 $(basename+"Sep_"+num2str(n)+"_Sm")
+		wave w1=$(basename+"Sep_"+num2str(n)+"_Sm")
+		if(filtering>5)
+			Smooth/S=2 Filtering,w1
+		elseif(filtering<1)
+			DE_FILTERING#TVD1D_denoise(w0,Filtering,w1)
+		else
+			duplicate/o w0 w1
+		endif
+		
+		make/o/n=100 $(nameofwave(w1)+"_Hist")
+		wave w1Hist=$(nameofwave(w1)+"_Hist")
+		wavestats/q w1
+		variable SMax=v_max
+		variable SMin=v_min
+		Histogram/C w1 w1Hist
+		Integrate/METH=1 w1Hist/D=w1Hist_Int;DelayUpdate
+		w1Hist_Int/=w1Hist_Int[numpnts(w1Hist_Int)-1]
+		FindLevel/P/Q w1Hist_Int,0.33
+		variable firstthird=v_levelx
+		FindLevel/P/Q w1Hist_Int,0.66
+		variable lastthird=v_levelx
+		killwaves w1Hist_Int
+		//wavestats/Q/R=[0,firstthird] w1Hist
+		wavestats/q/R=[0,numpnts(w1Hist)/2] w1Hist
+		variable P1=v_maxloc
+		variable H1=v_max
+		//wavestats/Q/R=[lastthird,numpnts(w1Hist)-1] w1Hist
+		wavestats/q/R=[numpnts(w1Hist)/2,numpnts(w1Hist)-1] w1Hist
+		variable P2=v_maxloc
+		variable H2=v_max
+		make/D/o/n=7 w_coefs
+		w_coefs[0]={0,H1,H2,P1,P2,.2e-9,.2e-9}
+		FuncFit/ODR=1/W=2/Q/H="1000000"/NTHR=0 DGauss w_coefs  w1Hist /D
+		wave WFIT=$("fit_"+nameofwave(w1Hist))
+		variable midpoint=(w_coefs[3]+w_coefs[4])/2
+		make/free/n=0 OutWave,FoldedLiftime,UnFoldedLiftime
+		StartingState=GenerateThreeCuts(w1,w_coefs[3],w_coefs[4],OutWave)
+		StartingState=FindTransitions(w1,midpoint,OutWave)
+		duplicate/o OutWave $(nameofwave(w1)+"TransitionX"),$(nameofwave(w1)+"TransitionY")
+		wave trx=$(nameofwave(w1)+"TransitionX")
+		wave trys=$(nameofwave(w1)+"Transitiony")
+		trys=w1(trx)
+		CalculateTwoStateLifeTimes(OutWave,FoldedLiftime,UnFoldedLiftime,StartingState)
+		FoldedLTAvg=mean(FoldedLiftime)
+		UnfoldedLTAvg= mean(UnFoldedLiftime)
+		make/o/n=(40) $(nameofwave(w1)+"_FLHist")
+		wave FLTHist=$(nameofwave(w1)+"_FLHist")
+		Histogram/C/B={1e-5,(dimdelta(w1,0)*numpnts(w1)/numpnts(Outwave)/4),40} FoldedLiftime FLTHist
+		make/o/n=(40) $(nameofwave(w1)+"_UFLHist")
+		wave UFLTHist=$(nameofwave(w1)+"_UFLHist")
+		Histogram/C/B={1e-5,(dimdelta(w1,0)*numpnts(w1)/numpnts(Outwave))/4,40} UnFoldedLiftime UFLTHist
+		make/D/o/n=3 w_coefL1
+		w_coefL1[0]={0,100,1e-2}
+		CurveFit/W=2/Q/G/H="100"/NTHR=0 exp_XOffset kwCWave=w_coefL1 ,FLTHist /D
+		wave FLFit= $("fit_"+nameofwave(FLTHist))	
+		make/D/o/n=3 w_coefL2
+		w_coefL2[0]={0,100,1e-2}
+		CurveFit/W=2/Q/G/H="100"/NTHR=0 exp_XOffset kwCWave=w_coefL2,UFLTHist /D 
+		wave UFLFit= $("fit_"+nameofwave(UFLTHist))	
+		wave WFIT=$("fit_"+nameofwave(w1Hist))				
+		MakeNicePlot(w0,w1,w1Hist,WFIT,FLTHist,FLFit,UFLTHist,UFLFit,Trx,trys)
+		TextBox/N=Populations/X=35/Y=1/C/N=text0/F=0 num2str(round(100*w_coefs[1]/(w_coefs[1]+w_coefs[2])))+"%"
+		string lifetime1S,lifetime2S,lifetime1AS,lifetime2AS
+		sprintf lifetime1S, "%0.2f",-1e3*w_coefL1[2]*ln(1/2)
+		sprintf lifetime2S, "%0.2f",-1e3*w_coefL2[2]*ln(1/2)
+		sprintf lifetime1AS, "%0.2f",1e3*FoldedLTAvg
+		sprintf lifetime2AS, "%0.2f",1e3*UnfoldedLTAvg		
+		TextBox/N=Lifetimes/X=0/Y=1/C/N=text0/F=0 "\\K(19712,44800,18944)Folded: "+lifetime1AS+"("+lifetime1S+") ms\r\\K(14848,32256,47104)UnFolded: "+lifetime2AS+"("+lifetime2S+") ms"
+	endfor
+				
+	wave W_sigma,W_FindLevels,W_fitConstants
+	killwaves w_coefs,w_coefL2,w_coefL1,W_sigma,W_FindLevels,W_fitConstants
+	SetDataFolder saveDF
+
+end
+				
  Function StateandLifetimeswithFiltering(w0,filtering)
 	wave w0
 	variable filtering
@@ -784,7 +820,7 @@ Static Function/S ListWaves()
 	saveDF = GetDataFolder(1)
 	controlinfo de_EQJ_popup0
 	SetDataFolder s_value
-	String list = WaveList("*Fast*", ";", "")
+	String list = WaveList("*force_equil*", ";", "")+";"+WaveList("*force_fast*", ";", "")
 	SetDataFolder saveDF
 	return list
 

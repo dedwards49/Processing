@@ -79,9 +79,9 @@ Static Function SimpleFindRuptureForce(ForceWave,StateWave,UnfoldingForce,Foldin
 end
 
 
-Static Function FindRuptureForcesbyTimebyIndex(n,WLCParms,ForceWave,Sepwave,StateWave,FoldingForce,UnfoldingForce,[Diagnostic])
+Static Function FindRuptureForcesbyTimebyIndex(n,WLCParms,ForceWave,Sepwave,StateWave,FoldingForce,UnfoldingForce,[Diagnostic,FS,UFS,FT,UFT])
 	variable n,Diagnostic
-	wave WLCParms,StateWave,Sepwave,ForceWave,FoldingForce,UnfoldingForce
+	wave WLCParms,StateWave,Sepwave,ForceWave,FoldingForce,UnfoldingForce,FS,UFS,FT,UFT
 	variable FOldedLC=WLCPArms[0]
 	variable UnfoldedLC=WLCPArms[1]
 	Variable FOrceOff=WLCPArms[2]
@@ -110,46 +110,71 @@ Static Function FindRuptureForcesbyTimebyIndex(n,WLCParms,ForceWave,Sepwave,Stat
 	GenerateSepLine(ForceWave,SepWave,StateWave,n,1,0,SecondSepWaveUnfolded)
 	GenerateSepLine(ForceWave,SepWave,StateWave,n,1,1,SecondSepWaveFolded)
 	variable m,CurrentTime,CurrentSep,CurrentForce
-	make/free/n=0 UnfoldingFree,FoldingFree
+	make/free/n=0 UnfoldingFree,FoldingFree,UnfoldingSepFree,FoldingSepFree,UnfoldingTimeFree,FoldingTimeFree
 	for(m=1;m<turnaround;m+=1)
 			if(LocalType[m]==-1)//unfolding
-			Insertpoints numpnts(UnfoldingFree),1, UnfoldingFree
+			Insertpoints numpnts(UnfoldingFree),1, UnfoldingFree,UnfoldingSepFree,UnfoldingTimeFree
 			CurrentTime=pnt2x(Sepwave,LocalPoints[m])
 			CurrentSep=FirstSepWaveFolded(CurrentTime)
 
 			CurrentForce=WLC(CurrentSep-SepOff,-.4e-9,FOldedLC,298)-FOrceOff
 			UnfoldingFree[numpnts(UnfoldingFree)-1]=CurrentForce
+			UnfoldingSepFree[numpnts(UnfoldingFree)-1]=CurrentSep
+			UnfoldingTimeFree[numpnts(UnfoldingFree)-1]=CurrentTime
+			
+			
+			
 		elseif(LocalType[m]==1)//folding
-			Insertpoints numpnts(FoldingFree),1, FoldingFree
+			Insertpoints numpnts(FoldingFree),1, FoldingFree,foldingSepFree,foldingTimeFree
 			CurrentTime=pnt2x(Sepwave,LocalPoints[m])
 			CurrentSep=FirstSepWaveFolded(CurrentTime)
 			CurrentForce=WLC(CurrentSep-SepOff,-.4e-9,UnFOldedLC,298)-FOrceOff
 
 			FoldingFree[numpnts(FoldingFree)-1]=CurrentForce
-
+			foldingSepFree[numpnts(foldingFree)-1]=CurrentSep
+			foldingTimeFree[numpnts(foldingFree)-1]=CurrentTime
 		endif
 	endfor
 	
 	for(m=turnaround+1;m<numpnts(LocalPoints)-2;m+=1)
 		if(LocalType[m]==-1)//unfolding
-			Insertpoints numpnts(UnfoldingFree),1, UnfoldingFree
+			Insertpoints numpnts(UnfoldingFree),1, UnfoldingFree,UnfoldingSepFree,UnfoldingTimeFree
 			CurrentTime=pnt2x(Sepwave,LocalPoints[m])
 			CurrentSep=SecondSepWaveFolded(CurrentTime)
 			CurrentForce=WLC(CurrentSep-SepOff,-.4e-9,FOldedLC,298)-FOrceOff
 			UnfoldingFree[numpnts(UnfoldingFree)-1]=CurrentForce
-
+			unfoldingSepFree[numpnts(UnfoldingFree)-1]=CurrentSep
+			unfoldingTimeFree[numpnts(UnfoldingFree)-1]=CurrentTime
 		elseif(LocalType[m]==1)//folding
-			Insertpoints numpnts(FoldingFree),1, FoldingFree
+			Insertpoints numpnts(FoldingFree),1, FoldingFree,foldingSepFree,foldingTimeFree
 			CurrentTime=pnt2x(Sepwave,LocalPoints[m])
 			CurrentSep=SecondSepWaveFolded(CurrentTime)
 			CurrentForce=WLC(CurrentSep-SepOff,-.4e-9,UnFOldedLC,298)-FOrceOff
 			FoldingFree[numpnts(FoldingFree)-1]=CurrentForce
-
+			foldingSepFree[numpnts(FoldingFree)-1]=CurrentSep
+			foldingTimeFree[numpnts(FoldingFree)-1]=CurrentTime
 		endif
 	endfor
 
 	duplicate/o FoldingFree FoldingForce
 	duplicate/o unFoldingFree  UnfoldingForce
+
+	if(!ParamisDefault(FS))
+		duplicate/o FoldingSepFree FS
+	endif
+	if(!ParamisDefault(UFS))
+
+		duplicate/o UnfoldingSepFree UFS
+
+	endif
+	if(!ParamisDefault(FT))
+			duplicate/o FoldingTimeFree FT
+
+	endif
+	if(!ParamisDefault(UFT))
+			duplicate/o UnfoldingTimeFree UFT
+
+	endif
 
 end
 
@@ -445,23 +470,54 @@ end
 
 
 
-Static Function FindRuptureForcesbyTime(WLCParms,ForceWave,Sepwave,StateWave,FoldingForce,UnfoldingForce)
-	wave WLCParms,ForceWave,Sepwave,StateWave,FoldingForce,UnfoldingForce
+Static Function FindRuptureForcesbyTime(WLCParms,ForceWave,Sepwave,StateWave,FoldingForce,UnfoldingForce,[FoldingSep,FoldingTime,unFoldingSep,unFoldingTime])
+	wave WLCParms,ForceWave,Sepwave,StateWave,FoldingForce,UnfoldingForce,FoldingSep,FoldingTime,unFoldingSep,unFoldingTime
 	variable maxcycle=Statewave[dimsize(StateWave,0)-1][3]
 	variable n
 	make/free/n=0 MFoldingForce,MUnfoldingForce,FoldingForceFree,UnfoldingForceFree
-	FindRuptureForcesbyTimebyIndex(0,WLCParms,ForceWave,Sepwave,StateWave,FoldingForceFree,UnfoldingForceFree)
+		make/free/n=0 MFoldingtime,MunFoldingtime,FoldingtimeFree,unFoldingtimeFree
+	make/free/n=0 MFoldingSep,MunFoldingSep,FoldingSepFree,unFoldingSepFree
+
+	FindRuptureForcesbyTimebyIndex(0,WLCParms,ForceWave,Sepwave,StateWave,FoldingForceFree,UnfoldingForceFree,fs=FoldingSepFree,ufs=unFoldingSepFree,ft=FoldingtimeFree,uft=unFoldingtimeFree)
 	for(n=1;n<maxcycle;n+=1)
-		FindRuptureForcesbyTimebyIndex(n,WLCParms,ForceWave,Sepwave,StateWave,MFoldingForce,MUnfoldingForce)
+		FindRuptureForcesbyTimebyIndex(n,WLCParms,ForceWave,Sepwave,StateWave,MFoldingForce,MUnfoldingForce,fs=MFoldingSep,ufs=MunFoldingSep,ft=MFoldingtime,uft=MunFoldingtime)
 		
 		Concatenate/o/NP=0 {FoldingForceFree,MFoldingForce}, HoldFolding
 		duplicate/free HoldFolding FoldingForceFree
+		Concatenate/o/NP=0 {FoldingSepFree,MFoldingSep}, HoldFolding
+		duplicate/free HoldFolding FoldingSepFree
+		Concatenate/o/NP=0 {FoldingTimeFree,MFoldingTime}, HoldFolding
+		duplicate/free HoldFolding FoldingTimeFree
+	
 		Concatenate/o/NP=0 {unFoldingForceFree,MunFoldingForce}, HoldunFolding
 		duplicate/free HoldunFolding unFoldingForceFree
+		Concatenate/o/NP=0 {unFoldingSepFree,MunFoldingSep}, HoldunFolding
+		duplicate/free HoldunFolding unFoldingSepFree
+		Concatenate/o/NP=0 {unFoldingTimeFree,MunFoldingTime}, HoldunFolding
+		duplicate/free HoldunFolding unFoldingTimeFree
 
 	endfor
 	duplicate/o FoldingForceFree FoldingForce
 	duplicate/o UnfoldingForceFree UnfoldingForce
+	
+	if(!ParamisDefault(FoldingSep))
+		duplicate/o FoldingSepFree FoldingSep
+
+	
+	endif
+	if(!ParamisDefault(FoldingTime))
+		duplicate/o FoldingTimeFree FoldingTime
+
+	endif
+	if(!ParamisDefault(unFoldingSep))
+		duplicate/o unFoldingSepFree unFoldingSep
+
+	endif
+	if(!ParamisDefault(unFoldingTime))
+		duplicate/o unFoldingTimeFree unFoldingTime
+
+	
+	endif
 	killwaves HoldunFolding,HoldFolding
 
 end
@@ -743,19 +799,20 @@ Static Function CutStatebySep(ForceIn,SepIn,ForceOut,SepOut,SepMax,SepMin)
 	duplicate/free SepIn FreeSep
 	variable n
 	string NewNote
-	if(SepMax!=0&&SepMax!=0)
-		for(n=0;n<numpnts(FreeSep);n+=1)
-			if(FreeSep[n]<SepMin||FreeSep[n]>SepMax)
-				FreeSep[n]=NaN
-				FreeForce[n]=NaN
-			
-			endif
-			NewNote=Replacestringbykey("DE_SepMax",note(ForceIn),num2str(SepMax),":","\r")
-			NewNote=Replacestringbykey("DE_SepMin",NewNote,num2str(SepMin),":","\r")
-
-		endfor
-	
-	elseif(SepMax!=0)
+//	if(SepMax!=0&&SepMin!=0)
+//		for(n=0;n<numpnts(FreeSep);n+=1)
+//			if(FreeSep[n]<SepMin||FreeSep[n]>SepMax)
+//				if()
+//				FreeSep[n]=NaN
+//				FreeForce[n]=NaN
+//			
+//			endif
+//
+//
+//		endfor
+//				NewNote=Replacestringbykey("DE_SepMax",note(ForceIn),num2str(SepMax),":","\r")
+//			NewNote=Replacestringbykey("DE_SepMin",NewNote,num2str(SepMin),":","\r")
+	if(SepMax!=0)
 		for(n=0;n<numpnts(FreeSep);n+=1)
 			if(FreeSep[n]>SepMax)
 				FreeSep[n]=NaN
@@ -766,8 +823,8 @@ Static Function CutStatebySep(ForceIn,SepIn,ForceOut,SepOut,SepMax,SepMin)
 		endfor
 		NewNote=Replacestringbykey("DE_SepMax",note(ForceIn),num2str(SepMax),":","\r")
 
-	
-	elseif(SepMin!=0)
+	endif
+	if(SepMin!=0)
 		for(n=0;n<numpnts(FreeSep);n+=1)
 			if(FreeSep[n]<SepMin)
 				FreeSep[n]=NaN
@@ -799,19 +856,25 @@ Static Function FittheContour()
 	make/o/n=0 $stringfromlist(8,listofnames)
 	wave OutputResults=$stringfromlist(8,listofnames)
 	variable DE_MinSep=str2num(stringbykey("DE_SepMin",note(JustForce),":","\r"))
-	print DE_MinSep
-	if(DE_MinSep==0)
+	variable DE_MaxSep=str2num(stringbykey("DE_SepMax",note(JustForce),":","\r"))
+
+	if(DE_MinSep==0&&DE_MaxSep==0)
 	
 	else
-		make/o/n=0 $(nameofwave(FoldedForceOut)+"_Cut"),$(nameofwave(FoldedSepOut)+"_Cut")
+		make/o/n=0 $(nameofwave(FoldedForceOut)+"_Cut"),$(nameofwave(FoldedSepOut)+"_Cut"),$(nameofwave(FoldedForceOut)+"_Long"),$(nameofwave(FoldedSepOut)+"_Long")
 		wave CutForce=$(nameofwave(FoldedForceOut)+"_Cut")
 		wave CutSep=$(nameofwave(FoldedSepOut)+"_Cut")
+		wave LongForce=$(nameofwave(FoldedForceOut)+"_Long")
+		wave LongSep=$(nameofwave(FoldedSepOut)+"_Long")
 		CutStatebySep(FoldedForceOut,FoldedSepOut,CutForce,CutSep,DE_MinSep,0)
-
-		CutStatebySep(FoldedForceOut,FoldedSepOut,FoldedForceOut,FoldedSepOut,0,DE_MinSep)
+		CutStatebySep(unFoldedForceOut,unFoldedSepOut,LongForce,LongSep,0,DE_MaxSep)
+		CutStatebySep(unFoldedForceOut,unFoldedSepOut,unFoldedForceOut,unFoldedSepOut,DE_MaxSep,DE_MinSep)
+		CutStatebySep(FoldedForceOut,FoldedSepOut,FoldedForceOut,FoldedSepOut,DE_MaxSep,DE_MinSep)
 
 	endif
-	WLCFitter(FoldedForceOut,FoldedSepOut,unfoldedForceOut,unFoldedsepOut,OutputResults,1)
+	controlinfo/W=DudkoAnalysis de_Dudko_check1
+	variable fitfolded=v_value
+	WLCFitter(FoldedForceOut,FoldedSepOut,unfoldedForceOut,unFoldedsepOut,OutputResults,fitfolded)
 	display FoldedForceOut vs FoldedSepOut
 	appendtograph unfoldedForceOut vs unFoldedsepOut
 	ModifyGraph rgb($nameofwave(FoldedForceOut))=(0,26214,39321)//
@@ -821,6 +884,13 @@ Static Function FittheContour()
 	else
 		appendtograph CutForce vs CutSep
 		ModifyGraph rgb($nameofwave(CutForce))=(58596,6682,7196)
+
+	endif
+		if(DE_MaxSep==0)
+	
+	else
+		appendtograph LongForce vs LongSep
+		ModifyGraph rgb($nameofwave(LongForce))=(58596,6682,7196)
 
 	endif
 	wave FFIt=$("fit_"+nameofwave(FoldedForceOut))
@@ -1197,7 +1267,7 @@ Static Function ForceStateAccum()
 	string listofNames=StringListofAccnames(s_value,AccFolder)
 	wave JustForce=$stringfromlist(2,listofnames)
 	wave JustSep=$stringfromlist(3,listofnames)
-	
+
 	wave FoldedForceOut=$stringfromlist(4,listofnames)
 	wave FoldedSepOut=$stringfromlist(5,listofnames)
 	wave unfoldedForceOut=$stringfromlist(6,listofnames)
@@ -1222,7 +1292,7 @@ Static Function ForceStateAccum()
 	DE_Filtering#FilterForceSep(ForceWave,SepWave,FFilt,SFilt,"TVD",25e-9)
 	
 	variable/C slopes=DE_Dudko#ReturnSeparationSlopes(SFilt,StateWave,500)
-	variable pointstoignore=floor(.1e-9/real(slopes)/dimdelta(FFilt,0))
+	variable pointstoignore=floor(.2e-9/real(slopes)/dimdelta(FFilt,0))
 	//AccumulateAllRuptures(StateWave,ForceWave,AccRe,AccUn,Restart)
 	make/free/n=0 TempFoldedForceOut,TempFoldedSepOut,TempUnFoldedForceOut,TempUnFoldedSepOut
 	ReturnFoldandUnfold(FFilt,SFilt,StateWave,pointstoignore,TempFoldedForceOut,TempFoldedSepOut,TempUnFoldedForceOut,TempUnFoldedSepOut)
@@ -1398,8 +1468,8 @@ Static Function NewHistogramButton()
 	wave Sepwave= $stringfromlist(3,listofnames)
 	Wave WLCParms= $stringfromlist(8,listofnames)
 	wave StateWave=$stringfromlist(15,listofnames)
-	make/o/n=0 OGFoldingForce,OGUnfoldingForce
-	FindRuptureForcesbyTime(WLCParms,ForceWave,Sepwave,StateWave,OGFoldingForce,OGUnfoldingForce)
+	make/o/n=0 OGFoldingForce,OGUnfoldingForce,OGFoldingSep,OGUnfoldingSep,OGFoldingTime,OGUnfoldingTime
+	FindRuptureForcesbyTime(WLCParms,ForceWave,Sepwave,StateWave,OGFoldingForce,OGUnfoldingForce,FoldingSep=OGFoldingSep,UnfoldingSep=OGUnfoldingSep,FoldingTime=OGFoldingTime,UnfoldingTime=OGUnfoldingTime)
 	OGUnfoldingForce*=-1
 	OGFoldingForce*=-1
 
@@ -1522,7 +1592,7 @@ Static Function WLCFitter(FoldedForceWave,FoldedSepWave,UnFoldedForceWave,UnFold
 	W_coef[0] = {-.4e-9,100e-9,298,0,fitstart}
 	Make/free/T/N=2 T_Constraints
 	//T_Constraints[0] = {"K4<"+num2str(fitstart+3e-9),"K4>"+num2str(fitstart-30e-9),"K3<"+num2str(1e-12),"K3>"+num2str(-1e-12)}
-	T_Constraints[0] = {"K3<"+num2str(3e-12),"K3>"+num2str(-3e-12),"K4<"+num2str(fitstart+5e-9),"K4>"+num2str(fitstart-20e-9)}
+	T_Constraints[0] = {"K3<"+num2str(3e-12),"K3>"+num2str(-3e-12),"K4<"+num2str(fitstart+5e-9),"K4>"+num2str(fitstart-10e-9)}
 	if(FitFOldedFirst==1)
 		FuncFit/Q/H="10100"/NTHR=0 WLC_FIT W_coef  FoldedForceWave /X=FoldedSepWave/C=T_Constraints/D
 
@@ -1604,7 +1674,7 @@ Window DudkoAnalysis() : Panel
 	SetVariable de_Dudko_setvar1,pos={250,175},size={150,16},value= _num:10,title="Bins"
 	SetVariable de_Dudko_setvar2,pos={350,175},size={150,16},value= _num:20e-9,title="Velocity"
 	checkbox de_Dudko_Check0,pos={350,50},size={150,16},title="ShiftS?"
-	//checkbox de_Dudko_Check1,pos={450,50},size={150,16},title="ShiftS?"
+	checkbox de_Dudko_Check1,pos={450,50},size={150,16},title="Fit Folded?"
 	SetVariable de_Dudko_setvar3,pos={275,80},size={150,16},value= _num:0,title="FOff"
 	SetVariable de_Dudko_setvar4,pos={450,80},size={150,16},value= _num:0,title="SOff"
 EndMacro

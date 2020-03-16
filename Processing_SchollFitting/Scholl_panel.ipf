@@ -136,11 +136,9 @@ Static Function LBP_2(ctrlName,row,col,event) : ListBoxControl
 		struct ForceWave Name1
 		DE_Naming#WavetoStruc(LW2[row],Name1)
 		controlinfo de_scholl_setvar6
-
 		string ZsnsrName=DE_Naming#StringCreate(Name1.Name,Name1.VNum,S_Value,Name1.SDirec)
 		string ForceName=DE_Naming#StringCreate(Name1.Name,Name1.VNum,"Force",Name1.SDirec)
 		string SepName=DE_Naming#StringCreate(Name1.Name,Name1.VNum,"Sep",Name1.SDirec)
-
 
 		wave w1=$LW2[row]
 		wave w2=$ZsnsrName

@@ -103,6 +103,7 @@ Static Function CutStatebySep(ForceIn,SepIn,ForceOut,SepOut,SepMax,SepMin)
 		NewNote=Replacestringbykey("DE_SepMin",note(ForceIn),num2str(SepMin),":","\r")
 
 	endif
+	
 	duplicate/o FreeSep SepOut
 	duplicate/o FreeForce ForceOut
 
@@ -408,6 +409,33 @@ Static Function ApplyShifts()
 	variable Soff=ReturnPanelval("Sshift")
 	FreeForce+=Foff
 	FreeSep+=Soff
+	controlinfo/W=RupRampPanel de_RupRamp_setvar3
+	variable SepMin=v_value 
+	controlinfo/W=RupRampPanel de_RupRamp_setvar10
+	variable SepMax=v_value 
+	if(SepMin==0)
+	
+
+	else
+	
+		SepMin=str2num(Stringbykey("DE_sepMin",note(FreeForce),":","\r"))
+		string NewNote=ReplaceStringByKey("DE_sepMin",note(FreeForce),num2str(SepMin+Soff),":","\r")
+		note/k FreeForce NewNote
+		note/k FreeSep NewNote
+
+	endif
+	
+	if(Sepmax==0)
+	
+
+	else
+	
+		Sepmax=str2num(Stringbykey("DE_sepMax",note(FreeForce),":","\r"))
+		 NewNote=ReplaceStringByKey("DE_sepMax",note(FreeForce),num2str(SepMax+Soff),":","\r")
+		note/k FreeForce NewNote
+		note/k FreeSep NewNote
+
+	endif
 	duplicate/o FreeForce $replaceString("Align",nameofwave(AlignedForceWave),"Final")
 	duplicate/o FreeSep $replaceString("Align",nameofwave(AlignedSepWave),"Final")
 
@@ -708,6 +736,8 @@ Static Function AligntoWLC()
 	variable distancetoignore=v_value
 	controlinfo/W=RupRampPanel de_RupRamp_setvar3
 	variable SepMin=v_value 
+	controlinfo/W=RupRampPanel de_RupRamp_setvar10
+	variable SepMax=v_value 
 	controlinfo/W=RupRampPanel de_RupRamp_setvar4
 	variable fixedshift=v_value
 	controlinfo/W=RupRampPanel de_RupRamp_check0
@@ -734,9 +764,9 @@ Static Function AligntoWLC()
 	AlignUnFoldedForce*=-1
 
 
-	if(SepMin==0)
+	if(SepMin==0&&SepMax==0)
 	else
-	 	CutStatebySep(AlignFoldedForce,AlignFoldedSep,AlignFoldedForce,AlignFoldedSep,0,SepMin)
+	 	CutStatebySep(AlignFoldedForce,AlignFoldedSep,AlignFoldedForce,AlignFoldedSep,SepMax,SepMin)
 	endif
 
 	AlignFoldedSep+=fixedshift
@@ -826,10 +856,21 @@ Static Function AligntoWLC()
 
 	else
 		NewNote=ReplaceStringByKey("DE_sepMin",NewNote,num2str(SepMin-sepshiftused),":","\r")
-
+		print (SepMin-sepshiftused)
 
 	endif
 	
+		
+	if(SepMax==0)
+	
+		NewNote=ReplaceStringByKey("DE_sepMax",NewNote,"0",":","\r")
+
+	else
+		NewNote=ReplaceStringByKey("DE_sepMax",NewNote,num2str(SepMax-sepshiftused),":","\r")
+
+
+	endif
+
 	NumericWaveToStringList(WLCParms)
 	NewNote=ReplaceStringByKey("WLCParmsforAlign",NewNote,NumericWaveToStringList(WLCParms),":","\r")
 
@@ -1766,7 +1807,8 @@ Window RuptureRamp_Panel() : Panel
 	Setvariable de_RupRamp_setvar8,limits={0,inf,0}
 	SetVariable de_RupRamp_setvar9,pos={350,740},size={50.00,18.00},proc=DE_RuptureRamp#SetVarProc,value=_num:0
 	SetVariable de_RupRamp_setvar9,limits={0,inf,0}
-
+	SetVariable de_RupRamp_setvar10,pos={395,335},size={150,18.00},proc=DE_RuptureRamp#SetVarProc,value=_num:0
+	SetVariable de_RupRamp_setvar10,limits={0,inf,0},title="SepMax"
 	CheckBox de_RupRamp_check0 title="All Sep Shift",pos={295,315},size={150,25},proc=DE_RuptureRamp#CheckProc
 //	//CheckBox de_RupRamp_check1 title="Fit Folded",pos={550,450},size={150,25},proc=DE_RuptureRamp#CheckProc
 	CheckBox de_RupRamp_check1 title="Fit Folded",pos={10,610},size={150,25},proc=DE_RuptureRamp#CheckProc
